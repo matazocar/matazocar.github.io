@@ -25,33 +25,34 @@
 
 const PUBLICATIONS = [
   {
-    title: "Example: A General Framework for Understanding Things",
-    authors: "Your Name, A. Collaborator",
+    title: "Canonical Ramsey numbers for partite hypergraphs",
+    authors: "M.A., G. Santos, M. Schacht",
     venue: "",
-    year: "2026",
+    year: "2024",
     status: "preprint",
     abstract:
-      "A short, one- or two-sentence summary of the paper's main contribution. This text is optional and only shown if the reader expands the abstract.",
+      "We show that canonical Ramsey numbers for partite hypergraphs grow single exponentially for any fixed uniformity",
     links: {
-      pdf: "assets/papers/example-paper.pdf",
-      arxiv: "https://arxiv.org/abs/0000.00000",
+      pdf: "assets/papers/k-partite-canonical.pdf",
+      arxiv: "https://arxiv.org/abs/2411.16218",
       journal: "",
       code: ""
     }
   },
   {
-    title: "Example: An Earlier Result on a Related Problem",
-    authors: "Your Name, B. Coauthor, C. Coauthor",
-    venue: "Proceedings of the Example Conference (ExampleConf)",
-    year: "2025",
-    status: "published",
+    title: "The density of graphs with no $\ell$-path connecting equal-degree vertices: a short proof",
+    authors: "Y. Attwa, M.A., S. Boyadzhiyska, T. Pierron, A. Taraz",
+    venue: "",
+    year: "2026",
+    status: "preprint",
     abstract:
-      "Another short summary. Replace or remove these example entries with your real publications.",
+      "Asymptotical bound on the edge density needed to guarantee that two vertices of the same degree are connected by a path of a fixed length",
     links: {
-      pdf: "assets/papers/earlier-result.pdf",
-      arxiv: "https://arxiv.org/abs/0000.00001",
-      journal: "https://doi.org/10.0000/example",
-      code: "https://github.com/yourname/example-code"
+      pdf: "assets/papers/same-degree-l-path.pdf",
+      arxiv: "https://arxiv.org/abs/2605.09798",
+      journal: "",
+      code: ""
     }
   }
+ 
 ];
