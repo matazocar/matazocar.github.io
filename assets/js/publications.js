@@ -38,8 +38,9 @@ const PUBLICATIONS = [
       arxiv: "https://arxiv.org/abs/0000.00000",
       journal: "",
       code: ""
-    },
-    {
+    }
+  },
+   {
     title: "Canonical Ramsey numbers for partite hypergraphs",
     authors: "M.A., G. Santos, M. Schacht",
     venue: "",
@@ -52,7 +53,8 @@ const PUBLICATIONS = [
       arxiv: "https://arxiv.org/abs/2411.16218",
       journal: "",
       code: ""
-    },
+    }
+   },
   
   {
     title: "The density of graphs with no $l$-path connecting equal-degree vertices: a short proof",
@@ -69,5 +71,6 @@ const PUBLICATIONS = [
       code: ""
     }
   }
+
  
 ];
