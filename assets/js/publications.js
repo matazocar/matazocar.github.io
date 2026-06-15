@@ -25,6 +25,21 @@
 
 const PUBLICATIONS = [
   {
+     
+    title: "Canonical Ramsey theorem for graphs with clean intersections",
+    authors: "M.A., A. Basu, Chr. Reiher, V. Rödl, G. Santos, M. Schacht",
+    venue: "",
+    year: "2026",
+    status: "preprint",
+    abstract:
+      "Canonical Ramsey theorem with minimal intersection between copies of the desired graph",
+    links: {
+      pdf: "assets/papers/canonical-clean.pdf",
+      arxiv: "https://arxiv.org/abs/0000.00000",
+      journal: "",
+      code: ""
+    },
+    {
     title: "Canonical Ramsey numbers for partite hypergraphs",
     authors: "M.A., G. Santos, M. Schacht",
     venue: "",
@@ -37,8 +52,8 @@ const PUBLICATIONS = [
       arxiv: "https://arxiv.org/abs/2411.16218",
       journal: "",
       code: ""
-    }
-  },
+    },
+  
   {
     title: "The density of graphs with no $l$-path connecting equal-degree vertices: a short proof",
     authors: "Y. Attwa, M.A., S. Boyadzhiyska, T. Pierron, A. Taraz",
@@ -50,21 +65,6 @@ const PUBLICATIONS = [
     links: {
       pdf: "assets/papers/same-degree-l-path.pdf",
       arxiv: "https://arxiv.org/abs/2605.09798",
-      journal: "",
-      code: ""
-    }
-  },
-  {
-    title: "Canonical Ramsey theorem for graphs with clean intersections",
-    authors: "M.A., A. Basu, Chr. Reiher, V. Rödl, G. Santos, M. Schacht",
-    venue: "",
-    year: "2026",
-    status: "preprint",
-    abstract:
-      "Canonical Ramsey theorem with minimal intersection between copies of the desired graph",
-    links: {
-      pdf: "assets/papers/canonical-clean.pdf",
-      arxiv: "https://arxiv.org/abs/0000.00000",
       journal: "",
       code: ""
     }
