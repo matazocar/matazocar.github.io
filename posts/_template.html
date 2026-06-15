@@ -32,7 +32,10 @@
   <main class="wrap">
     <a class="back-link" href="../blog.html">&larr; Back to blog</a>
     <h1>{{TITLE}}</h1>
-    <p class="post-meta">{{DATE}}{{TAGS}}</p>
+    <div class="post-meta">
+  <span class="post-date">{{DATE}}</span>
+  <span class="post-tags">{{TAGS}}</span>
+</div>
     <div class="post-body">
       {{CONTENT}}
     </div>

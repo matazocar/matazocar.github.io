@@ -253,7 +253,7 @@ function build() {
 
     const contentHtml = mdToHtml(body);
 
-    const tagsHtml = tags.length ? `  /  ${tags.join(", ")}` : "";
+    const tagsHtml = tags.length ? tags.join(", ") : "";
 
     const page = template
       .replace(/{{TITLE}}/g, escapeHtml(title))
