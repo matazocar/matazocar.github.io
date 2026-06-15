@@ -203,6 +203,7 @@ function escapeAttr(s) {
 // Frontmatter parsing
 // ---------------------------------------------------------------
 function parseFrontmatter(raw) {
+  raw = raw.replace(/\r\n/g, "\n");
   const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) {
     return { meta: {}, body: raw };
