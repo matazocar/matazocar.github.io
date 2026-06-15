@@ -1,9 +1,13 @@
 ---
-title: firstpost
+title: First entry
 date: 2026-06-15
-tags: info
-summary: First entry which gives some info about this blog
+tags: info, milestone
+summary: Beginning of the blog. Also a test on it.
 ---
+
+
+This is the first post of the blog!
+
 
 ## About this blog
 
