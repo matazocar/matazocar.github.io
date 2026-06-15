@@ -233,10 +233,12 @@ h3 { font-size: 1.15rem; margin: 0 0 6px; }
 .hero-photo {
   width: 132px;
   height: 132px;
+  max-width: 100%;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--rule);
   background: var(--paper-raised);
+  flex-shrink: 0;
 }
 
 .hero h1 { margin-bottom: 6px; }
@@ -531,8 +533,18 @@ h3 { font-size: 1.15rem; margin: 0 0 6px; }
    ============================================ */
 @media (max-width: 600px) {
   body { font-size: 16.5px; }
-  .hero { grid-template-columns: 1fr; text-align: left; }
-  .hero-photo { width: 96px; height: 96px; }
+  .hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 20px;
+    justify-items: center;
+  }
+  .hero > div { text-align: left; }
+  .hero-photo {
+    width: 112px;
+    height: 112px;
+    order: -1;
+  }
   h1 { font-size: 1.9rem; }
   .cv-entry { grid-template-columns: 1fr; gap: 4px; }
 }
