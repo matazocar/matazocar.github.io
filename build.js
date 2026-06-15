@@ -234,6 +234,8 @@ function build() {
     .readdirSync(POSTS_DIR)
     .filter((f) => f.endsWith(".md") && !f.startsWith("_"));
 
+  console.log(files);
+  
   const posts = [];
 
   for (const file of files) {
