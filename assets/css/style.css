@@ -1,5 +1,5 @@
 /* ============================================
-   Design tokens
+   Design tokens — light (default)
    ============================================ */
 :root {
   --paper: #f7f5f0;
@@ -14,13 +14,46 @@
   --tag-published: #2a6f4e;
   --tag-bg-preprint: #f5ecd9;
   --tag-bg-published: #e3f0e8;
+  --code-bg: #1c2127;
+  --code-fg: #f4f1ea;
 
-  --font-display: "Source Serif 4", "Georgia", serif;
-  --font-body: "Source Serif 4", "Georgia", serif;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, Menlo, monospace;
+  --font-display: "Spectral", "Georgia", serif;
+  --font-body: "Spectral", "Georgia", serif;
+  --font-mono: "IBM Plex Mono", "Fira Code", ui-monospace, Menlo, monospace;
 
   --maxw: 760px;
   --radius: 3px;
+
+  color-scheme: light;
+}
+
+/* ============================================
+   Design tokens — dark mode
+   ============================================ */
+:root[data-theme="dark"] {
+  --paper: #181a1f;
+  --paper-raised: #20232b;
+  --ink: #e9e7e1;
+  --ink-soft: #a7adba;
+  --rule: #383c46;
+  --accent: #7da3d6;        /* lighter ink-blue for contrast on dark */
+  --accent-soft: #9bbbe6;
+  --accent-tint: #232a36;
+  --tag-preprint: #d9b878;
+  --tag-published: #7fd6ae;
+  --tag-bg-preprint: #322a1c;
+  --tag-bg-published: #1d3327;
+  --code-bg: #11131a;
+  --code-fg: #e9e7e1;
+
+  color-scheme: dark;
+}
+
+/* Smooth theme transitions */
+body, .pub, .section-card, .post-item, .social-row a,
+.pub-links a, .pub-links button, header.site-header,
+footer.site-footer, .theme-toggle {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 * { box-sizing: border-box; }
@@ -84,6 +117,7 @@ header.site-header {
 
 nav.site-nav {
   display: flex;
+  align-items: center;
   gap: 22px;
   font-family: var(--font-mono);
   font-size: 14px;
@@ -102,6 +136,33 @@ nav.site-nav a.active {
   color: var(--ink);
   border-color: var(--accent);
 }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Show sun in dark mode (click to go light), moon in light mode (click to go dark) */
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: inline; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
 main { padding: 48px 0 80px; }
 
@@ -414,8 +475,8 @@ h3 { font-size: 1.15rem; margin: 0 0 6px; }
   font-size: 0.88em;
 }
 .post-body pre {
-  background: var(--ink);
-  color: #f4f1ea;
+  background: var(--code-bg);
+  color: var(--code-fg);
   padding: 16px;
   border-radius: var(--radius);
   overflow-x: auto;
