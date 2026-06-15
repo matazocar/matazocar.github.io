@@ -207,7 +207,7 @@ function inlineMd(text) {
   // Protect inline math $...$ from markdown transforms (bold/italic/code use
   // _ and * which are common inside LaTeX, e.g. subscripts and \frac{a}{b}).
   const mathSpans = [];
-  let protectedText = text.replace(/\$([^$\n]+)\$/g, (m, inner) => {
+  let protectedText = text.replace(/\$(?!\s)([^$\n]*?[^$\s])\$/g, (m, inner) => {
     mathSpans.push(inner);
     return `\u0000MATH${mathSpans.length - 1}\u0000`;
   });
