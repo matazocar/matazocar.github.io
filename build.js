@@ -43,6 +43,8 @@ function mdToHtml(md) {
   let inCodeBlock = false;
   let codeLang = "";
   let codeBuffer = [];
+  let inMathBlock = false;
+  let mathBuffer = [];
   let listType = null; // 'ul' | 'ol' | null
   let paragraphBuffer = [];
 
@@ -62,6 +64,32 @@ function mdToHtml(md) {
 
   for (let raw of lines) {
     const line = raw;
+
+    // Display math block: $$ ... $$ (possibly spanning multiple lines)
+    if (inMathBlock) {
+      mathBuffer.push(line);
+      if (trimmedEndsMath(line)) {
+        inMathBlock = false;
+        const raw = mathBuffer.join("\n");
+        const inner = raw.replace(/^\s*\$\$/, "").replace(/\$\$\s*$/, "");
+        html.push(`<div class="math-display">$$${inner}$$</div>`);
+        mathBuffer = [];
+      }
+      continue;
+    }
+    if (line.trim().startsWith("$$")) {
+      flushParagraph();
+      closeList();
+      const trimmedLine = line.trim();
+      // Single-line $$...$$
+      if (trimmedLine.length > 2 && trimmedLine.endsWith("$$") && trimmedLine !== "$$") {
+        html.push(`<div class="math-display">${trimmedLine}</div>`);
+        continue;
+      }
+      inMathBlock = true;
+      mathBuffer = [trimmedLine];
+      continue;
+    }
 
     // Code blocks
     if (line.trim().startsWith("```")) {
@@ -170,8 +198,21 @@ function mdToHtml(md) {
   return html.join("\n");
 }
 
+function trimmedEndsMath(line) {
+  const t = line.trim();
+  return t.endsWith("$$");
+}
+
 function inlineMd(text) {
-  let out = escapeHtml(text);
+  // Protect inline math $...$ from markdown transforms (bold/italic/code use
+  // _ and * which are common inside LaTeX, e.g. subscripts and \frac{a}{b}).
+  const mathSpans = [];
+  let protectedText = text.replace(/\$([^$\n]+)\$/g, (m, inner) => {
+    mathSpans.push(inner);
+    return `\u0000MATH${mathSpans.length - 1}\u0000`;
+  });
+
+  let out = escapeHtml(protectedText);
   // Inline code (do this before bold/italic so contents aren't mangled)
   out = out.replace(/`([^`]+)`/g, (_, code) => `<code>${code}</code>`);
   // Bold
@@ -185,6 +226,10 @@ function inlineMd(text) {
     const external = /^https?:\/\//.test(url);
     return `<a href="${escapeAttr(url)}"${external ? ' target="_blank" rel="noopener"' : ""}>${label}</a>`;
   });
+
+  // Restore inline math, unescaped (MathJax needs raw LaTeX)
+  out = out.replace(/\u0000MATH(\d+)\u0000/g, (_, i) => `$${mathSpans[Number(i)]}$`);
+
   return out;
 }
 
@@ -254,13 +299,17 @@ function build() {
 
     const contentHtml = mdToHtml(body);
 
-    const tagsHtml = tags.length ? tags.join(", ") : "";
+    const tagsHtml = tags.length
+      ? `<span class="meta-sep">&middot;</span><span class="post-tags">${tags
+          .map((t) => `<span class="tag">${escapeHtml(t)}</span>`)
+          .join("")}</span>`
+      : "";
 
     const page = template
-      .replace(/{{TITLE}}/g, escapeHtml(title))
-      .replace(/{{DATE}}/g, formatDate(date))
-      .replace(/{{TAGS}}/g, tagsHtml)
-      .replace(/{{CONTENT}}/g, contentHtml);
+      .replace(/{{TITLE}}/g, () => escapeHtml(title))
+      .replace(/{{DATE}}/g, () => formatDate(date))
+      .replace(/{{TAGS}}/g, () => tagsHtml)
+      .replace(/{{CONTENT}}/g, () => contentHtml);
 
     fs.writeFileSync(path.join(BLOG_DIR, `${slug}.html`), page);
 
