@@ -35,7 +35,23 @@ const PUBLICATIONS = [
       "Canonical Ramsey theorem with minimal intersection between copies of the desired graph",
     links: {
       pdf: "assets/papers/canonical-clean.pdf",
-      arxiv: "https://arxiv.org/abs/0000.00000",
+      arxiv: "https://arxiv.org/abs/2606.16955",
+      journal: "",
+      code: ""
+    }
+  },
+  
+  {
+    title: "The density of graphs with no $l$-path connecting equal-degree vertices: a short proof",
+    authors: "Y. Attwa, M.A., S. Boyadzhiyska, T. Pierron, A. Taraz",
+    venue: "",
+    year: "2026",
+    status: "preprint",
+    abstract:
+      "Asymptotical bound on the edge density needed to guarantee that two vertices of the same degree are connected by a path of a fixed length",
+    links: {
+      pdf: "assets/papers/same-degree-l-path.pdf",
+      arxiv: "https://arxiv.org/abs/2605.09798",
       journal: "",
       code: ""
     }
@@ -54,23 +70,7 @@ const PUBLICATIONS = [
       journal: "",
       code: ""
     }
-   },
-  
-  {
-    title: "The density of graphs with no $l$-path connecting equal-degree vertices: a short proof",
-    authors: "Y. Attwa, M.A., S. Boyadzhiyska, T. Pierron, A. Taraz",
-    venue: "",
-    year: "2026",
-    status: "preprint",
-    abstract:
-      "Asymptotical bound on the edge density needed to guarantee that two vertices of the same degree are connected by a path of a fixed length",
-    links: {
-      pdf: "assets/papers/same-degree-l-path.pdf",
-      arxiv: "https://arxiv.org/abs/2605.09798",
-      journal: "",
-      code: ""
-    }
-  }
+   }
 
  
 ];
