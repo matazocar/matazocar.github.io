@@ -5,17 +5,17 @@
    ============================================================ */
 
 const SITE = {
-  name: "Your Name",
-  initials: "Y", // shown before the dot in the nav logo, e.g. "Y."
-  role: "PhD Candidate in Mathematics",
-  affiliation: "Your University, Department of Mathematics",
-  email: "you@example.edu",
+  name: "Matías Azócar Carvajal",
+  initials: "MA", // shown before the dot in the nav logo, e.g. "Y."
+  role: "PhD Student in Mathematics",
+  affiliation: "Universität Hamburg, Department of Mathematics",
+  email: "matias.azocar.carvajal@uni-hamburg.de",
   // Leave any of these as "" to hide the button automatically.
   links: {
-    github: "https://github.com/yourusername",
-    arxiv: "https://arxiv.org/a/yourname",
-    googleScholar: "https://scholar.google.com/citations?user=XXXXXXX",
-    orcid: "https://orcid.org/0000-0000-0000-0000",
+    github: "https://github.com/matazocar",
+    arxiv: "https://arxiv.org/search/math?query=Matias+Azocar+Carvajal&searchtype=all&abstracts=show&order=-announced_date_first&size=50",
+    googleScholar: "",
+    orcid: "",
     linkedin: ""
   }
 };
