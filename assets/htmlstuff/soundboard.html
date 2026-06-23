@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Minimal Soundboard</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #0f1115;
+    color: #e6e6e6;
+}
+
+/* TOP BAR */
+header {
+    padding: 14px 18px;
+    background: #151821;
+    border-bottom: 1px solid #232836;
+    font-weight: 600;
+}
+
+/* CONTROLS */
+#controls {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #121621;
+    border-bottom: 1px solid #232836;
+    align-items: center;
+}
+
+input[type="file"] {
+    color: #aaa;
+}
+
+/* GRID */
+#soundboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    padding: 16px;
+}
+
+/* CARD */
+.card {
+    background: #151a24;
+    border: 1px solid #232a3a;
+    border-radius: 14px;
+    padding: 12px;
+    cursor: grab;
+    transition: 0.15s;
+}
+
+.card:hover {
+    border-color: #3a4660;
+    transform: translateY(-2px);
+}
+
+/* NAME */
+.name {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-weight: 600;
+    outline: none;
+    margin-bottom: 10px;
+}
+
+/* SLIDER */
+input[type="range"] {
+    width: 100%;
+    margin: 6px 0 10px;
+}
+
+/* ICON BUTTONS */
+.icon-row {
+    display: flex;
+    gap: 8px;
+}
+
+.icon-btn {
+    flex: 1;
+    border: 1px solid #2a3347;
+    background: #101522;
+    color: #cfd6e6;
+    border-radius: 10px;
+    padding: 8px;
+    cursor: pointer;
+    transition: 0.15s;
+    font-size: 14px;
+}
+
+.icon-btn:hover {
+    background: #1a2233;
+    border-color: #3a4660;
+}
+
+/* STATES */
+.playing {
+    border-color: #4aa3ff !important;
+}
+</style>
+</head>
+
+<body>
+
+<header>🎛 Minimal Soundboard</header>
+
+<div id="controls">
+    <input type="file" id="fileInput" multiple accept="audio/*">
+    <button onclick="addTextBlock()">＋ Text</button>
+    <button onclick="stopAll()">Stop All</button>
+</div>
+
+<div id="soundboard"></div>
+
+<script>
+
+const board = document.getElementById("soundboard");
+let activePlayers = [];
+let dragged = null;
+
+/* ---------------- SOUND BLOCK ---------------- */
+function createSoundBlock(file) {
+    const url = URL.createObjectURL(file);
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.draggable = true;
+
+    let volume = 1;
+    let loopAudio = null;
+
+    // AUDIO TRACKING
+    let currentAudio = null;
+    let isPlaying = false;
+
+    // NAME
+    const name = document.createElement("input");
+    name.className = "name";
+    name.value = file.name;
+
+    // VOLUME
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = 0;
+    slider.max = 100;
+    slider.value = 100;
+
+    slider.addEventListener("input", () => {
+        volume = slider.value / 100;
+
+        if (currentAudio) currentAudio.volume = volume;
+        if (loopAudio) loopAudio.volume = volume;
+    });
+
+    /* PLAY / PAUSE TOGGLE */
+    const playBtn = document.createElement("button");
+    playBtn.className = "icon-btn";
+    playBtn.textContent = "▶";
+
+    function playNew() {
+        const a = new Audio(url);
+        a.volume = volume;
+
+        currentAudio = a;
+        activePlayers.push(a);
+
+        a.onended = () => {
+            isPlaying = false;
+            playBtn.textContent = "▶";
+            card.classList.remove("playing");
+        };
+
+        a.play();
+    }
+
+    playBtn.onclick = () => {
+
+        // PAUSE
+        if (currentAudio && isPlaying) {
+            currentAudio.pause();
+            isPlaying = false;
+            playBtn.textContent = "▶";
+            card.classList.remove("playing");
+            return;
+        }
+
+        // RESUME
+        if (currentAudio && !isPlaying) {
+            currentAudio.play();
+            isPlaying = true;
+            playBtn.textContent = "⏸";
+            card.classList.add("playing");
+            return;
+        }
+
+        // NEW PLAY
+        playNew();
+        isPlaying = true;
+        playBtn.textContent = "⏸";
+        card.classList.add("playing");
+    };
+
+    /* LOOP */
+    const loopBtn = document.createElement("button");
+    loopBtn.className = "icon-btn";
+    loopBtn.textContent = "🔁";
+
+    loopBtn.onclick = () => {
+        if (loopAudio) {
+            loopAudio.pause();
+            loopAudio = null;
+            loopBtn.classList.remove("playing");
+            return;
+        }
+
+        loopAudio = new Audio(url);
+        loopAudio.loop = true;
+        loopAudio.volume = volume;
+        loopAudio.play();
+    };
+
+    /* STOP */
+    const stopBtn = document.createElement("button");
+    stopBtn.className = "icon-btn";
+    stopBtn.textContent = "⏹";
+
+    stopBtn.onclick = () => {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+
+        if (loopAudio) {
+            loopAudio.pause();
+            loopAudio.currentTime = 0;
+            loopAudio = null;
+        }
+
+        isPlaying = false;
+        currentAudio = null;
+
+        playBtn.textContent = "▶";
+        card.classList.remove("playing");
+    };
+
+    /* BUILD */
+    card.appendChild(name);
+    card.appendChild(slider);
+
+    const row = document.createElement("div");
+    row.className = "icon-row";
+
+    row.appendChild(playBtn);
+    row.appendChild(loopBtn);
+    row.appendChild(stopBtn);
+
+    card.appendChild(row);
+
+    addDrag(card);
+
+    return card;
+}
+
+/* ---------------- TEXT BLOCK ---------------- */
+function addTextBlock() {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.draggable = true;
+
+    const input = document.createElement("input");
+    input.className = "name";
+    input.placeholder = "Section title / notes...";
+
+    card.appendChild(input);
+    addDrag(card);
+
+    board.appendChild(card);
+}
+
+/* ---------------- DRAG ---------------- */
+function addDrag(el) {
+    el.addEventListener("dragstart", () => dragged = el);
+
+    el.addEventListener("dragover", e => {
+        e.preventDefault();
+        el.style.opacity = "0.6";
+    });
+
+    el.addEventListener("dragleave", () => {
+        el.style.opacity = "1";
+    });
+
+    el.addEventListener("drop", e => {
+        e.preventDefault();
+        el.style.opacity = "1";
+
+        if (!dragged || dragged === el) return;
+
+        const items = [...board.children];
+        const from = items.indexOf(dragged);
+        const to = items.indexOf(el);
+
+        if (from < to) {
+            board.insertBefore(dragged, el.nextSibling);
+        } else {
+            board.insertBefore(dragged, el);
+        }
+    });
+}
+
+/* ---------------- FILE INPUT ---------------- */
+document.getElementById("fileInput").addEventListener("change", e => {
+    [...e.target.files].forEach(f => {
+        board.appendChild(createSoundBlock(f));
+    });
+});
+
+/* ---------------- STOP ALL ---------------- */
+function stopAll() {
+    activePlayers.forEach(a => {
+        a.pause();
+        a.currentTime = 0;
+    });
+
+    activePlayers = [];
+}
+
+</script>
+
+</body>
+</html>
