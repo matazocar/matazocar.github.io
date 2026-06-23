@@ -12,8 +12,7 @@ Today I was studying from the [notes](https://yufeizhao.com/gtacbook/gtacbook.pd
 
 Everything looked very normal until I saw a little innocent exercise of "true or false".
 
->*Exercise 0.1.16(a)* 
-    If the edges of $K_n$ are colored using $2$ colors, then at least ${1/4}~{-o(1)}$ fraction of all triangles are monochromatic. (Note that $1/4$ is the fraction one expects if the edges were colored uniformly at random.)
+>*Exercise 0.1.16(a)* If the edges of $K_n$ are colored using $2$ colors, then at least ${1/4}~{-o(1)}$ fraction of all triangles are monochromatic. (Note that $1/4$ is the fraction one expects if the edges were colored uniformly at random.)
 
 And, as a matter of fact, I was not sure of the answer. Thus, I started to investigate a little bit more and found a [thesis/paper](http://hdl.handle.net/1903/31701) about it from Brady and Gasarch titled "A pedagogical Approach to Ramsey Multiplicity".
 
