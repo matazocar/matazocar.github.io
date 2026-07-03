@@ -66,7 +66,7 @@ const PUBLICATIONS = [
       "We show that canonical Ramsey numbers for partite hypergraphs grow single exponentially for any fixed uniformity",
     links: {
       pdf: "assets/papers/canonical-partite.pdf",
-      arxiv: "https://arxiv.org/abs/2411.16218",
+      arxiv: "https://arxiv.org/abs/2411.16218v2",
       journal: "",
       code: ""
     }
