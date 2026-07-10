@@ -59,15 +59,15 @@ const PUBLICATIONS = [
    {
     title: "Canonical Ramsey numbers for partite hypergraphs",
     authors: "M.A., G. Santos, M. Schacht",
-    venue: "",
+    venue: "Journal of Combinatorial Theory, Series B",
     year: "2024",
-    status: "preprint",
+    status: "published",
     abstract:
       "We show that canonical Ramsey numbers for partite hypergraphs grow single exponentially for any fixed uniformity",
     links: {
       pdf: "assets/papers/canonical-partite.pdf",
       arxiv: "https://arxiv.org/abs/2411.16218v2",
-      journal: "",
+      journal: "https://www.sciencedirect.com/science/article/pii/S0095895626000420",
       code: ""
     }
    }
