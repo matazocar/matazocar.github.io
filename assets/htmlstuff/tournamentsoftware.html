@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konforga — Tournament Reporting Terminal</title>
+<style>
+:root{
+  --paper:#eae6da;
+  --paper-dim:#ddd8c8;
+  --ink:#232019;
+  --ink-soft:#5a5346;
+  --rule:#b7ae98;
+  --rule-heavy:#232019;
+  --card:#f4f1e6;
+  --accent:#8a2a1f;
+  --accent-soft:#c9503f;
+  --win:#3c5a3c;
+  --loss:#8a2a1f;
+  --draw:#8a6d1f;
+  --stamp:#1f3d5c;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+  --serif:'Spectral','Georgia',serif;
+  --sans:'IBM Plex Sans','Helvetica Neue',sans-serif;
+}
+[data-theme="dark"]{
+  --paper:#181614;
+  --paper-dim:#100f0d;
+  --ink:#e8e2d0;
+  --ink-soft:#a89f8a;
+  --rule:#4a4438;
+  --rule-heavy:#e8e2d0;
+  --card:#211e1a;
+  --accent:#d9705f;
+  --accent-soft:#e89484;
+  --win:#7ba87b;
+  --loss:#d9705f;
+  --draw:#d4af5f;
+  --stamp:#5f8ab8;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper-dim);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.45;
+  min-height:100vh;
+}
+::selection{background:var(--accent);color:var(--paper);}
+
+/* ===== Masthead ===== */
+.masthead{
+  background:var(--paper);
+  border-bottom:3px double var(--rule-heavy);
+  padding:14px 22px 10px;
+  position:sticky;top:0;z-index:50;
+}
+.masthead-row{
+  display:flex;align-items:baseline;justify-content:space-between;
+  flex-wrap:wrap;gap:8px 20px;
+}
+.masthead-title{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:22px;
+  letter-spacing:0.02em;
+}
+.masthead-title small{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:400;
+  color:var(--ink-soft);
+  margin-left:10px;
+  letter-spacing:0.06em;
+}
+.masthead-meta{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-soft);
+  display:flex;gap:16px;flex-wrap:wrap;
+}
+.masthead-meta b{color:var(--ink);font-weight:600;}
+.theme-toggle{
+  font-family:var(--mono);font-size:11px;
+  background:none;border:1px solid var(--rule);
+  color:var(--ink-soft);padding:4px 9px;cursor:pointer;
+  letter-spacing:0.04em;
+}
+.theme-toggle:hover{border-color:var(--ink);color:var(--ink);}
+
+.tabs{display:flex;gap:2px;margin-top:12px;border-bottom:1px solid var(--rule);}
+.tab{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:0.05em;
+  padding:8px 16px;cursor:pointer;color:var(--ink-soft);
+  border:1px solid transparent;border-bottom:none;
+  background:transparent;text-transform:uppercase;
+  position:relative;top:1px;
+}
+.tab.active{
+  color:var(--ink);background:var(--paper-dim);
+  border-color:var(--rule);border-bottom:1px solid var(--paper-dim);
+  font-weight:600;
+}
+.tab:hover:not(.active){color:var(--ink);}
+.tab .count{
+  display:inline-block;margin-left:6px;background:var(--rule);
+  color:var(--paper);border-radius:2px;padding:0 5px;font-size:10px;
+}
+.tab.active .count{background:var(--accent);color:var(--paper);}
+
+/* ===== Layout ===== */
+.wrap{max-width:1180px;margin:0 auto;padding:20px 22px 60px;}
+.panel{display:none;}
+.panel.active{display:block;animation:fadein 0.12s ease-out;}
+@keyframes fadein{from{opacity:0.4}to{opacity:1}}
+
+.section-label{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--ink-soft);
+  margin:24px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--rule);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.section-label:first-child{margin-top:0;}
+
+/* ===== Cards / tables ===== */
+.card{
+  background:var(--card);border:1px solid var(--rule);
+  padding:16px;margin-bottom:16px;
+}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;
+  text-transform:uppercase;text-align:left;color:var(--ink-soft);
+  padding:6px 8px;border-bottom:1px solid var(--rule-heavy);
+  white-space:nowrap;
+}
+td{padding:7px 8px;border-bottom:1px solid var(--rule);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:rgba(0,0,0,0.03);}
+[data-theme="dark"] tbody tr:hover{background:rgba(255,255,255,0.03);}
+.mono{font-family:var(--mono);}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.center{text-align:center;}
+.dim{color:var(--ink-soft);}
+.rank-cell{font-family:var(--mono);font-weight:600;width:34px;}
+
+/* ===== Forms ===== */
+label{
+  display:block;font-family:var(--mono);font-size:10px;
+  letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--ink-soft);margin-bottom:3px;
+}
+input[type=text],input[type=number],select{
+  width:100%;background:var(--paper);border:1px solid var(--rule);
+  color:var(--ink);padding:7px 8px;font-family:var(--sans);font-size:13px;
+}
+input:focus,select:focus{outline:none;border-color:var(--accent);}
+.field{margin-bottom:12px;}
+.field-row{display:flex;gap:10px;}
+.field-row .field{flex:1;}
+
+button{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:0.04em;
+  padding:8px 16px;cursor:pointer;border:1px solid var(--rule-heavy);
+  background:var(--ink);color:var(--paper);
+  text-transform:uppercase;
+}
+button:hover{background:var(--accent);border-color:var(--accent);}
+button.secondary{background:transparent;color:var(--ink);border-color:var(--rule);}
+button.secondary:hover{background:var(--rule);color:var(--paper);border-color:var(--rule);}
+button.danger{background:transparent;color:var(--loss);border-color:var(--loss);}
+button.danger:hover{background:var(--loss);color:var(--paper);}
+button:disabled{opacity:0.35;cursor:not-allowed;background:var(--ink);}
+button.small{padding:4px 9px;font-size:10.5px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+/* ===== Player entry ===== */
+.player-add-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:14px;}
+.player-add-row .field{margin-bottom:0;}
+.player-add-row .field:first-child{flex:2;}
+.player-add-row .field:last-child{flex:1;}
+.dq-row td{opacity:0.45;text-decoration:line-through;}
+.tag{
+  display:inline-block;font-family:var(--mono);font-size:9.5px;
+  padding:1px 6px;border:1px solid currentColor;letter-spacing:0.05em;
+  text-transform:uppercase;
+}
+.tag.bye{color:var(--stamp);}
+.tag.dq{color:var(--loss);}
+.icon-btn{
+  background:none;border:none;color:var(--ink-soft);cursor:pointer;
+  padding:2px 5px;font-size:13px;
+}
+.icon-btn:hover{color:var(--accent);}
+
+/* ===== Pairings ===== */
+.round-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:10px;flex-wrap:wrap;gap:8px;
+}
+.round-header h2{
+  font-family:var(--serif);font-size:18px;font-weight:600;margin:0;
+}
+.pairing-table-select{width:auto;display:inline-block;}
+.match-row td{border-bottom:1px solid var(--rule);}
+.match-table-no{font-family:var(--mono);font-weight:600;color:var(--ink-soft);width:38px;}
+.result-btns{display:flex;gap:4px;}
+.result-btn{
+  font-family:var(--mono);font-size:10.5px;padding:4px 8px;
+  border:1px solid var(--rule);background:transparent;color:var(--ink-soft);
+  text-transform:none;
+}
+.result-btn.selected{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.result-btn.selected.win{background:var(--win);border-color:var(--win);}
+.result-btn.selected.loss{background:var(--loss);border-color:var(--loss);}
+.result-btn.selected.draw{background:var(--draw);border-color:var(--draw);}
+.gw-input{width:38px;text-align:center;padding:4px;font-size:12px;}
+.gw-group{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+.bye-note{font-family:var(--mono);font-size:11px;color:var(--stamp);font-style:italic;}
+.locked-note{font-family:var(--mono);font-size:10px;color:var(--win);}
+
+/* ===== Standings ===== */
+th.sortable{cursor:pointer;user-select:none;}
+th.sortable:hover{color:var(--ink);}
+.floor-flag{color:var(--draw);font-size:10px;margin-left:2px;cursor:help;}
+
+/* ===== Config ===== */
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:760px){.config-grid{grid-template-columns:1fr;}}
+.stamp-box{
+  border:2px solid var(--stamp);color:var(--stamp);
+  display:inline-block;padding:8px 14px;font-family:var(--mono);
+  font-size:11px;letter-spacing:0.08em;transform:rotate(-2deg);
+  text-transform:uppercase;
+}
+
+/* ===== Empty state ===== */
+.empty{
+  text-align:center;padding:40px 20px;color:var(--ink-soft);
+  font-family:var(--mono);font-size:12px;
+}
+.empty b{display:block;font-family:var(--serif);font-size:16px;color:var(--ink);margin-bottom:6px;font-weight:600;}
+
+/* ===== Toast ===== */
+#toast{
+  position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--paper);
+  padding:10px 16px;font-family:var(--mono);font-size:11.5px;
+  border-left:3px solid var(--accent);
+  transform:translateY(20px);opacity:0;transition:all 0.2s ease;pointer-events:none;
+  z-index:200;max-width:320px;
+}
+#toast.show{transform:translateY(0);opacity:1;}
+
+.scrollx{overflow-x:auto;}
+
+/* ===== Confirm modal ===== */
+#confirm-overlay{
+  position:fixed;inset:0;background:rgba(20,18,14,0.55);
+  display:none;align-items:center;justify-content:center;z-index:500;
+}
+#confirm-overlay.show{display:flex;}
+.confirm-box{
+  background:var(--card);border:1px solid var(--rule-heavy);
+  max-width:400px;width:90%;padding:20px;
+}
+.confirm-box p{font-size:13px;line-height:1.5;margin:0 0 16px;}
+.confirm-box .btn-row{margin-top:0;justify-content:flex-end;}
+
+/* ===== Print sheet ===== */
+#print-sheet{display:none;}
+
+@media print{
+  body *{visibility:hidden;}
+  #print-sheet, #print-sheet *{visibility:visible;}
+  #print-sheet{
+    display:block;position:absolute;top:0;left:0;width:100%;
+    background:#fff;color:#111;padding:0;
+  }
+  .masthead, .wrap, #confirm-overlay, #toast{display:none !important;}
+
+  .print-masthead{border-bottom:3px double #111;padding-bottom:10px;margin-bottom:16px;}
+  .print-title{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;letter-spacing:0.06em;margin-bottom:8px;}
+  .print-meta-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .print-meta-table td{padding:2px 0;}
+  .print-meta-table b{font-weight:700;}
+
+  .print-standings-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Sans',sans-serif;font-size:12px;}
+  .print-standings-table th{
+    text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.05em;
+    text-transform:uppercase;border-bottom:2px solid #111;padding:6px 8px;
+  }
+  .print-standings-table td{padding:5px 8px;border-bottom:1px solid #999;}
+  .print-standings-table th:not(:first-child):not(:nth-child(2)),
+  .print-standings-table td:not(:first-child):not(:nth-child(2)){text-align:right;font-variant-numeric:tabular-nums;}
+  .print-standings-table tbody tr:nth-child(even){background:#f3f3f3;}
+
+  .print-footer{
+    margin-top:18px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#444;
+    line-height:1.6;border-top:1px solid #999;padding-top:10px;
+  }
+  .print-signature{display:block;margin-top:22px;}
+
+  @page{margin:16mm;}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="masthead">
+  <div class="masthead-row">
+    <div class="masthead-title">KONFORGA<small>TOURNAMENT REPORTING TERMINAL</small></div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="masthead-meta">
+        <span>EVENT: <b id="mh-event">—</b></span>
+        <span>ROUND: <b id="mh-round">—</b> / <span id="mh-total-rounds">—</span></span>
+        <span>PLAYERS: <b id="mh-players">0</b></span>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" type="button">☾ DARK</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-panel="setup">Event Setup</div>
+    <div class="tab" data-panel="players">Players<span class="count" id="tab-count-players">0</span></div>
+    <div class="tab" data-panel="pairings">Pairings</div>
+    <div class="tab" data-panel="standings">Standings</div>
+    <div class="tab" data-panel="custom-standings">AABBBCCCDDD Standings</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ================= SETUP PANEL ================= -->
+  <div class="panel active" id="panel-setup">
+    <div class="section-label">Event Configuration</div>
+    <div class="card">
+      <div class="config-grid">
+        <div>
+          <div class="field">
+            <label>Event Name</label>
+            <input type="text" id="cfg-name" placeholder="e.g. Regional Qualifier — Hamburg" value="Locals — Store Championship">
+          </div>
+          <div class="field">
+            <label>Format</label>
+            <input type="text" id="cfg-format" placeholder="e.g. Advanced, TCG, Traditional, Goat, Edison…" maxlength="40">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Match Structure</label>
+              <select id="cfg-match-structure">
+                <option value="bo3">Best of 3</option>
+                <option value="bo1">Best of 1 (Single Game)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Rounds</label>
+              <input type="number" id="cfg-rounds" min="1" max="20" value="0" placeholder="auto">
+            </div>
+          </div>
+          <div class="dim mono" style="font-size:10.5px;margin-top:-6px;">Leave rounds at 0 to auto-calculate from player count (⌈log₂ n⌉, min 3).</div>
+        </div>
+        <div>
+          <div class="field">
+            <label>Draw Ruling</label>
+            <select id="cfg-draw-ruling">
+              <option value="retro">Retro / Casual — draw awards points to both (Points — Match Draw below)</option>
+              <option value="strict">Official Konami Ruling — a draw counts as a loss for both players</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Points — Match Win</label>
+            <input type="number" id="cfg-pts-win" value="3">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Points — Match Draw</label>
+              <input type="number" id="cfg-pts-draw" value="1">
+              <div class="dim mono" style="font-size:9.5px;margin-top:3px;" id="draw-pts-note">Only used under Retro / Casual ruling.</div>
+            </div>
+            <div class="field">
+              <label>Points — Match Loss</label>
+              <input type="number" id="cfg-pts-loss" value="0">
+            </div>
+          </div>
+          <div class="field">
+            <label>Percentage Floor (tiebreaker minimum)</label>
+            <input type="number" id="cfg-floor" value="33" step="0.01">
+          </div>
+          <div class="dim mono" style="font-size:10.5px;">
+            Standard rule: no player's or opponent's win % ever counts as less than this floor when computing tiebreakers, even if their actual win rate is lower. Prevents a single very bad record from unfairly cratering everyone who played them.
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" id="apply-config">Apply Configuration</button>
+        <button type="button" class="secondary" id="reset-all">Reset Entire Event</button>
+      </div>
+    </div>
+
+    <div class="section-label">How Standings Are Calculated</div>
+    <div class="card mono" style="font-size:12px;line-height:1.8;">
+      Players are ranked in this order:
+      <ol style="margin:8px 0 12px 18px;padding:0;">
+        <li><b>Match Points</b> — <span id="scoring-rule-text">3 per win, 1 per draw, 0 per loss</span> (a bye counts as a win).</li>
+        <li><b>Match Win % (MW%)</b> — match points ÷ (rounds played × max points), floored at the configured minimum.</li>
+        <li><b>Opponents' Match Win % (OMW%)</b> — the average of each opponent's own MW% (each one individually floored first). Byes are excluded from an opponent's OMW calculation entirely — they're treated as if that round didn't happen for tiebreaker purposes.</li>
+        <li><b>Game Win % (GW%)</b> — games won ÷ games played, floored at the same minimum.</li>
+        <li><b>Opponents' Game Win % (OGW%)</b> — average of opponents' GW% (floored first, per opponent).</li>
+      </ol>
+      This is where the "weird decimals" come from: the floor means a 0-3 player is never treated as 0% for the purpose of everyone else's OMW% — they're floored up to the configured percentage (default 33.33%) before anyone averages them in. It also means two players can be floored to the identical number even though their raw percentages were different, which is intentional — it's a ceiling on how much one bad matchup can hurt.
+    </div>
+  </div>
+
+  <!-- ================= PLAYERS PANEL ================= -->
+  <div class="panel" id="panel-players">
+    <div class="section-label">Add Player</div>
+    <div class="card">
+      <div class="player-add-row">
+        <div class="field">
+          <label>Player Name</label>
+          <input type="text" id="new-player-name" placeholder="Last, First" maxlength="60">
+        </div>
+        <div class="field">
+          <label>Deck / Archetype <span class="dim">(optional)</span></label>
+          <input type="text" id="new-player-deck" placeholder="e.g. Kashtira" maxlength="40">
+        </div>
+        <button type="button" id="add-player-btn">+ Add</button>
+      </div>
+      <div class="dim mono" style="font-size:10.5px;">Press Enter in the name field to add quickly. Duplicate names are flagged but not blocked (some events genuinely have two "Alex M."s).</div>
+    </div>
+
+    <div class="section-label">
+      <span>Roster</span>
+      <span class="mono dim" id="roster-summary" style="text-transform:none;letter-spacing:0;font-size:11px;">0 registered</span>
+    </div>
+    <div class="card scrollx" style="padding:0;">
+      <table id="players-table">
+        <thead>
+          <tr>
+            <th style="width:34px;">#</th>
+            <th>Name</th>
+            <th>Deck</th>
+            <th class="center">Status</th>
+            <th class="num">Record</th>
+            <th style="width:90px;"></th>
+          </tr>
+        </thead>
+        <tbody id="players-tbody"></tbody>
+      </table>
+      <div class="empty" id="players-empty">
+        <b>No players registered</b>
+        Add players above to begin. Tournament can start once you have at least 3.
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAIRINGS PANEL ================= -->
+  <div class="panel" id="panel-pairings">
+    <div class="round-header">
+      <h2 id="pairings-round-title">Round —</h2>
+      <div class="btn-row" style="margin-top:0;">
+        <select id="round-jump" class="pairing-table-select"></select>
+        <button type="button" class="secondary" id="reshuffle-pairings-btn" title="Reshuffle round pairings while preserving standard high-vs-high matchup rules">🔀 Reshuffle Round</button>
+        <button type="button" class="secondary" id="regen-pairings-btn">Re-generate Round</button>
+        <button type="button" id="next-round-btn">Generate Next Round →</button>
+      </div>
+    </div>
+    <div id="pairings-container"></div>
+  </div>
+
+  <!-- ================= STANDINGS PANEL ================= -->
+  <div class="panel" id="panel-standings">
+    <div class="section-label">
+      <span>Current Standings</span>
+      <span style="display:flex;align-items:center;gap:14px;">
+        <span class="mono dim" id="standings-asof" style="text-transform:none;letter-spacing:0;font-size:11px;"></span>
+        <button type="button" class="secondary small" id="download-standings-pdf">⬇ Download PDF</button>
+      </span>
+    </div>
+    <div class="card scrollx" style="padding:0;">
+      <table id="standings-table">
+        <thead>
+          <tr>
+            <th class="center">Rank</th>
+            <th>Player</th>
+            <th class="num">Record</th>
+            <th class="num">MP</th>
+            <th class="num sortable" data-sort="mwp">MW%</th>
+            <th class="num sortable" data-sort="omw">OMW%</th>
+            <th class="num sortable" data-sort="gwp">GW%</th>
+            <th class="num sortable" data-sort="ogw">OGW%</th>
+          </tr>
+        </thead>
+        <tbody id="standings-tbody"></tbody>
+      </table>
+      <div class="empty" id="standings-empty">
+        <b>No results yet</b>
+        Standings populate once at least one round has reported results.
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CUSTOM AABBBCCCDDD STANDINGS PANEL ================= -->
+  <div class="panel" id="panel-custom-standings">
+    <div class="section-label">
+      <span>AABBBCCCDDD Metric Standings</span>
+      <span class="mono dim" id="custom-standings-asof" style="text-transform:none;letter-spacing:0;font-size:11px;"></span>
+    </div>
+    <div class="card scrollx" style="padding:0;">
+      <table>
+        <thead>
+          <tr>
+            <th class="center">Rank</th>
+            <th>Player</th>
+            <th class="num">AA (Score)</th>
+            <th class="num">BBB (OMW%)</th>
+            <th class="num">CCC (OOMW%)</th>
+            <th class="num">DDD (Loss Pts)</th>
+            <th class="num">Full Format (AABBBCCCDDD)</th>
+          </tr>
+        </thead>
+        <tbody id="custom-standings-tbody"></tbody>
+      </table>
+      <div class="empty" id="custom-standings-empty">
+        <b>No results yet</b>
+        AABBBCCCDDD scores populate once at least one round has reported results.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <p id="confirm-message"></p>
+    <div class="btn-row">
+      <button type="button" class="secondary" id="confirm-cancel">Cancel</button>
+      <button type="button" class="danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<div id="print-sheet">
+  <div class="print-masthead">
+    <div class="print-title">KONFORGA — TOURNAMENT STANDINGS REPORT</div>
+    <table class="print-meta-table">
+      <tr>
+        <td><b>Event:</b> <span id="print-event-name"></span></td>
+        <td><b>Format:</b> <span id="print-format"></span></td>
+      </tr>
+      <tr>
+        <td><b>Round:</b> <span id="print-round"></span></td>
+        <td><b>Printed:</b> <span id="print-date"></span></td>
+      </tr>
+    </table>
+  </div>
+  <table class="print-standings-table" id="print-standings-table">
+    <thead>
+      <tr>
+        <th>Rank</th><th>Player</th><th>Record</th><th>MP</th>
+        <th>MW%</th><th>OMW%</th><th>GW%</th><th>OGW%</th>
+      </tr>
+    </thead>
+    <tbody id="print-standings-tbody"></tbody>
+  </table>
+  <div class="print-footer">
+    Ranking order: Match Points → OMW% → GW% → OGW%. Percentages floored at <span id="print-floor"></span>% per event configuration.
+    <span class="print-signature">Judge signature: ____________________________</span>
+  </div>
+</div>
+
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const DEFAULT_STATE = {
+  config:{
+    name:"Locals — Store Championship",
+    format:"Advanced Format",
+    matchStructure:"bo3",
+    rounds:0,          // 0 = auto
+    ptsWin:3,
+    ptsDraw:1,
+    ptsLoss:0,
+    floor:33,          // percent
+    drawRuling:"retro" // "retro" = draw awards ptsDraw to both; "strict" = official ruling, draw = loss for both
+  },
+  players:[],           // {id,name,deck,dq:bool}
+  rounds:[],            // [{number, matches:[{id,table,p1,p2,bye,result:{p1Wins,p2Wins,draws,gamesP1,gamesP2,decided,dq1,dq2}}]}]
+  currentRound:0
+};
+
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem("konforga_state_v1");
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+function saveState(){
+  localStorage.setItem("konforga_state_v1", JSON.stringify(state));
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._h);
+  toast._h = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+
+function confirmDialog(message){
+  return new Promise((resolve)=>{
+    const overlay = document.getElementById("confirm-overlay");
+    document.getElementById("confirm-message").textContent = message;
+    overlay.classList.add("show");
+    const okBtn = document.getElementById("confirm-ok");
+    const cancelBtn = document.getElementById("confirm-cancel");
+    function cleanup(result){
+      overlay.classList.remove("show");
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      overlay.removeEventListener("click", onOverlay);
+      resolve(result);
+    }
+    function onOk(){ cleanup(true); }
+    function onCancel(){ cleanup(false); }
+    function onOverlay(e){ if(e.target===overlay) cleanup(false); }
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    overlay.addEventListener("click", onOverlay);
+  });
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.getElementById("tabs").addEventListener("click",(e)=>{
+  const tab = e.target.closest(".tab");
+  if(!tab) return;
+  activatePanel(tab.dataset.panel);
+});
+function activatePanel(name){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.panel===name));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active", p.id==="panel-"+name));
+  if(name==="pairings") renderPairings();
+  if(name==="standings") renderStandings();
+  if(name==="custom-standings") renderCustomStandings();
+  if(name==="players") renderPlayers();
+}
+
+/* ============================================================
+   THEME
+   ============================================================ */
+const themeBtn = document.getElementById("theme-toggle");
+themeBtn.addEventListener("click", ()=>{
+  const body = document.body;
+  const next = body.dataset.theme==="dark" ? "light":"dark";
+  body.dataset.theme = next;
+  themeBtn.textContent = next==="dark" ? "☀ LIGHT" : "☾ DARK";
+  localStorage.setItem("konforga_theme", next);
+});
+(function initTheme(){
+  const saved = localStorage.getItem("konforga_theme");
+  if(saved==="dark"){
+    document.body.dataset.theme="dark";
+    themeBtn.textContent="☀ LIGHT";
+  }
+})();
+
+/* ============================================================
+   CONFIG PANEL
+   ============================================================ */
+function fillConfigForm(){
+  document.getElementById("cfg-name").value = state.config.name;
+  document.getElementById("cfg-format").value = state.config.format;
+  document.getElementById("cfg-match-structure").value = state.config.matchStructure;
+  document.getElementById("cfg-rounds").value = state.config.rounds;
+  document.getElementById("cfg-draw-ruling").value = state.config.drawRuling;
+  document.getElementById("cfg-pts-win").value = state.config.ptsWin;
+  document.getElementById("cfg-pts-draw").value = state.config.ptsDraw;
+  document.getElementById("cfg-pts-loss").value = state.config.ptsLoss;
+  document.getElementById("cfg-floor").value = state.config.floor;
+  updateDrawRulingUI();
+}
+
+function updateDrawRulingUI(){
+  const strict = document.getElementById("cfg-draw-ruling").value === "strict";
+  const drawInput = document.getElementById("cfg-pts-draw");
+  drawInput.disabled = strict;
+  document.getElementById("draw-pts-note").textContent = strict
+    ? "Not used under the Official ruling — a draw is scored as a loss for both players."
+    : "Only used under Retro / Casual ruling.";
+}
+document.getElementById("cfg-draw-ruling").addEventListener("change", updateDrawRulingUI);
+
+function renderScoringRuleText(){
+  const el = document.getElementById("scoring-rule-text");
+  if(!el) return;
+  const w = state.config.ptsWin, l = state.config.ptsLoss, dr = state.config.ptsDraw;
+  el.textContent = state.config.drawRuling==="strict"
+    ? `${w} per win, ${l} per loss, and a draw is scored as a loss (${l}) for both players`
+    : `${w} per win, ${dr} per draw, ${l} per loss`;
+}
+
+document.getElementById("apply-config").addEventListener("click", ()=>{
+  state.config.name = document.getElementById("cfg-name").value.trim() || "Untitled Event";
+  state.config.format = document.getElementById("cfg-format").value;
+  state.config.matchStructure = document.getElementById("cfg-match-structure").value;
+  state.config.rounds = Math.max(0, parseInt(document.getElementById("cfg-rounds").value)||0);
+  state.config.drawRuling = document.getElementById("cfg-draw-ruling").value;
+  state.config.ptsWin = Number(document.getElementById("cfg-pts-win").value)||0;
+  state.config.ptsDraw = Number(document.getElementById("cfg-pts-draw").value)||0;
+  state.config.ptsLoss = Number(document.getElementById("cfg-pts-loss").value)||0;
+  state.config.floor = Number(document.getElementById("cfg-floor").value);
+  if(isNaN(state.config.floor)) state.config.floor = 33;
+  saveState();
+  renderAll();
+  toast("Configuration applied.");
+});
+
+document.getElementById("reset-all").addEventListener("click", async ()=>{
+  const ok = await confirmDialog("This clears every player, round, and result. This cannot be undone. Continue?");
+  if(!ok) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  saveState();
+  fillConfigForm();
+  renderAll();
+  toast("Event reset.");
+});
+
+/* ============================================================
+   PLAYERS
+   ============================================================ */
+function addPlayer(name, deck){
+  name = name.trim();
+  if(!name){ toast("Enter a player name first."); return; }
+  if(state.rounds.length>0){ toast("Cannot add players once pairings have been generated."); return; }
+  state.players.push({id:uid(), name, deck:(deck||"").trim(), dq:false});
+  saveState();
+  renderPlayers();
+  renderHeaderMeta();
+}
+document.getElementById("add-player-btn").addEventListener("click", ()=>{
+  addPlayer(document.getElementById("new-player-name").value, document.getElementById("new-player-deck").value);
+  document.getElementById("new-player-name").value="";
+  document.getElementById("new-player-deck").value="";
+  document.getElementById("new-player-name").focus();
+});
+document.getElementById("new-player-name").addEventListener("keydown",(e)=>{
+  if(e.key==="Enter"){ e.preventDefault(); document.getElementById("add-player-btn").click(); }
+});
+
+function removePlayer(id){
+  if(state.rounds.length>0){ toast("Players can't be removed after Round 1 — use Drop/DQ instead."); return; }
+  state.players = state.players.filter(p=>p.id!==id);
+  saveState(); renderPlayers(); renderHeaderMeta();
+}
+function toggleDQ(id){
+  const p = state.players.find(p=>p.id===id);
+  if(!p) return;
+  p.dq = !p.dq;
+  saveState(); renderPlayers(); renderStandings(); renderCustomStandings();
+  toast(p.dq ? (p.name+" marked as dropped/DQ'd.") : (p.name+" reinstated."));
+}
+
+function playerRecord(id){
+  const strictDraws = state.config.drawRuling==="strict";
+  let w=0,l=0,d=0;
+  state.rounds.forEach(r=>{
+    r.matches.forEach(m=>{
+      if(m.bye && m.p1===id){ w++; return; }
+      if(m.p1!==id && m.p2!==id) return;
+      if(!m.result || !m.result.decided) return;
+      const isP1 = m.p1===id;
+      const res = m.result;
+      if(res.draws){
+        if(strictDraws) l++; else d++;
+        return;
+      }
+      const won = isP1 ? res.gamesP1>res.gamesP2 : res.gamesP2>res.gamesP1;
+      if(won) w++; else l++;
+    });
+  });
+  return {w,l,d};
+}
+
+function renderPlayers(){
+  const tbody = document.getElementById("players-tbody");
+  const empty = document.getElementById("players-empty");
+  tbody.innerHTML="";
+  if(state.players.length===0){
+    empty.style.display="block";
+    document.getElementById("roster-summary").textContent = "0 registered";
+    document.getElementById("tab-count-players").textContent = "0";
+    return;
+  }
+  empty.style.display="none";
+  document.getElementById("roster-summary").textContent = state.players.length+" registered";
+  document.getElementById("tab-count-players").textContent = state.players.length;
+
+  const nameCounts = {};
+  state.players.forEach(p=>{ nameCounts[p.name.toLowerCase()] = (nameCounts[p.name.toLowerCase()]||0)+1; });
+
+  state.players.forEach((p,i)=>{
+    const rec = playerRecord(p.id);
+    const tr = document.createElement("tr");
+    if(p.dq) tr.classList.add("dq-row");
+    const dupFlag = nameCounts[p.name.toLowerCase()]>1 ? ' <span class="dim mono" style="font-size:9.5px;">(dup name)</span>' : '';
+    tr.innerHTML = `
+      <td class="mono dim">${i+1}</td>
+      <td>${escapeHtml(p.name)}${dupFlag}</td>
+      <td class="dim">${escapeHtml(p.deck)||'—'}</td>
+      <td class="center">${p.dq ? '<span class="tag dq">Dropped</span>' : '<span class="dim mono" style="font-size:10.5px;">Active</span>'}</td>
+      <td class="num mono">${rec.w}-${rec.l}${rec.d?('-'+rec.d):''}</td>
+      <td class="center">
+        <button class="icon-btn" title="${p.dq?'Reinstate':'Drop / DQ'}" data-action="dq" data-id="${p.id}">${p.dq?'↺':'⛔'}</button>
+        ${state.rounds.length===0 ? `<button class="icon-btn" title="Remove" data-action="remove" data-id="${p.id}">✕</button>` : ''}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("[data-action=dq]").forEach(b=>b.addEventListener("click",()=>toggleDQ(b.dataset.id)));
+  tbody.querySelectorAll("[data-action=remove]").forEach(b=>b.addEventListener("click",()=>removePlayer(b.dataset.id)));
+}
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ============================================================
+   ROUND GENERATION (Swiss pairing high vs high)
+   ============================================================ */
+function activePlayers(){
+  return state.players.filter(p=>!p.dq);
+}
+function calcTotalRounds(){
+  if(state.config.rounds>0) return state.config.rounds;
+  const n = activePlayers().length;
+  if(n<=1) return 1;
+  return Math.max(3, Math.ceil(Math.log2(n)));
+}
+
+function matchPointsFor(id, uptoRoundIdx){
+  const strictDraws = state.config.drawRuling==="strict";
+  let pts=0;
+  for(let ri=0; ri<=uptoRoundIdx && ri<state.rounds.length; ri++){
+    const r = state.rounds[ri];
+    r.matches.forEach(m=>{
+      if(m.bye && m.p1===id){ pts += state.config.ptsWin; return; }
+      if(m.p1!==id && m.p2!==id) return;
+      if(!m.result || !m.result.decided) return;
+      const isP1 = m.p1===id;
+      const res = m.result;
+      if(res.draws){
+        pts += strictDraws ? state.config.ptsLoss : state.config.ptsDraw;
+        return;
+      }
+      const won = isP1 ? res.gamesP1>res.gamesP2 : res.gamesP2>res.gamesP1;
+      pts += won ? state.config.ptsWin : state.config.ptsLoss;
+    });
+  }
+  return pts;
+}
+
+function opponentsOf(id){
+  const opps=[];
+  state.rounds.forEach(r=>{
+    r.matches.forEach(m=>{
+      if(m.bye) return;
+      if(m.p1===id) opps.push(m.p2);
+      else if(m.p2===id) opps.push(m.p1);
+    });
+  });
+  return opps;
+}
+
+function generatePairingsForActivePool(allowRandomizeWithinBrackets = false){
+  const ap = activePlayers();
+  if(ap.length<3){ toast("Need at least 3 active players to start pairings."); return null; }
+  const roundIdx = state.rounds.length;
+  const lastRoundIdx = roundIdx-1;
+
+  // Sort players by standing: Match Points desc -> OMW desc -> GW desc
+  const standingsMap = {};
+  if(lastRoundIdx >= 0) {
+    const currentStandings = buildStandingsRows();
+    currentStandings.forEach((s, idx) => { standingsMap[s.id] = idx; });
+  }
+
+  let playersSorted = ap.slice().map(p => ({
+    id: p.id,
+    pts: lastRoundIdx >= 0 ? matchPointsFor(p.id, lastRoundIdx) : 0,
+    rank: standingsMap[p.id] !== undefined ? standingsMap[p.id] : 9999
+  }));
+
+  if (lastRoundIdx < 0) {
+    // Round 1: Randomize order
+    playersSorted.sort(() => Math.random() - 0.5);
+  } else if (allowRandomizeWithinBrackets) {
+    // Group by match points, shuffle inside point brackets for reshuffling
+    const groups = {};
+    playersSorted.forEach(p => {
+      groups[p.pts] = groups[p.pts] || [];
+      groups[p.pts].push(p);
+    });
+    const sortedPts = Object.keys(groups).map(Number).sort((a,b) => b - a);
+    playersSorted = [];
+    sortedPts.forEach(pts => {
+      const bracket = groups[pts];
+      bracket.sort(() => Math.random() - 0.5);
+      playersSorted.push(...bracket);
+    });
+  } else {
+    // Pair strictly high standing vs high standing
+    playersSorted.sort((a,b) => b.pts - a.pts || a.rank - b.rank);
+  }
+
+  const already = {}; 
+  ap.forEach(p => { already[p.id] = new Set(opponentsOf(p.id)); });
+
+  const pool = playersSorted.map(x => x.id);
+  const matches = [];
+  const used = new Set();
+  let byePlayerId = null;
+
+  if(pool.length % 2 === 1){
+    // Give bye to lowest standing player who hasn't had a bye yet
+    for(let i = pool.length - 1; i >= 0; i--){
+      const pid = pool[i];
+      const hadBye = state.rounds.some(r => r.matches.some(m => m.bye && m.p1 === pid));
+      if(!hadBye){ byePlayerId = pid; break; }
+    }
+    if(byePlayerId === null) byePlayerId = pool[pool.length - 1];
+    used.add(byePlayerId);
+  }
+
+  const remaining = pool.filter(id => !used.has(id));
+  
+  // High vs High matching while avoiding rematches
+  while(remaining.length > 0){
+    const a = remaining.shift();
+    let idx = remaining.findIndex(b => !already[a].has(b));
+    if(idx === -1) idx = 0; // Forced rematch if completely unavoidable
+    const b = remaining.splice(idx, 1)[0];
+    matches.push({id:uid(), table:0, p1:a, p2:b, bye:false, result:{decided:false,gamesP1:0,gamesP2:0,draws:false}});
+  }
+
+  if(byePlayerId){
+    matches.push({id:uid(), table:0, p1:byePlayerId, p2:null, bye:true, result:{decided:true,gamesP1:2,gamesP2:0,draws:false}});
+  }
+
+  matches.forEach((m,i)=>{ m.table = i+1; });
+  return matches;
+}
+
+function generatePairings(){
+  const matches = generatePairingsForActivePool(false);
+  if(!matches) return;
+  const roundIdx = state.rounds.length;
+  state.rounds.push({number:roundIdx+1, matches});
+  state.currentRound = roundIdx+1;
+  saveState();
+  renderAll();
+  activatePanel("pairings");
+  toast("Round "+(roundIdx+1)+" pairings generated.");
+}
+
+function reshuffleCurrentRound(){
+  if(state.rounds.length===0) return;
+  const latestIdx = state.rounds.length-1;
+  const latest = state.rounds[latestIdx];
+
+  // Disallow reshuffle if viewing an older round
+  if(viewedRoundNumber !== null && viewedRoundNumber !== latest.number){
+    toast("Only Round "+latest.number+" (the current round) can be reshuffled.");
+    return;
+  }
+
+  // Preserve any completed match results if possible
+  const oldMatches = latest.matches;
+  const matches = generatePairingsForActivePool(true);
+  if(!matches) return;
+
+  // Re-apply previous results if exact same pairing occurred
+  matches.forEach(m => {
+    if(m.bye) return;
+    const prev = oldMatches.find(om => (om.p1 === m.p1 && om.p2 === m.p2) || (om.p1 === m.p2 && om.p2 === m.p1));
+    if(prev && prev.result && prev.result.decided) {
+      if(prev.p1 === m.p1) {
+        m.result = JSON.parse(JSON.stringify(prev.result));
+      } else {
+        m.result = {
+          decided: prev.result.decided,
+          draws: prev.result.draws,
+          gamesP1: prev.result.gamesP2,
+          gamesP2: prev.result.gamesP1
+        };
+      }
+    }
+  });
+
+  latest.matches = matches;
+  saveState();
+  renderAll();
+  activatePanel("pairings");
+  toast("Round "+latest.number+" reshuffled!");
+}
+
+async function regenerateCurrentRound(){
+  if(state.rounds.length===0) return;
+  const latestIdx = state.rounds.length-1;
+  const latest = state.rounds[latestIdx];
+  if(viewedRoundNumber !== null && viewedRoundNumber !== latest.number){
+    toast("Only Round "+latest.number+" (the most recent) can be regenerated. Switch to it first.");
+    return;
+  }
+  const anyReported = latest.matches.some(m=>!m.bye && m.result && m.result.decided);
+  if(anyReported){
+    const ok = await confirmDialog("Round "+latest.number+" already has reported results. Regenerating will discard them and create new pairings for Round "+latest.number+". Continue?");
+    if(!ok) return;
+  }
+  state.rounds.pop();
+  saveState();
+  generatePairings();
+}
+
+document.getElementById("next-round-btn").addEventListener("click", async ()=>{
+  if(state.rounds.length>0){
+    const idx = state.rounds.length-1;
+    const r = state.rounds[idx];
+    const allDone = r.matches.every(m=>m.bye || (m.result && m.result.decided));
+    if(!allDone){ toast("All matches in the current round need results before starting the next round."); return; }
+    const total = calcTotalRounds();
+    if(state.rounds.length>=total){
+      const ok = await confirmDialog("This event is scheduled for "+total+" rounds and that count is already reached. Add an extra round anyway?");
+      if(!ok) return;
+    }
+  }
+  generatePairings();
+});
+document.getElementById("regen-pairings-btn").addEventListener("click", regenerateCurrentRound);
+document.getElementById("reshuffle-pairings-btn").addEventListener("click", reshuffleCurrentRound);
+
+document.getElementById("round-jump").addEventListener("change",(e)=>{
+  const n = Number(e.target.value);
+  renderPairings(n);
+});
+
+/* ============================================================
+   PAIRINGS RENDER + RESULT ENTRY
+   ============================================================ */
+function playerName(id){
+  if(!id) return "—";
+  const p = state.players.find(p=>p.id===id);
+  return p ? p.name : "(unknown)";
+}
+
+let viewedRoundNumber = null;
+
+function renderPairings(showRoundNumber){
+  const container = document.getElementById("pairings-container");
+  const jump = document.getElementById("round-jump");
+  const title = document.getElementById("pairings-round-title");
+
+  jump.innerHTML="";
+  state.rounds.forEach(r=>{
+    const opt = document.createElement("option");
+    opt.value = r.number; opt.textContent = "Round "+r.number;
+    jump.appendChild(opt);
+  });
+
+  if(state.rounds.length===0){
+    title.textContent="No rounds yet";
+    container.innerHTML = `<div class="card"><div class="empty"><b>No pairings generated</b>Add at least 3 players, then generate Round 1 from the button above.</div></div>`;
+    document.getElementById("next-round-btn").textContent = "Generate Round 1 →";
+    viewedRoundNumber = null;
+    const regenBtn = document.getElementById("regen-pairings-btn");
+    regenBtn.disabled = true;
+    regenBtn.title = "";
+    document.getElementById("reshuffle-pairings-btn").disabled = true;
+    return;
+  }
+  document.getElementById("next-round-btn").textContent = "Generate Next Round →";
+
+  const roundNum = showRoundNumber || state.rounds[state.rounds.length-1].number;
+  jump.value = roundNum;
+  const round = state.rounds.find(r=>r.number===roundNum);
+  viewedRoundNumber = roundNum;
+  title.textContent = "Round "+round.number+" of "+calcTotalRounds();
+
+  const isLatest = round.number === state.rounds[state.rounds.length-1].number;
+  const regenBtn = document.getElementById("regen-pairings-btn");
+  const reshuffleBtn = document.getElementById("reshuffle-pairings-btn");
+  
+  regenBtn.disabled = !isLatest;
+  reshuffleBtn.disabled = !isLatest;
+  regenBtn.title = isLatest ? "" : "Only the most recent round can be regenerated.";
+  reshuffleBtn.title = isLatest ? "Reshuffle round pairings preserving Swiss rules" : "Only the current round can be reshuffled.";
+
+  regenBtn.textContent = isLatest ? "Re-generate Round "+round.number : "Re-generate (view Round "+state.rounds[state.rounds.length-1].number+" to enable)";
+
+  const structure = state.config.matchStructure;
+  const winsNeeded = structure==="bo1" ? 1 : 2;
+
+  let html = `<div class="card scrollx" style="padding:0;"><table><thead><tr>
+    <th class="match-table-no">Tbl</th><th>Player 1</th><th class="center">Result</th><th>Player 2</th><th style="width:170px;">Games</th>
+  </tr></thead><tbody>`;
+
+  round.matches.forEach(m=>{
+    if(m.bye){
+      html += `<tr class="match-row">
+        <td class="match-table-no">—</td>
+        <td>${escapeHtml(playerName(m.p1))} <span class="tag bye">Bye</span></td>
+        <td class="center bye-note">auto-win</td>
+        <td class="dim">—</td>
+        <td></td>
+      </tr>`;
+      return;
+    }
+    const res = m.result || {decided:false,gamesP1:0,gamesP2:0,draws:false};
+    const p1Won = res.decided && !res.draws && res.gamesP1>res.gamesP2;
+    const p2Won = res.decided && !res.draws && res.gamesP2>res.gamesP1;
+    const isDraw = res.decided && res.draws;
+
+    html += `<tr class="match-row" data-match="${m.id}">
+      <td class="match-table-no">${m.table}</td>
+      <td>${escapeHtml(playerName(m.p1))}</td>
+      <td class="center">
+        <div class="result-btns">
+          <button type="button" class="result-btn ${p1Won?'selected win':''}" data-outcome="p1" data-match="${m.id}">P1 Win</button>
+          <button type="button" class="result-btn ${isDraw?'selected draw':''}" data-outcome="draw" data-match="${m.id}">Draw</button>
+          <button type="button" class="result-btn ${p2Won?'selected loss':''}" data-outcome="p2" data-match="${m.id}">P2 Win</button>
+        </div>
+      </td>
+      <td>${escapeHtml(playerName(m.p2))}</td>
+      <td>
+        <div class="gw-group">
+          <input type="number" min="0" max="9" class="gw-input" data-gw="p1" data-match="${m.id}" value="${res.gamesP1||0}">
+          –
+          <input type="number" min="0" max="9" class="gw-input" data-gw="p2" data-match="${m.id}" value="${res.gamesP2||0}">
+          <span class="dim" style="font-size:10px;">(BO${structure==='bo1'?1:3}, first to ${winsNeeded})</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  if(!isLatest){
+    html = `<div class="locked-note" style="margin-bottom:8px;">Viewing a completed round. Editing is still allowed — standings recalculate automatically.</div>` + html;
+  }
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".result-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const matchId = btn.dataset.match;
+      const outcome = btn.dataset.outcome;
+      setMatchOutcome(round, matchId, outcome);
+    });
+  });
+  container.querySelectorAll(".gw-input").forEach(inp=>{
+    inp.addEventListener("change", ()=>{
+      const matchId = inp.dataset.match;
+      const which = inp.dataset.gw;
+      setGameCount(round, matchId, which, Number(inp.value)||0);
+    });
+  });
+}
+
+function findMatch(round, matchId){
+  return round.matches.find(m=>m.id===matchId);
+}
+
+function setMatchOutcome(round, matchId, outcome){
+  const m = findMatch(round, matchId);
+  if(!m) return;
+  const structure = state.config.matchStructure;
+  const winsNeeded = structure==="bo1" ? 1 : 2;
+  if(outcome==="draw"){
+    m.result = {decided:true, draws:true, gamesP1:m.result.gamesP1||0, gamesP2:m.result.gamesP2||0};
+  } else if(outcome==="p1"){
+    m.result = {decided:true, draws:false, gamesP1: Math.max(winsNeeded, m.result.gamesP1||winsNeeded), gamesP2: Math.min(m.result.gamesP2||0, winsNeeded-1)};
+  } else if(outcome==="p2"){
+    m.result = {decided:true, draws:false, gamesP2: Math.max(winsNeeded, m.result.gamesP2||winsNeeded), gamesP1: Math.min(m.result.gamesP1||0, winsNeeded-1)};
+  }
+  saveState();
+  renderPairings(round.number);
+  renderPlayers();
+  renderStandings();
+  renderCustomStandings();
+  renderHeaderMeta();
+}
+
+function setGameCount(round, matchId, which, value){
+  const m = findMatch(round, matchId);
+  if(!m) return;
+  value = Math.max(0, Math.min(9, value));
+  if(which==="p1") m.result.gamesP1 = value; else m.result.gamesP2 = value;
+  m.result.decided = (m.result.gamesP1>0 || m.result.gamesP2>0);
+  m.result.draws = false;
+  saveState();
+  renderPairings(round.number);
+  renderPlayers();
+  renderStandings();
+  renderCustomStandings();
+  renderHeaderMeta();
+}
+
+/* ============================================================
+   TIEBREAKER MATH
+   ============================================================ */
+function gameRecordFor(id){
+  let gw=0, gp=0;
+  state.rounds.forEach(r=>{
+    r.matches.forEach(m=>{
+      if(m.bye && m.p1===id){ gw+=2; gp+=2; return; }
+      if(m.p1!==id && m.p2!==id) return;
+      if(!m.result || !m.result.decided) return;
+      const isP1 = m.p1===id;
+      const mine = isP1 ? m.result.gamesP1 : m.result.gamesP2;
+      const theirs = isP1 ? m.result.gamesP2 : m.result.gamesP1;
+      gw += mine; gp += (mine+theirs);
+    });
+  });
+  return {gw,gp};
+}
+function roundsPlayedFor(id){
+  let n=0;
+  state.rounds.forEach(r=>{
+    r.matches.forEach(m=>{
+      if(m.bye && m.p1===id){ n++; return; }
+      if((m.p1===id||m.p2===id) && m.result && m.result.decided) n++;
+    });
+  });
+  return n;
+}
+function rawMWP(id){
+  const rp = roundsPlayedFor(id);
+  if(rp===0) return 0;
+  const maxPerRound = state.config.ptsWin;
+  const pts = matchPointsFor(id, state.rounds.length-1);
+  return (pts/(rp*maxPerRound))*100;
+}
+function flooredMWP(id){
+  return Math.max(rawMWP(id), state.config.floor);
+}
+function rawGWP(id){
+  const {gw,gp} = gameRecordFor(id);
+  if(gp===0) return 0;
+  return (gw/gp)*100;
+}
+function flooredGWP(id){
+  return Math.max(rawGWP(id), state.config.floor);
+}
+function realOpponentsOf(id){
+  const opps=[];
+  state.rounds.forEach(r=>{
+    r.matches.forEach(m=>{
+      if(m.bye) return;
+      if(m.p1===id) opps.push(m.p2);
+      else if(m.p2===id) opps.push(m.p1);
+    });
+  });
+  return opps;
+}
+function OMW(id){
+  const opps = realOpponentsOf(id);
+  if(opps.length===0) return state.config.floor;
+  const sum = opps.reduce((acc,oid)=>acc+flooredMWP(oid),0);
+  return sum/opps.length;
+}
+function OGW(id){
+  const opps = realOpponentsOf(id);
+  if(opps.length===0) return state.config.floor;
+  const sum = opps.reduce((acc,oid)=>acc+flooredGWP(oid),0);
+  return sum/opps.length;
+}
+
+function buildStandingsRows(){
+  return state.players.map(p=>{
+    const rec = playerRecord(p.id);
+    const pts = state.rounds.length ? matchPointsFor(p.id, state.rounds.length-1) : 0;
+    return {
+      id:p.id, name:p.name, dq:p.dq, w:rec.w,l:rec.l,d:rec.d,
+      pts,
+      mwpRaw: rawMWP(p.id), mwp: flooredMWP(p.id),
+      omw: OMW(p.id),
+      gwpRaw: rawGWP(p.id), gwp: flooredGWP(p.id),
+      ogw: OGW(p.id)
+    };
+  }).sort((a,b)=>{
+    if(a.dq!==b.dq) return a.dq?1:-1;
+    if(b.pts!==a.pts) return b.pts-a.pts;
+    if(b.omw!==a.omw) return b.omw-a.omw;
+    if(b.gwp!==a.gwp) return b.gwp-a.gwp;
+    if(b.ogw!==a.ogw) return b.ogw-a.ogw;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+let standingsSort = null;
+document.querySelectorAll("#standings-table th.sortable").forEach(th=>{
+  th.addEventListener("click",()=>{
+    const key = th.dataset.sort;
+    standingsSort = standingsSort===key ? null : key;
+    renderStandings();
+  });
+});
+
+function renderStandings(){
+  const tbody = document.getElementById("standings-tbody");
+  const empty = document.getElementById("standings-empty");
+  let rows = buildStandingsRows();
+
+  const anyResults = state.rounds.some(r=>r.matches.some(m=>m.bye || (m.result&&m.result.decided)));
+  if(!anyResults || state.players.length===0){
+    tbody.innerHTML=""; empty.style.display="block";
+    document.getElementById("standings-asof").textContent="";
+    return;
+  }
+  empty.style.display="none";
+
+  if(standingsSort){
+    const map={mwp:'mwp',omw:'omw',gwp:'gwp',ogw:'ogw'};
+    rows = rows.slice().sort((a,b)=>b[map[standingsSort]]-a[map[standingsSort]]);
+  }
+
+  document.getElementById("standings-asof").textContent = "as of round "+ (state.rounds.length?state.rounds[state.rounds.length-1].number:0);
+
+  tbody.innerHTML="";
+  rows.forEach((r,i)=>{
+    const tr = document.createElement("tr");
+    if(r.dq) tr.style.opacity="0.4";
+    const mwFlagged = r.mwpRaw < state.config.floor;
+    const gwFlagged = r.gwpRaw < state.config.floor;
+    tr.innerHTML = `
+      <td class="rank-cell center">${r.dq?'DQ':(i+1)}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td class="num mono">${r.w}-${r.l}${r.d?('-'+r.d):''}</td>
+      <td class="num mono">${r.pts}</td>
+      <td class="num mono">${r.mwp.toFixed(2)}%${mwFlagged?'<span class="floor-flag" title="Raw match win rate was '+r.mwpRaw.toFixed(2)+'%, floored up to the minimum.">†</span>':''}</td>
+      <td class="num mono">${r.omw.toFixed(2)}%</td>
+      <td class="num mono">${r.gwp.toFixed(2)}%${gwFlagged?'<span class="floor-flag" title="Raw game win rate was '+r.gwpRaw.toFixed(2)+'%, floored up to the minimum.">†</span>':''}</td>
+      <td class="num mono">${r.ogw.toFixed(2)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   CUSTOM AABBBCCCDDD CALCULATIONS & RENDER
+   ============================================================ */
+
+/*
+  AA: Score (3 * wins)
+  BBB: OMW%(P) = average of MW%(Q) for each opponent Q. Represented as 3 digits (e.g. 72.6% -> 726)
+  CCC: OOMW%(P) = average of OMW%(Q) over all opponents Q. Represented as 3 digits (e.g. 67.7% -> 677)
+  DDD: Sum of squared round numbers of lost rounds. Represented as 3 digits (e.g. 53 -> 053)
+*/
+function calculateCustomMetric(id) {
+  const rec = playerRecord(id);
+  const aaVal = rec.w * 3;
+  const AA = String(aaVal).padStart(2, '0');
+
+  const opps = realOpponentsOf(id);
+
+  // Helper for unfloored MW%(Q) = wins of Q / matches played by Q
+  function getRawMW(pid) {
+    let w = 0, mp = 0;
+    state.rounds.forEach(r => {
+      r.matches.forEach(m => {
+        if (!m.result || !m.result.decided) return;
+        if (m.p1 === pid || m.p2 === pid) {
+          mp++;
+          if (m.bye && m.p1 === pid) { w++; }
+          else {
+            const isP1 = m.p1 === pid;
+            const won = isP1 ? m.result.gamesP1 > m.result.gamesP2 : m.result.gamesP2 > m.result.gamesP1;
+            if (won) w++;
+          }
+        }
+      });
+    });
+    return mp > 0 ? (w / mp) : 0;
+  }
+
+  // BBB calculation: Average MW%(Q)
+  let omwPct = 0;
+  if (opps.length > 0) {
+    const sum = opps.reduce((acc, q) => acc + getRawMW(q), 0);
+    omwPct = (sum / opps.length) * 100;
+  }
+  const bbbVal = Math.round(omwPct * 10);
+  const BBB = String(Math.min(999, Math.max(0, bbbVal))).padStart(3, '0');
+
+  // Helper for OMW%(Q) = average MW%(R) for R in O(Q)
+  function getOMWP(qid) {
+    const qOpps = realOpponentsOf(qid);
+    if (qOpps.length === 0) return 0;
+    const sum = qOpps.reduce((acc, r) => acc + getRawMW(r), 0);
+    return sum / qOpps.length;
+  }
+
+  // CCC calculation: Average OMW%(Q) over opponents Q
+  let oomwPct = 0;
+  if (opps.length > 0) {
+    const sum = opps.reduce((acc, q) => acc + getOMWP(q), 0);
+    oomwPct = (sum / opps.length) * 100;
+  }
+  const cccVal = Math.round(oomwPct * 10);
+  const CCC = String(Math.min(999, Math.max(0, cccVal))).padStart(3, '0');
+
+  // DDD calculation: Sum of squared round numbers of lost rounds
+  let lossSumSquares = 0;
+  state.rounds.forEach(r => {
+    r.matches.forEach(m => {
+      if (m.bye) return;
+      if (m.p1 !== id && m.p2 !== id) return;
+      if (!m.result || !m.result.decided) return;
+      const isP1 = m.p1 === id;
+      const lost = isP1 ? m.result.gamesP2 > m.result.gamesP1 : m.result.gamesP1 > m.result.gamesP2;
+      if (lost) {
+        lossSumSquares += Math.pow(r.number, 2);
+      }
+    });
+  });
+  const DDD = String(Math.min(999, lossSumSquares)).padStart(3, '0');
+
+  const rawNumericScore = Number(`${AA}${BBB}${CCC}`) * 1000 - lossSumSquares; 
+
+  return {
+    AA, BBB, CCC, DDD,
+    formatted: `${AA}${BBB}${CCC}${DDD}`,
+    rawNumericScore,
+    aaVal, bbbVal, cccVal, lossSumSquares
+  };
+}
+
+function renderCustomStandings() {
+  const tbody = document.getElementById("custom-standings-tbody");
+  const empty = document.getElementById("custom-standings-empty");
+  const asOf = document.getElementById("custom-standings-asof");
+
+  const anyResults = state.rounds.some(r => r.matches.some(m => m.bye || (m.result && m.result.decided)));
+  if (!anyResults || state.players.length === 0) {
+    tbody.innerHTML = "";
+    empty.style.display = "block";
+    asOf.textContent = "";
+    return;
+  }
+  empty.style.display = "none";
+  asOf.textContent = "as of round " + (state.rounds.length ? state.rounds[state.rounds.length - 1].number : 0);
+
+  const customRows = state.players.map(p => {
+    const metric = calculateCustomMetric(p.id);
+    return {
+      id: p.id,
+      name: p.name,
+      dq: p.dq,
+      metric
+    };
+  }).sort((a, b) => {
+    if (a.dq !== b.dq) return a.dq ? 1 : -1;
+    if (b.metric.rawNumericScore !== a.metric.rawNumericScore) {
+      return b.metric.rawNumericScore - a.metric.rawNumericScore;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  tbody.innerHTML = "";
+  customRows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    if (r.dq) tr.style.opacity = "0.4";
+    tr.innerHTML = `
+      <td class="rank-cell center">${r.dq ? 'DQ' : (i + 1)}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td class="num mono">${r.metric.AA}</td>
+      <td class="num mono">${r.metric.BBB}</td>
+      <td class="num mono">${r.metric.CCC}</td>
+      <td class="num mono">${r.metric.DDD}</td>
+      <td class="num mono" style="font-weight:600; color:var(--accent);">${r.metric.formatted}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   PDF EXPORT
+   ============================================================ */
+function renderPrintSheet(){
+  document.getElementById("print-event-name").textContent = state.config.name || "Untitled Event";
+  document.getElementById("print-format").textContent = state.config.format || "—";
+  document.getElementById("print-round").textContent = state.rounds.length
+    ? ("Round "+state.rounds[state.rounds.length-1].number+" of "+calcTotalRounds())
+    : "No rounds played";
+  document.getElementById("print-floor").textContent = state.config.floor;
+  const now = new Date();
+  document.getElementById("print-date").textContent = now.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+" "+now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+
+  const rows = buildStandingsRows();
+  const tbody = document.getElementById("print-standings-tbody");
+  tbody.innerHTML = "";
+  rows.forEach((r,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.dq?'DQ':(i+1)}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${r.w}-${r.l}${r.d?('-'+r.d):''}</td>
+      <td>${r.pts}</td>
+      <td>${r.mwp.toFixed(2)}%</td>
+      <td>${r.omw.toFixed(2)}%</td>
+      <td>${r.gwp.toFixed(2)}%</td>
+      <td>${r.ogw.toFixed(2)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("download-standings-pdf").addEventListener("click", ()=>{
+  const anyResults = state.rounds.some(r=>r.matches.some(m=>m.bye || (m.result&&m.result.decided)));
+  if(!anyResults || state.players.length===0){
+    toast("No standings to export yet — report at least one result first.");
+    return;
+  }
+  renderPrintSheet();
+  setTimeout(()=>window.print(), 50);
+});
+
+/* ============================================================
+   HEADER META
+   ============================================================ */
+function renderHeaderMeta(){
+  document.getElementById("mh-event").textContent = state.config.name || "Untitled";
+  document.getElementById("mh-players").textContent = state.players.length;
+  document.getElementById("mh-total-rounds").textContent = calcTotalRounds();
+  document.getElementById("mh-round").textContent = state.rounds.length ? state.rounds[state.rounds.length-1].number : "0";
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function renderAll(){
+  fillConfigForm();
+  renderScoringRuleText();
+  renderPlayers();
+  renderPairings();
+  renderStandings();
+  renderCustomStandings();
+  renderHeaderMeta();
+}
+renderAll();
+
+})();
+</script>
+</body>
+</html>
