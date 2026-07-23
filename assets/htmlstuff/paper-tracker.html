@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F7F5F0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Papers">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Paper Tracker</title>
+
+<!-- Sets the theme before first paint, so there's no flash of the wrong
+     theme while the rest of the page loads. Preference order: an explicit
+     choice saved earlier in this browser, then the device's OS-level
+     light/dark setting, then light as the final fallback. -->
+<script>
+(function() {
+  try {
+    var saved = localStorage.getItem('paperTracker.theme');
+    var theme = saved === 'dark' || saved === 'light'
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (err) {
+    // localStorage may be unavailable (e.g. private browsing); default to light
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
+
+<!-- Embedded manifest for installability -->
+<link rel="manifest" id="manifest-link">
+
+<!-- Embedded icon (brass card-catalog glyph on cream, generated as data URI SVG) -->
+<link rel="icon" id="favicon-link">
+<link rel="apple-touch-icon" id="apple-icon-link">
+
+<style>
+  :root {
+    --paper: #F7F5F0;
+    --paper-dim: #EFEBE2;
+    --surface: #FFFFFF;
+    --ink: #1A1D23;
+    --ink-soft: #4A4F58;
+    --muted: #A8A196;
+    --disabled: #C7C2B8;
+    --brass: #8B7355;
+    --brass-light: #C4AD8F;
+    --slate: #4A5D6B;
+    --brick: #C9432F;
+    --brick-dim: #E8DAD6;
+    --line: #DDD6C8;
+    --overlay: rgba(26,29,35,0.4);
+    --shadow-card: 0 1px 2px rgba(26,29,35,0.06);
+    --shadow-fab: 0 3px 10px rgba(26,29,35,0.28);
+    --shadow-sheet: 0 -4px 24px rgba(26,29,35,0.18);
+    --shadow-dropdown: 0 4px 14px rgba(26,29,35,0.12);
+    --radius-sm: 3px;
+    --radius-md: 6px;
+    --font-display: 'Source Serif 4', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+  }
+
+  /* Dark theme: an aged-ink-on-dark-paper palette, not a straight inversion —
+     kept warm and low-contrast like the light theme rather than going to
+     pure black/white, so it still reads as the same catalogue aesthetic. */
+  html[data-theme="dark"] {
+    --paper: #17181C;
+    --paper-dim: #1F2126;
+    --surface: #24262C;
+    --ink: #EDEAE2;
+    --ink-soft: #B8B2A6;
+    --muted: #6B6660;
+    --disabled: #46433E;
+    --brass: #C4AD8F;
+    --brass-light: #8B7355;
+    --slate: #8FA3B0;
+    --brick: #E8674F;
+    --brick-dim: #3A2622;
+    --line: #34363C;
+    --overlay: rgba(0,0,0,0.55);
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-fab: 0 3px 12px rgba(0,0,0,0.5);
+    --shadow-sheet: 0 -4px 28px rgba(0,0,0,0.45);
+    --shadow-dropdown: 0 4px 16px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    height: 100%;
+    overscroll-behavior-y: contain;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--paper);
+    padding: calc(env(safe-area-inset-top) + 14px) 16px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .brand {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .brand .accent {
+    color: var(--brass);
+  }
+
+  .count-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 11px 14px 11px 38px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .search-input:focus {
+    border-color: var(--brass);
+  }
+
+  .search-input::placeholder {
+    color: var(--muted);
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+    cursor: pointer;
+    display: none;
+  }
+
+  .search-clear.visible { display: block; }
+
+  /* ---------- Main scroll area ---------- */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0 100px;
+    position: relative;
+  }
+
+  .letter-heading {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--brass);
+    padding: 16px 16px 4px;
+    text-transform: uppercase;
+  }
+
+  .letter-heading::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background: var(--line);
+    margin-top: 6px;
+  }
+
+  .card-list {
+    padding: 0 12px;
+  }
+
+  .paper-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 14px 16px 12px;
+    margin: 8px 0;
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.12s ease;
+  }
+
+  .paper-card:active {
+    border-color: var(--brass-light);
+  }
+
+  .paper-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--ink);
+    margin: 0 0 6px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--paper-dim);
+  }
+
+  .paper-authors {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--slate);
+    letter-spacing: 0.01em;
+    margin-bottom: 6px;
+  }
+
+  .paper-summary {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .topic-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .topic-tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    background: var(--paper-dim);
+    color: var(--brass);
+    padding: 3px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.01em;
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- A-Z jump rail ---------- */
+  .az-rail {
+    position: fixed;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(247,245,240,0.85);
+    backdrop-filter: blur(4px);
+    border-radius: 10px;
+    padding: 4px 2px;
+    max-height: 68vh;
+    justify-content: center;
+  }
+
+  .az-letter {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1;
+    color: var(--brass-light);
+    padding: 1.5px 4px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .az-letter.active {
+    color: var(--brick);
+    font-weight: 700;
+  }
+
+  .az-letter.disabled {
+    color: var(--disabled);
+    cursor: default;
+  }
+
+  /* ---------- Empty state ---------- */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 32px;
+    color: var(--ink-soft);
+  }
+
+  .empty-state svg {
+    width: 44px;
+    height: 44px;
+    color: var(--brass-light);
+    margin-bottom: 14px;
+  }
+
+  .empty-state h2 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 6px;
+  }
+
+  .empty-state p {
+    font-size: 13.5px;
+    margin: 0;
+    max-width: 260px;
+    line-height: 1.5;
+  }
+
+  /* ---------- FAB ---------- */
+  .fab {
+    position: fixed;
+    right: 20px;
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-fab);
+    cursor: pointer;
+    z-index: 25;
+    transition: transform 0.12s ease;
+  }
+
+  .fab:active {
+    transform: scale(0.93);
+  }
+
+  .fab svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* ---------- Sheet / Modal ---------- */
+  .sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sheet-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--paper);
+    border-radius: 16px 16px 0 0;
+    z-index: 31;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .sheet.open {
+    transform: translateY(0);
+  }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    margin: 10px auto 4px;
+    flex-shrink: 0;
+  }
+
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 18px 12px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  .sheet-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .sheet-close {
+    background: none;
+    border: none;
+    font-size: 15px;
+    color: var(--ink-soft);
+    padding: 6px 8px;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+
+  .sheet-body {
+    padding: 16px 18px calc(env(safe-area-inset-bottom) + 18px);
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .field-group {
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .field-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 6px;
+  }
+
+  .field-label .optional-tag {
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10.5px;
+  }
+
+  .field-input, .field-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    resize: none;
+  }
+
+  .field-input:focus, .field-textarea:focus {
+    border-color: var(--brass);
+  }
+
+  .field-textarea {
+    min-height: 78px;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+
+  .char-count {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Topic tag input */
+  .topic-input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .topic-input-row:focus-within {
+    border-color: var(--brass);
+  }
+
+  .topic-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--paper-dim);
+    border: 1px solid var(--line);
+    color: var(--brass);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 6px 4px 9px;
+    border-radius: 10px;
+  }
+
+  .topic-chip button {
+    background: none;
+    border: none;
+    color: var(--brass);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px;
+    opacity: 0.7;
+  }
+
+  .topic-text-input {
+    flex: 1;
+    min-width: 90px;
+    border: none;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 4px 2px;
+    background: transparent;
+  }
+
+  .autocomplete-list {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-dropdown);
+    z-index: 5;
+    max-height: 160px;
+    overflow-y: auto;
+    display: none;
+  }
+
+  .autocomplete-list.visible {
+    display: block;
+  }
+
+  .autocomplete-item {
+    padding: 9px 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+    cursor: pointer;
+    border-bottom: 1px solid var(--paper-dim);
+  }
+
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+
+  .autocomplete-item:active, .autocomplete-item.highlighted {
+    background: var(--paper-dim);
+  }
+
+  .autocomplete-item .match {
+    color: var(--brass);
+    font-weight: 700;
+  }
+
+  /* Author input, mirrors topic input but plain text with comma separation */
+  .helper-text {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* Sheet footer actions */
+  .sheet-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn-primary:disabled {
+    background: var(--disabled);
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  .btn-danger {
+    background: var(--brick-dim);
+    color: var(--brick);
+  }
+
+  /* Detail view specific */
+  .detail-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0 0 8px;
+  }
+
+  .detail-authors {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--slate);
+    margin-bottom: 14px;
+  }
+
+  .detail-rule {
+    height: 1px;
+    background: var(--line);
+    margin: 14px 0;
+  }
+
+  .detail-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 8px;
+  }
+
+  .detail-summary {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+
+  .detail-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + 90px);
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 20px;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Install banner */
+  .install-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--paper-dim);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 16px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  .install-banner.visible {
+    display: flex;
+  }
+
+  .install-banner button {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* Menu (export/import) */
+  .menu-btn {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+  }
+
+  .menu-btn svg { width: 19px; height: 19px; }
+
+  .menu-action {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 10px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+
+  .menu-action:last-child {
+    border-bottom: none;
+  }
+
+  .menu-action:active {
+    background: var(--paper-dim);
+  }
+
+  .menu-action-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--paper-dim);
+    color: var(--brass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .menu-action-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .menu-action-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .menu-action-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .menu-action-desc {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="install-banner" id="installBanner">
+  <span>Add Paper Tracker to your home screen for the full app experience.</span>
+  <button id="installBtn">Install</button>
+</div>
+
+<header>
+  <div class="brand-row">
+    <div class="brand">Paper<span class="accent">·</span>Tracker</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="count-badge" id="countBadge">0 papers</span>
+      <button class="menu-btn" id="themeToggleBtn" aria-label="Toggle dark mode">
+        <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="2.5" x2="12" y2="4.7"/><line x1="12" y1="19.3" x2="12" y2="21.5"/><line x1="4.2" y1="4.2" x2="5.7" y2="5.7"/><line x1="18.3" y1="18.3" x2="19.8" y2="19.8"/><line x1="2.5" y1="12" x2="4.7" y2="12"/><line x1="19.3" y1="12" x2="21.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.7" y2="18.3"/><line x1="18.3" y1="5.7" x2="19.8" y2="4.2"/></svg>
+        <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="menu-btn" id="menuBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search title, authors, summary, topics…" autocomplete="off">
+    <button class="search-clear" id="searchClear" aria-label="Clear search">×</button>
+  </div>
+</header>
+
+<main id="mainScroll">
+  <div id="listContainer"></div>
+</main>
+
+<div class="az-rail" id="azRail"></div>
+
+<button class="fab" id="fabAdd" aria-label="Add paper">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- Add/Edit Sheet -->
+<div class="sheet-overlay" id="editOverlay"></div>
+<div class="sheet" id="editSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title" id="editSheetTitle">New Entry</div>
+    <button class="sheet-close" id="editCloseBtn">Cancel</button>
+  </div>
+  <div class="sheet-body">
+    <div class="field-group">
+      <div class="field-label">Title</div>
+      <input type="text" class="field-input" id="titleInput" placeholder="e.g. Attention Is All You Need" maxlength="300">
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Summary</div>
+      <textarea class="field-textarea" id="summaryInput" placeholder="A quick summary of what this paper shows…" maxlength="2000"></textarea>
+      <div class="char-count"><span id="summaryCount">0</span>/2000</div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Topics &amp; techniques <span class="optional-tag">optional</span></div>
+      <div class="topic-input-row" id="topicInputRow">
+        <input type="text" class="topic-text-input" id="topicTextInput" placeholder="Type and press enter…">
+      </div>
+      <div class="autocomplete-list" id="topicAutocomplete"></div>
+      <div class="helper-text">Suggestions are drawn from topics you've used in other entries.</div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Authors <span class="optional-tag">optional</span></div>
+      <input type="text" class="field-input" id="authorsInput" placeholder="e.g. Vaswani, Shazeer, Parmar…">
+      <div class="helper-text">Separate multiple authors with commas.</div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" id="deleteBtn" style="display:none;">Delete</button>
+      <button class="btn btn-primary" id="saveBtn">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- Menu Sheet -->
+<div class="sheet-overlay" id="menuOverlay"></div>
+<div class="sheet" id="menuSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Menu</div>
+    <button class="sheet-close" id="menuCloseBtn">Close</button>
+  </div>
+  <div class="sheet-body">
+    <button class="menu-action" id="menuExportBtn">
+      <span class="menu-action-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+      <span class="menu-action-text">
+        <span class="menu-action-title">Export backup</span>
+        <span class="menu-action-desc">Download all entries as a JSON file</span>
+      </span>
+    </button>
+    <button class="menu-action" id="menuImportBtn">
+      <span class="menu-action-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </span>
+      <span class="menu-action-text">
+        <span class="menu-action-title">Import backup</span>
+        <span class="menu-action-desc">Load entries from a JSON file</span>
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- Detail Sheet -->
+<div class="sheet-overlay" id="detailOverlay"></div>
+<div class="sheet" id="detailSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Entry</div>
+    <button class="sheet-close" id="detailCloseBtn">Close</button>
+  </div>
+  <div class="sheet-body" id="detailBody"></div>
+</div>
+
+<!-- Confirm Sheet (reusable) -->
+<div class="sheet-overlay" id="confirmOverlay"></div>
+<div class="sheet" id="confirmSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title" id="confirmTitle">Confirm</div>
+  </div>
+  <div class="sheet-body">
+    <p id="confirmMessage" style="font-size:14px; line-height:1.5; color:var(--ink-soft); margin:0 0 18px;"></p>
+    <div class="sheet-actions" id="confirmActions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept="application/json">
+
+<script>
+(function() {
+  'use strict';
+
+  /* ===================== Theme (dark mode) ===================== */
+  const THEME_KEY = 'paperTracker.theme';
+  const THEME_COLOR_LIGHT = '#F7F5F0';
+  const THEME_COLOR_DARK = '#17181C';
+
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeIconSun = document.getElementById('themeIconSun');
+  const themeIconMoon = document.getElementById('themeIconMoon');
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+
+  function getCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyThemeChrome(theme) {
+    // Swap the sun/moon glyph and the browser/OS status-bar color to match.
+    themeIconSun.style.display = theme === 'dark' ? 'none' : 'block';
+    themeIconMoon.style.display = theme === 'dark' ? 'block' : 'none';
+    themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', theme === 'dark' ? THEME_COLOR_DARK : THEME_COLOR_LIGHT);
+    }
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    applyThemeChrome(theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (err) {
+      // Storage might be unavailable; theme still applies for this session
+    }
+  }
+
+  // Reflect whatever the pre-paint inline script in <head> already chose
+  applyThemeChrome(getCurrentTheme());
+
+  themeToggleBtn.addEventListener('click', () => {
+    setTheme(getCurrentTheme() === 'dark' ? 'light' : 'dark');
+  });
+
+  // If the person hasn't manually chosen a theme in this app, keep following
+  // their OS-level setting live (e.g. if their phone switches to dark mode
+  // automatically at sunset).
+  if (window.matchMedia) {
+    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSchemeChange = (e) => {
+      let hasManualChoice = false;
+      try { hasManualChoice = localStorage.getItem(THEME_KEY) !== null; } catch (err) {}
+      if (!hasManualChoice) {
+        // Apply without persisting, so this keeps auto-following in future
+        const theme = e.matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        applyThemeChrome(theme);
+      }
+    };
+    if (darkQuery.addEventListener) darkQuery.addEventListener('change', handleSchemeChange);
+    else if (darkQuery.addListener) darkQuery.addListener(handleSchemeChange); // older browsers
+  }
+
+  /* ===================== Manifest & Icon Injection ===================== */
+  const iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+    <rect width="192" height="192" rx="36" fill="#F7F5F0"/>
+    <rect x="38" y="30" width="94" height="122" rx="3" fill="#FFFFFF" stroke="#8B7355" stroke-width="3"/>
+    <rect x="52" y="30" width="94" height="122" rx="3" fill="#FFFFFF" stroke="#1A1D23" stroke-width="3"/>
+    <line x1="66" y1="54" x2="126" y2="54" stroke="#8B7355" stroke-width="3"/>
+    <line x1="66" y1="70" x2="126" y2="70" stroke="#DDD6C8" stroke-width="3"/>
+    <line x1="66" y1="84" x2="110" y2="84" stroke="#DDD6C8" stroke-width="3"/>
+    <line x1="66" y1="106" x2="120" y2="106" stroke="#4A5D6B" stroke-width="3"/>
+    <line x1="66" y1="120" x2="100" y2="120" stroke="#DDD6C8" stroke-width="3"/>
+  </svg>`;
+  const iconDataUri = 'data:image/svg+xml;base64,' + btoa(iconSVG);
+
+  const manifest = {
+    name: "Paper Tracker",
+    short_name: "Papers",
+    description: "A personal index of research papers, organized alphabetically with searchable topics and authors.",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#F7F5F0",
+    theme_color: "#F7F5F0",
+    orientation: "portrait",
+    icons: [
+      { src: iconDataUri, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+      { src: iconDataUri, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+    ]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const manifestUrl = URL.createObjectURL(manifestBlob);
+  document.getElementById('manifest-link').setAttribute('href', manifestUrl);
+  document.getElementById('favicon-link').setAttribute('href', iconDataUri);
+  document.getElementById('apple-icon-link').setAttribute('href', iconDataUri);
+
+  /* ===================== Service Worker (offline support) ===================== */
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE = 'paper-tracker-v1';
+      self.addEventListener('install', e => { self.skipWaiting(); });
+      self.addEventListener('activate', e => { self.clients.claim(); });
+      self.addEventListener('fetch', e => {
+        e.respondWith(
+          caches.match(e.request).then(cached => {
+            const fetchPromise = fetch(e.request).then(networkResponse => {
+              if (e.request.method === 'GET' && networkResponse && networkResponse.status === 200) {
+                caches.open(CACHE).then(cache => cache.put(e.request, networkResponse.clone()));
+              }
+              return networkResponse;
+            }).catch(() => cached);
+            return cached || fetchPromise;
+          })
+        );
+      });
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(() => {
+      /* Service worker registration can fail silently (e.g. file:// origin); app still works via localStorage */
+    });
+  }
+
+  /* ===================== Install Prompt Handling ===================== */
+  let deferredInstallPrompt = null;
+  const installBanner = document.getElementById('installBanner');
+  const installBtn = document.getElementById('installBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!isStandalone()) installBanner.classList.add('visible');
+  });
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  installBtn.addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      installBanner.classList.remove('visible');
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBanner.classList.remove('visible');
+  });
+
+  /* ===================== Data Layer ===================== */
+  const STORAGE_KEY = 'paperTracker.entries.v1';
+
+  function loadEntries() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.error('Failed to load entries', err);
+      return [];
+    }
+  }
+
+  function saveEntries(entries) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      return true;
+    } catch (err) {
+      console.error('Failed to save entries', err);
+      showToast('Storage full — could not save.');
+      return false;
+    }
+  }
+
+  function uid() {
+    return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  let entries = loadEntries();
+
+  /* ===================== Utility ===================== */
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Strips accents/diacritics so search treats "i" and "í", "e" and "é", etc.
+  // as equivalent. NFD normalization decomposes each accented character into
+  // its base letter plus a separate combining-mark codepoint (range \u0300–
+  // \u036f), which the regex then removes, leaving the plain base letter.
+  function stripDiacritics(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function getSortLetter(title) {
+    const t = title.trim();
+    if (!t) return '#';
+    const stripped = t.replace(/^(the|a|an)\s+/i, '');
+    const first = stripped.charAt(0).toUpperCase();
+    return /[A-Z]/.test(first) ? first : '#';
+  }
+
+  function sortedEntries(list) {
+    return [...list].sort((a, b) => {
+      const aKey = a.title.trim().replace(/^(the|a|an)\s+/i, '').toLowerCase();
+      const bKey = b.title.trim().replace(/^(the|a|an)\s+/i, '').toLowerCase();
+      return aKey.localeCompare(bKey);
+    });
+  }
+
+  function allKnownTopics() {
+    const set = new Set();
+    entries.forEach(e => (e.topics || []).forEach(t => set.add(t)));
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), 2200);
+  }
+
+  // window.confirm() is suppressed by many mobile browsers once the app
+  // runs as an installed standalone PWA, so all yes/no confirmations use
+  // this in-app sheet instead. Returns a Promise resolving to the id of
+  // the button the user tapped (or null if dismissed via the backdrop).
+  function showConfirm({ title, message, buttons }) {
+    const overlay = document.getElementById('confirmOverlay');
+    const sheet = document.getElementById('confirmSheet');
+    const titleEl = document.getElementById('confirmTitle');
+    const messageEl = document.getElementById('confirmMessage');
+    const actionsEl = document.getElementById('confirmActions');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    actionsEl.innerHTML = '';
+
+    return new Promise((resolve) => {
+      function finish(resultId) {
+        overlay.classList.remove('open');
+        sheet.classList.remove('open');
+        overlay.removeEventListener('click', onBackdrop);
+        resolve(resultId);
+      }
+      function onBackdrop() { finish(null); }
+
+      buttons.forEach(btn => {
+        const el = document.createElement('button');
+        el.className = 'btn ' + (btn.style || 'btn-secondary');
+        el.textContent = btn.label;
+        el.addEventListener('click', () => finish(btn.id));
+        actionsEl.appendChild(el);
+      });
+
+      overlay.addEventListener('click', onBackdrop);
+      overlay.classList.add('open');
+      sheet.classList.add('open');
+    });
+  }
+
+  /* ===================== Rendering ===================== */
+  const listContainer = document.getElementById('listContainer');
+  const countBadge = document.getElementById('countBadge');
+  const azRail = document.getElementById('azRail');
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+
+  let currentQuery = '';
+
+  function matchesQuery(entry, q) {
+    if (!q) return true;
+    const hay = stripDiacritics([
+      entry.title || '',
+      entry.summary || '',
+      entry.authors || '',
+      (entry.topics || []).join(' ')
+    ].join(' ').toLowerCase());
+    return hay.includes(stripDiacritics(q.toLowerCase()));
+  }
+
+  function render() {
+    const filtered = entries.filter(e => matchesQuery(e, currentQuery));
+    const sorted = sortedEntries(filtered);
+
+    countBadge.textContent = entries.length === 1 ? '1 paper' : entries.length + ' papers';
+
+    listContainer.innerHTML = '';
+
+    if (entries.length === 0) {
+      listContainer.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <h2>Your index is empty</h2>
+          <p>Tap the + button to add the first paper to your catalogue.</p>
+        </div>`;
+      azRail.innerHTML = '';
+      return;
+    }
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <h2>No matches</h2>
+          <p>Nothing in the index matches "${escapeHtml(currentQuery)}".</p>
+        </div>`;
+      azRail.innerHTML = '';
+      return;
+    }
+
+    let lastLetter = null;
+    const presentLetters = new Set();
+    const cardList = document.createElement('div');
+    cardList.className = 'card-list';
+
+    sorted.forEach(entry => {
+      const letter = getSortLetter(entry.title);
+      presentLetters.add(letter);
+      if (letter !== lastLetter) {
+        const heading = document.createElement('div');
+        heading.className = 'letter-heading';
+        heading.id = 'letter-' + letter;
+        heading.textContent = letter;
+        cardList.appendChild(heading);
+        lastLetter = letter;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'paper-card';
+      card.dataset.id = entry.id;
+
+      const topicsHtml = (entry.topics || []).length
+        ? `<div class="topic-tags">${entry.topics.map(t => `<span class="topic-tag">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+
+      const authorsHtml = entry.authors
+        ? `<div class="paper-authors">${escapeHtml(entry.authors)}</div>`
+        : '';
+
+      card.innerHTML = `
+        <div class="paper-title">${escapeHtml(entry.title)}</div>
+        ${authorsHtml}
+        <div class="paper-summary">${escapeHtml(entry.summary)}</div>
+        ${topicsHtml}
+      `;
+      card.addEventListener('click', () => openDetail(entry.id));
+      cardList.appendChild(card);
+    });
+
+    listContainer.appendChild(cardList);
+    renderAzRail(presentLetters);
+  }
+
+  function renderAzRail(presentLetters) {
+    const alphabet = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    azRail.innerHTML = '';
+    alphabet.forEach(letter => {
+      const el = document.createElement('div');
+      const present = presentLetters.has(letter);
+      el.className = 'az-letter' + (present ? '' : ' disabled');
+      el.textContent = letter;
+      if (present) {
+        el.addEventListener('click', () => {
+          const target = document.getElementById('letter-' + letter);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+      azRail.appendChild(el);
+    });
+  }
+
+  /* ===================== Search ===================== */
+  searchInput.addEventListener('input', () => {
+    currentQuery = searchInput.value.trim();
+    searchClear.classList.toggle('visible', currentQuery.length > 0);
+    render();
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    currentQuery = '';
+    searchClear.classList.remove('visible');
+    render();
+    searchInput.focus();
+  });
+
+  /* ===================== Add / Edit Sheet ===================== */
+  const editOverlay = document.getElementById('editOverlay');
+  const editSheet = document.getElementById('editSheet');
+  const editSheetTitle = document.getElementById('editSheetTitle');
+  const titleInput = document.getElementById('titleInput');
+  const summaryInput = document.getElementById('summaryInput');
+  const summaryCount = document.getElementById('summaryCount');
+  const authorsInput = document.getElementById('authorsInput');
+  const topicInputRow = document.getElementById('topicInputRow');
+  const topicTextInput = document.getElementById('topicTextInput');
+  const topicAutocomplete = document.getElementById('topicAutocomplete');
+  const saveBtn = document.getElementById('saveBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const editCloseBtn = document.getElementById('editCloseBtn');
+
+  let editingId = null;
+  let draftTopics = [];
+  let highlightedAcIndex = -1;
+
+  function openEditSheet(entryId) {
+    editingId = entryId || null;
+    draftTopics = [];
+
+    if (editingId) {
+      const entry = entries.find(e => e.id === editingId);
+      editSheetTitle.textContent = 'Edit Entry';
+      titleInput.value = entry.title || '';
+      summaryInput.value = entry.summary || '';
+      authorsInput.value = entry.authors || '';
+      draftTopics = [...(entry.topics || [])];
+      deleteBtn.style.display = 'block';
+    } else {
+      editSheetTitle.textContent = 'New Entry';
+      titleInput.value = '';
+      summaryInput.value = '';
+      authorsInput.value = '';
+      deleteBtn.style.display = 'none';
+    }
+
+    summaryCount.textContent = summaryInput.value.length;
+    topicTextInput.value = '';
+    renderTopicChips();
+    hideAutocomplete();
+    validateForm();
+
+    editOverlay.classList.add('open');
+    editSheet.classList.add('open');
+    setTimeout(() => titleInput.focus(), 260);
+  }
+
+  function closeEditSheet() {
+    editOverlay.classList.remove('open');
+    editSheet.classList.remove('open');
+    editingId = null;
+    hideAutocomplete();
+  }
+
+  function renderTopicChips() {
+    // Remove existing chips (keep the text input)
+    [...topicInputRow.querySelectorAll('.topic-chip')].forEach(c => c.remove());
+    draftTopics.forEach((topic, idx) => {
+      const chip = document.createElement('span');
+      chip.className = 'topic-chip';
+      chip.innerHTML = `${escapeHtml(topic)} <button type="button" aria-label="Remove ${escapeHtml(topic)}">×</button>`;
+      chip.querySelector('button').addEventListener('click', () => {
+        draftTopics.splice(idx, 1);
+        renderTopicChips();
+      });
+      topicInputRow.insertBefore(chip, topicTextInput);
+    });
+  }
+
+  function addDraftTopic(raw) {
+    const val = raw.trim();
+    if (!val) return;
+    if (draftTopics.some(t => t.toLowerCase() === val.toLowerCase())) {
+      topicTextInput.value = '';
+      hideAutocomplete();
+      return;
+    }
+    draftTopics.push(val);
+    topicTextInput.value = '';
+    renderTopicChips();
+    hideAutocomplete();
+  }
+
+  function hideAutocomplete() {
+    topicAutocomplete.classList.remove('visible');
+    topicAutocomplete.innerHTML = '';
+    highlightedAcIndex = -1;
+  }
+
+  function updateAutocomplete() {
+    const rawQ = topicTextInput.value.trim().toLowerCase();
+    if (!rawQ) { hideAutocomplete(); return; }
+    const q = stripDiacritics(rawQ);
+
+    const known = allKnownTopics().filter(t =>
+      stripDiacritics(t.toLowerCase()).includes(q) &&
+      !draftTopics.some(dt => dt.toLowerCase() === t.toLowerCase())
+    );
+
+    if (known.length === 0) { hideAutocomplete(); return; }
+
+    topicAutocomplete.innerHTML = '';
+    known.slice(0, 8).forEach((topic, idx) => {
+      const item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      // Match position is found on the diacritic-stripped string (so typing
+      // "e" finds "é"), but stripping a combining mark removes one character,
+      // so the stripped string is never longer than the original at any given
+      // point — meaning matchIdx is always a safe, valid index into the
+      // original string too, even though the two strings aren't the same text.
+      const strippedLower = stripDiacritics(topic.toLowerCase());
+      const matchIdx = strippedLower.indexOf(q);
+      let html;
+      if (matchIdx >= 0) {
+        html = escapeHtml(topic.slice(0, matchIdx)) +
+               '<span class="match">' + escapeHtml(topic.slice(matchIdx, matchIdx + q.length)) + '</span>' +
+               escapeHtml(topic.slice(matchIdx + q.length));
+      } else {
+        html = escapeHtml(topic);
+      }
+      item.innerHTML = html;
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        addDraftTopic(topic);
+      });
+      topicAutocomplete.appendChild(item);
+    });
+    highlightedAcIndex = -1;
+    topicAutocomplete.classList.add('visible');
+  }
+
+  topicTextInput.addEventListener('input', updateAutocomplete);
+
+  topicTextInput.addEventListener('keydown', (e) => {
+    const items = [...topicAutocomplete.querySelectorAll('.autocomplete-item')];
+    if (e.key === 'ArrowDown' && items.length) {
+      e.preventDefault();
+      highlightedAcIndex = Math.min(highlightedAcIndex + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('highlighted', i === highlightedAcIndex));
+    } else if (e.key === 'ArrowUp' && items.length) {
+      e.preventDefault();
+      highlightedAcIndex = Math.max(highlightedAcIndex - 1, 0);
+      items.forEach((it, i) => it.classList.toggle('highlighted', i === highlightedAcIndex));
+    } else if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      if (highlightedAcIndex >= 0 && items[highlightedAcIndex]) {
+        addDraftTopic(items[highlightedAcIndex].textContent);
+      } else {
+        addDraftTopic(topicTextInput.value);
+      }
+    } else if (e.key === 'Backspace' && topicTextInput.value === '' && draftTopics.length) {
+      draftTopics.pop();
+      renderTopicChips();
+    } else if (e.key === 'Escape') {
+      hideAutocomplete();
+    }
+  });
+
+  topicInputRow.addEventListener('click', () => topicTextInput.focus());
+
+  document.addEventListener('click', (e) => {
+    if (!topicInputRow.contains(e.target) && !topicAutocomplete.contains(e.target)) {
+      hideAutocomplete();
+    }
+  });
+
+  function validateForm() {
+    const valid = titleInput.value.trim().length > 0 && summaryInput.value.trim().length > 0;
+    saveBtn.disabled = !valid;
+    return valid;
+  }
+
+  titleInput.addEventListener('input', validateForm);
+  summaryInput.addEventListener('input', () => {
+    summaryCount.textContent = summaryInput.value.length;
+    validateForm();
+  });
+
+  saveBtn.addEventListener('click', () => {
+    if (!validateForm()) return;
+    if (topicTextInput.value.trim()) addDraftTopic(topicTextInput.value);
+
+    const payload = {
+      title: titleInput.value.trim(),
+      summary: summaryInput.value.trim(),
+      authors: authorsInput.value.trim(),
+      topics: draftTopics
+    };
+
+    if (editingId) {
+      const idx = entries.findIndex(e => e.id === editingId);
+      if (idx !== -1) entries[idx] = { ...entries[idx], ...payload };
+      showToast('Entry updated');
+    } else {
+      entries.push({ id: uid(), ...payload, createdAt: Date.now() });
+      showToast('Entry added');
+    }
+
+    saveEntries(entries);
+    render();
+    closeEditSheet();
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    if (!editingId) return;
+    const result = await showConfirm({
+      title: 'Delete entry?',
+      message: 'This cannot be undone.',
+      buttons: [
+        { id: 'cancel', label: 'Cancel', style: 'btn-secondary' },
+        { id: 'delete', label: 'Delete', style: 'btn-danger' }
+      ]
+    });
+    if (result !== 'delete') return;
+    entries = entries.filter(e => e.id !== editingId);
+    saveEntries(entries);
+    render();
+    closeEditSheet();
+    showToast('Entry deleted');
+  });
+
+  editCloseBtn.addEventListener('click', closeEditSheet);
+  editOverlay.addEventListener('click', closeEditSheet);
+
+  document.getElementById('fabAdd').addEventListener('click', () => openEditSheet(null));
+
+  /* ===================== Detail Sheet ===================== */
+  const detailOverlay = document.getElementById('detailOverlay');
+  const detailSheet = document.getElementById('detailSheet');
+  const detailBody = document.getElementById('detailBody');
+  const detailCloseBtn = document.getElementById('detailCloseBtn');
+
+  function openDetail(entryId) {
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const authorsHtml = entry.authors
+      ? `<div class="detail-authors">${escapeHtml(entry.authors)}</div>`
+      : '';
+
+    const topicsHtml = (entry.topics || []).length
+      ? `<div class="detail-rule"></div>
+         <div class="detail-label">Topics &amp; Techniques</div>
+         <div class="detail-topics">${entry.topics.map(t => `<span class="topic-tag">${escapeHtml(t)}</span>`).join('')}</div>`
+      : '';
+
+    detailBody.innerHTML = `
+      <div class="detail-title">${escapeHtml(entry.title)}</div>
+      ${authorsHtml}
+      <div class="detail-rule"></div>
+      <div class="detail-label">Summary</div>
+      <div class="detail-summary">${escapeHtml(entry.summary)}</div>
+      ${topicsHtml}
+      <div class="sheet-actions" style="margin-top:22px;">
+        <button class="btn btn-secondary" id="detailEditBtn">Edit</button>
+      </div>
+    `;
+
+    document.getElementById('detailEditBtn').addEventListener('click', () => {
+      closeDetail();
+      setTimeout(() => openEditSheet(entryId), 200);
+    });
+
+    detailOverlay.classList.add('open');
+    detailSheet.classList.add('open');
+  }
+
+  function closeDetail() {
+    detailOverlay.classList.remove('open');
+    detailSheet.classList.remove('open');
+  }
+
+  detailCloseBtn.addEventListener('click', closeDetail);
+  detailOverlay.addEventListener('click', closeDetail);
+
+  /* ===================== Export / Import ===================== */
+  const menuBtn = document.getElementById('menuBtn');
+  const importFile = document.getElementById('importFile');
+  const menuOverlay = document.getElementById('menuOverlay');
+  const menuSheet = document.getElementById('menuSheet');
+  const menuCloseBtn = document.getElementById('menuCloseBtn');
+  const menuExportBtn = document.getElementById('menuExportBtn');
+  const menuImportBtn = document.getElementById('menuImportBtn');
+
+  // Native window.prompt()/alert() are unreliable once the app runs as an
+  // installed standalone PWA (many mobile browsers suppress them entirely
+  // in that display mode), so the menu is a normal in-app sheet instead.
+  function openMenu() {
+    menuOverlay.classList.add('open');
+    menuSheet.classList.add('open');
+  }
+
+  function closeMenu() {
+    menuOverlay.classList.remove('open');
+    menuSheet.classList.remove('open');
+  }
+
+  menuBtn.addEventListener('click', openMenu);
+  menuCloseBtn.addEventListener('click', closeMenu);
+  menuOverlay.addEventListener('click', closeMenu);
+
+  menuExportBtn.addEventListener('click', () => {
+    closeMenu();
+    exportData();
+  });
+
+  menuImportBtn.addEventListener('click', () => {
+    closeMenu();
+    importFile.click();
+  });
+
+  function exportData() {
+    const dataStr = JSON.stringify(entries, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `paper-tracker-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('Backup downloaded');
+  }
+
+  importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        if (!Array.isArray(imported)) throw new Error('Not an array');
+        const validEntries = imported.filter(item =>
+          item && typeof item.title === 'string' && typeof item.summary === 'string'
+        ).map(item => ({
+          id: item.id && typeof item.id === 'string' ? item.id : uid(),
+          title: item.title,
+          summary: item.summary,
+          authors: typeof item.authors === 'string' ? item.authors : '',
+          topics: Array.isArray(item.topics) ? item.topics.filter(t => typeof t === 'string') : [],
+          createdAt: item.createdAt || Date.now()
+        }));
+
+        if (validEntries.length === 0) {
+          showToast('No valid entries found in file');
+          return;
+        }
+
+        const choice = await showConfirm({
+          title: 'Import entries',
+          message: `Found ${validEntries.length} ${validEntries.length === 1 ? 'entry' : 'entries'} in this file. Merge them with your current index, or replace it entirely?`,
+          buttons: [
+            { id: 'cancel', label: 'Cancel', style: 'btn-secondary' },
+            { id: 'replace', label: 'Replace', style: 'btn-danger' },
+            { id: 'merge', label: 'Merge', style: 'btn-primary' }
+          ]
+        });
+        if (choice === 'merge') {
+          const existingIds = new Set(entries.map(e => e.id));
+          const merged = [...entries];
+          validEntries.forEach(ve => {
+            if (!existingIds.has(ve.id)) merged.push(ve);
+          });
+          entries = merged;
+        } else if (choice === 'replace') {
+          entries = validEntries;
+        } else {
+          return; // cancelled or dismissed
+        }
+        saveEntries(entries);
+        render();
+        showToast('Import complete');
+      } catch (err) {
+        console.error(err);
+        showToast('Could not read that file');
+      }
+      importFile.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  /* ===================== Init ===================== */
+  render();
+
+})();
+</script>
+</body>
+</html>

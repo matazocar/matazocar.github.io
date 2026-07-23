@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flavor Pairings</title>
+<style>
+  :root {
+    --ink: #2b2622;
+    --paper: #faf6f0;
+    --card: #ffffff;
+    --accent: #a3441f;
+    --accent-soft: #e8dcd0;
+    --muted: #766c62;
+    --border: #e4dbd0;
+    --shadow: rgba(43, 38, 34, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+  }
+
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  h1 {
+    font-size: 1.9rem;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+
+  header p {
+    color: var(--muted);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .search-box {
+    position: relative;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 1.1rem;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+
+  .autocomplete-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px var(--shadow);
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 20;
+    display: none;
+  }
+
+  .autocomplete-list.open { display: block; }
+
+  .ac-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    font-size: 0.98rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ac-item:last-child { border-bottom: none; }
+
+  .ac-item:hover, .ac-item.active {
+    background: var(--accent-soft);
+  }
+
+  .ac-item .tag {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .ac-item mark {
+    background: none;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .hint {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .no-match {
+    margin-top: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .results {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+
+  .result-panel {
+    animation: panelIn 0.18s ease;
+  }
+
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-panel.linked {
+    padding-top: 18px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .link-note {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .link-note svg {
+    width: 13px;
+    height: 13px;
+    stroke: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .result-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .result-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    flex: 1;
+  }
+
+  .result-header .category-tag {
+    font-size: 0.78rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 10px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
+  .close-panel-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.3rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .close-panel-btn:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .pairing-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .pairing-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  .pairing-card.expandable {
+    cursor: pointer;
+  }
+
+  .pairing-card.expandable:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .pairing-card.expandable.is-open {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .pairing-card .flavor-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .pairing-card .flavor-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+
+  .pairing-card .expand-icon {
+    width: 15px;
+    height: 15px;
+    stroke: var(--accent);
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .pairing-card .flavor-note {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .pairing-card .flavor-note .ex {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 50px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 1.5rem; }
+    .pairing-card { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Flavor Pairings</h1>
+    <p>Type an ingredient to see what plays well with it</p>
+  </header>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="e.g. lemon, pork, dark chocolate..." autocomplete="off">
+    <div class="autocomplete-list" id="autocompleteList"></div>
+  </div>
+  <div class="hint" id="hint">Try: basil, salmon, mushroom, cinnamon, goat cheese...</div>
+
+  <div id="resultsArea"></div>
+</div>
+
+<footer>Fully offline &middot; no data leaves this page</footer>
+
+<script>
+/* ============================================================
+   DATABASE
+   Each ingredient maps to a category and a list of pairings.
+   Each pairing has a flavor name + a short guideline/example.
+   ============================================================ */
+const DB = {
+  "lemon": { category: "Citrus", pairings: [
+    { flavor: "Thyme", note: "Woody herb tames the sharp acidity — classic in roast chicken marinades." },
+    { flavor: "Garlic", note: "Punchy and savory; balances lemon's brightness in sauces and dressings." },
+    { flavor: "Honey", note: "Sweetness rounds out the tartness — try lemon-honey glazed vegetables." },
+    { flavor: "Black pepper", note: "Adds warmth and bite; a staple in lemon pepper seasoning." },
+    { flavor: "Basil", note: "Fresh and slightly sweet, lifts lemon in pastas and salads." },
+    { flavor: "Ginger", note: "Zesty heat complements citrus tang in teas and dressings." }
+  ]},
+  "lime": { category: "Citrus", pairings: [
+    { flavor: "Cilantro", note: "The go-to duo in Latin American and Southeast Asian cooking — think salsa or ceviche." },
+    { flavor: "Coconut", note: "Tropical sweetness softens lime's sharp edge — try in curries or desserts." },
+    { flavor: "Chili", note: "Heat and acid together create balance, as in Thai dressings." },
+    { flavor: "Mint", note: "Cooling freshness, excellent in drinks like mojitos or fruit salads." },
+    { flavor: "Fish sauce", note: "Salty umami depth grounds lime's brightness in Southeast Asian sauces." }
+  ]},
+  "orange": { category: "Citrus", pairings: [
+    { flavor: "Fennel", note: "Anise-like crunch pairs beautifully in Sicilian-style salads." },
+    { flavor: "Cinnamon", note: "Warm spice enhances orange's sweetness — think mulled wine or baked goods." },
+    { flavor: "Dark chocolate", note: "Bitter-sweet contrast, a timeless dessert combination." },
+    { flavor: "Cardamom", note: "Floral warmth deepens orange in cakes and syrups." },
+    { flavor: "Almond", note: "Nutty richness complements citrus in cakes like orange-almond torte." }
+  ]},
+  "basil": { category: "Herb", pairings: [
+    { flavor: "Tomato", note: "The archetypal pairing — think caprese salad or marinara sauce." },
+    { flavor: "Mozzarella", note: "Creamy and mild, lets basil's peppery-sweet notes shine." },
+    { flavor: "Garlic", note: "Foundation of pesto; savory depth against basil's brightness." },
+    { flavor: "Pine nuts", note: "Buttery crunch, classic pesto component." },
+    { flavor: "Strawberry", note: "Unexpected but excellent — basil adds herbal lift to fruit desserts." },
+    { flavor: "Olive oil", note: "Carries basil's aromatic oils; essential base for dressings and pesto." }
+  ]},
+  "thyme": { category: "Herb", pairings: [
+    { flavor: "Lemon", note: "Bright acidity cuts thyme's earthiness in roasted dishes." },
+    { flavor: "Mushroom", note: "Earthy-on-earthy, deepens umami in stews and risottos." },
+    { flavor: "Roast chicken", note: "Classic aromatic herb for poultry, especially under the skin." },
+    { flavor: "White wine", note: "Herbaceous notes meld in pan sauces and braises." },
+    { flavor: "Honey", note: "Sweet-herbal combination, lovely in glazes or roasted root vegetables." }
+  ]},
+  "rosemary": { category: "Herb", pairings: [
+    { flavor: "Lamb", note: "Piney intensity stands up to lamb's richness — a traditional Mediterranean pairing." },
+    { flavor: "Potato", note: "Roasted rosemary potatoes are a staple for good reason." },
+    { flavor: "Garlic", note: "Savory backbone; together they perfume oils and marinades." },
+    { flavor: "Olive oil", note: "Infuses beautifully; rosemary oil is a pantry staple." },
+    { flavor: "Orange", note: "Citrus brightens rosemary's resinous edge in glazes and cocktails." }
+  ]},
+  "cilantro": { category: "Herb", pairings: [
+    { flavor: "Lime", note: "Bright, zesty duo essential to Mexican and Southeast Asian dishes." },
+    { flavor: "Chili", note: "Fresh herbaceousness balances heat in salsas and curries." },
+    { flavor: "Coconut", note: "Softens cilantro's punch, common in Thai and Indian curries." },
+    { flavor: "Cumin", note: "Earthy warmth grounds cilantro's freshness — think taco seasoning." },
+    { flavor: "Avocado", note: "Creamy richness against cilantro's sharpness, as in guacamole." }
+  ]},
+  "mint": { category: "Herb", pairings: [
+    { flavor: "Lamb", note: "Traditional British pairing — mint sauce cuts through lamb's fattiness." },
+    { flavor: "Chocolate", note: "Cooling herb against rich sweetness, think mint chocolate desserts." },
+    { flavor: "Cucumber", note: "Refreshing combo, perfect in cold soups or infused water." },
+    { flavor: "Watermelon", note: "Cooling and sweet, a classic summer salad pairing." },
+    { flavor: "Yogurt", note: "Tangy creaminess with mint's freshness, as in tzatziki or raita." }
+  ]},
+  "ginger": { category: "Spice/Root", pairings: [
+    { flavor: "Garlic", note: "Foundational aromatic duo in stir-fries across Asian cuisines." },
+    { flavor: "Soy sauce", note: "Umami depth balances ginger's sharp heat in marinades." },
+    { flavor: "Honey", note: "Sweetness tempers ginger's bite — great in glazes and teas." },
+    { flavor: "Carrot", note: "Natural sweetness pairs well, as in ginger-carrot soup." },
+    { flavor: "Lemongrass", note: "Layered citrus-spice complexity in Southeast Asian broths." }
+  ]},
+  "garlic": { category: "Aromatic", pairings: [
+    { flavor: "Olive oil", note: "The base of countless Mediterranean dishes, infuses beautifully." },
+    { flavor: "Chili flakes", note: "Heat and pungency together, classic in aglio e olio." },
+    { flavor: "Butter", note: "Rich and mellow, tames raw garlic's sharpness — garlic bread staple." },
+    { flavor: "Parsley", note: "Fresh, grassy contrast that lightens garlic's intensity." },
+    { flavor: "Ginger", note: "Paired constantly in Asian cooking for aromatic depth." }
+  ]},
+  "cinnamon": { category: "Spice", pairings: [
+    { flavor: "Apple", note: "Quintessential fall pairing — pies, crisps, and mulled cider." },
+    { flavor: "Nutmeg", note: "Warm spice blend, common in baked goods and eggnog." },
+    { flavor: "Orange", note: "Citrus brightens cinnamon's warmth in desserts and drinks." },
+    { flavor: "Chocolate", note: "Adds depth to rich desserts, as in Mexican hot chocolate." },
+    { flavor: "Vanilla", note: "Rounds out cinnamon's spice with sweet, mellow notes." }
+  ]},
+  "cardamom": { category: "Spice", pairings: [
+    { flavor: "Coffee", note: "Floral warmth cuts bitterness, common in Middle Eastern coffee." },
+    { flavor: "Rice", note: "Perfumes basmati rice in biryanis and pilafs." },
+    { flavor: "Cinnamon", note: "Layered warm-spice combination in chai and baked goods." },
+    { flavor: "Orange", note: "Citrus lifts cardamom's floral intensity in syrups and cakes." },
+    { flavor: "Honey", note: "Sweetness balances cardamom's slight bitterness." }
+  ]},
+  "cumin": { category: "Spice", pairings: [
+    { flavor: "Coriander", note: "Almost always paired together in spice blends worldwide." },
+    { flavor: "Lime", note: "Citrus brightens cumin's earthy, smoky depth." },
+    { flavor: "Chili", note: "Foundation of Tex-Mex and Indian spice profiles." },
+    { flavor: "Black beans", note: "Earthy warmth enhances legumes in Latin American cooking." },
+    { flavor: "Yogurt", note: "Cooling dairy balances cumin's smokiness in marinades." }
+  ]},
+  "smoked paprika": { category: "Spice", pairings: [
+    { flavor: "Chorizo", note: "Reinforces the smoky-spiced character already present." },
+    { flavor: "Garlic", note: "Savory backbone that lets the smokiness stand out." },
+    { flavor: "Potato", note: "Adds color and depth to roasted or fried potatoes." },
+    { flavor: "Chickpeas", note: "Earthy legume canvas for smoky spice, as in spiced hummus." },
+    { flavor: "Lemon", note: "A squeeze cuts through the richness and smoke." }
+  ]},
+  "vanilla": { category: "Spice/Extract", pairings: [
+    { flavor: "Chocolate", note: "Rounds out chocolate's bitterness with warm sweetness." },
+    { flavor: "Cinnamon", note: "Classic baking duo — think snickerdoodles or custards." },
+    { flavor: "Strawberry", note: "Sweet, fragrant match found in countless desserts." },
+    { flavor: "Coffee", note: "Softens coffee's bitterness in lattes and tiramisu." },
+    { flavor: "Caramel", note: "Deepens caramel's toasty sweetness, common in custards." }
+  ]},
+  "salmon": { category: "Protein (Fish)", pairings: [
+    { flavor: "Dill", note: "The definitive herb pairing — think gravlax or dill cream sauce." },
+    { flavor: "Lemon", note: "Cuts richness, brightens the fish's natural oils." },
+    { flavor: "Capers", note: "Briny punch balances salmon's fattiness." },
+    { flavor: "Soy sauce", note: "Umami depth for glazes, as in teriyaki salmon." },
+    { flavor: "Maple syrup", note: "Sweetness caramelizes beautifully in roasted preparations." }
+  ]},
+  "cod": { category: "Protein (Fish)", pairings: [
+    { flavor: "Parsley", note: "Fresh, mild herb that doesn't overpower delicate cod." },
+    { flavor: "Butter", note: "Rich base that complements cod's flaky, mild texture." },
+    { flavor: "Capers", note: "Brininess adds interest to an otherwise mild fish." },
+    { flavor: "White wine", note: "Acidic backbone for poaching or pan sauces." },
+    { flavor: "Garlic", note: "Savory depth without overwhelming, common in Portuguese-style cod." }
+  ]},
+  "chicken": { category: "Protein (Poultry)", pairings: [
+    { flavor: "Lemon", note: "Brightens richness — a roast chicken essential." },
+    { flavor: "Rosemary", note: "Aromatic and piney, classic under-skin seasoning." },
+    { flavor: "Garlic", note: "Foundational savory note in marinades worldwide." },
+    { flavor: "Paprika", note: "Adds color and warm depth to rubs and roasts." },
+    { flavor: "Honey", note: "Sweetness balances savory notes in glazes." }
+  ]},
+  "pork": { category: "Protein (Meat)", pairings: [
+    { flavor: "Apple", note: "Sweetness balances pork's richness — a timeless pairing." },
+    { flavor: "Fennel", note: "Anise notes cut through fattiness in sausages and roasts." },
+    { flavor: "Mustard", note: "Sharp tang complements pork's mild sweetness." },
+    { flavor: "Sage", note: "Earthy herb pairs well in stuffings and roasts." },
+    { flavor: "Soy sauce", note: "Umami depth for glazes and marinades, as in char siu." }
+  ]},
+  "beef": { category: "Protein (Meat)", pairings: [
+    { flavor: "Black pepper", note: "Sharp heat enhances beef's savory depth, classic steak seasoning." },
+    { flavor: "Rosemary", note: "Piney aromatic that stands up to beef's richness." },
+    { flavor: "Red wine", note: "Tannins complement beef fat in braises and sauces." },
+    { flavor: "Horseradish", note: "Sharp bite cuts through richness, classic with roast beef." },
+    { flavor: "Mushroom", note: "Earthy umami deepens beef's savory character." }
+  ]},
+  "lamb": { category: "Protein (Meat)", pairings: [
+    { flavor: "Mint", note: "Traditional British pairing that cuts lamb's fattiness." },
+    { flavor: "Rosemary", note: "Resinous herb that complements lamb's rich flavor." },
+    { flavor: "Garlic", note: "Savory depth, often studded directly into roasts." },
+    { flavor: "Cumin", note: "Warm spice common in Middle Eastern lamb dishes." },
+    { flavor: "Yogurt", note: "Cooling tang balances richness, as in marinades." }
+  ]},
+  "shrimp": { category: "Protein (Shellfish)", pairings: [
+    { flavor: "Garlic", note: "Classic scampi pairing, savory and aromatic." },
+    { flavor: "Lime", note: "Brightens shrimp's sweetness in ceviche and tacos." },
+    { flavor: "Chili", note: "Heat plays well with shrimp's delicate sweetness." },
+    { flavor: "Cilantro", note: "Fresh herbal note common in Latin and Asian preparations." },
+    { flavor: "Coconut", note: "Tropical sweetness pairs beautifully in curries." }
+  ]},
+  "tofu": { category: "Protein (Plant)", pairings: [
+    { flavor: "Soy sauce", note: "Absorbs and carries umami depth, tofu's best friend." },
+    { flavor: "Ginger", note: "Adds warmth and cuts through tofu's neutrality." },
+    { flavor: "Sesame oil", note: "Nutty richness that gives tofu character." },
+    { flavor: "Chili", note: "Heat provides needed contrast to mild tofu." },
+    { flavor: "Scallion", note: "Fresh, sharp bite that brightens simple preparations." }
+  ]},
+  "mushroom": { category: "Vegetable", pairings: [
+    { flavor: "Thyme", note: "Earthy herb that deepens mushroom's umami." },
+    { flavor: "Garlic", note: "Savory backbone in sautés and sauces." },
+    { flavor: "Butter", note: "Rich medium that enhances mushroom's texture and flavor." },
+    { flavor: "White wine", note: "Acidity balances earthiness in sauces and risottos." },
+    { flavor: "Parmesan", note: "Salty umami reinforces mushroom's savory depth." }
+  ]},
+  "tomato": { category: "Vegetable", pairings: [
+    { flavor: "Basil", note: "The definitive pairing — caprese, marinara, and beyond." },
+    { flavor: "Garlic", note: "Savory foundation for nearly every tomato sauce." },
+    { flavor: "Olive oil", note: "Carries flavor and adds richness to fresh or cooked tomatoes." },
+    { flavor: "Balsamic vinegar", note: "Sweet acidity enhances tomato's natural sugars." },
+    { flavor: "Mozzarella", note: "Creamy contrast to tomato's acidity, classic in Italian cooking." }
+  ]},
+  "eggplant": { category: "Vegetable", pairings: [
+    { flavor: "Garlic", note: "Savory depth that penetrates eggplant's spongy texture." },
+    { flavor: "Tahini", note: "Nutty creaminess, essential in baba ganoush." },
+    { flavor: "Tomato", note: "Classic Mediterranean pairing, as in ratatouille or caponata." },
+    { flavor: "Cumin", note: "Warm spice that complements eggplant in Middle Eastern dishes." },
+    { flavor: "Mint", note: "Fresh contrast to eggplant's richness when fried or roasted." }
+  ]},
+  "carrot": { category: "Vegetable", pairings: [
+    { flavor: "Ginger", note: "Adds warmth and brightens natural sweetness, great in soups." },
+    { flavor: "Honey", note: "Enhances carrot's inherent sweetness in glazes." },
+    { flavor: "Cumin", note: "Earthy spice deepens flavor in roasted preparations." },
+    { flavor: "Orange", note: "Citrus brightens sweetness in salads and soups." },
+    { flavor: "Dill", note: "Fresh, slightly anise note that lifts cooked carrots." }
+  ]},
+  "potato": { category: "Vegetable", pairings: [
+    { flavor: "Rosemary", note: "Aromatic herb essential to roasted potatoes." },
+    { flavor: "Butter", note: "Rich, classic partner for mashed or boiled potatoes." },
+    { flavor: "Garlic", note: "Savory depth in nearly every potato preparation." },
+    { flavor: "Chives", note: "Fresh, mild onion note that lifts creamy dishes." },
+    { flavor: "Sour cream", note: "Tangy richness, the baked potato standard." }
+  ]},
+  "avocado": { category: "Fruit/Vegetable", pairings: [
+    { flavor: "Lime", note: "Cuts through richness, essential in guacamole." },
+    { flavor: "Cilantro", note: "Fresh herbal lift against avocado's creaminess." },
+    { flavor: "Chili", note: "Heat provides contrast to mild, buttery avocado." },
+    { flavor: "Tomato", note: "Acidity balances richness, classic in salads and guac." },
+    { flavor: "Sea salt", note: "Simple enhancement that draws out natural creaminess." }
+  ]},
+  "strawberry": { category: "Fruit", pairings: [
+    { flavor: "Basil", note: "Herbal lift adds unexpected complexity to desserts." },
+    { flavor: "Balsamic vinegar", note: "Sweet acidity intensifies strawberry's flavor." },
+    { flavor: "Vanilla", note: "Classic sweet pairing in desserts and drinks." },
+    { flavor: "Black pepper", note: "A pinch enhances sweetness with subtle heat." },
+    { flavor: "Mint", note: "Cooling freshness in fruit salads and desserts." }
+  ]},
+  "apple": { category: "Fruit", pairings: [
+    { flavor: "Cinnamon", note: "Quintessential fall pairing in pies and baked goods." },
+    { flavor: "Caramel", note: "Sweet, toasty match found in classic desserts." },
+    { flavor: "Cheddar", note: "Sharp, savory contrast to apple's sweetness." },
+    { flavor: "Walnut", note: "Nutty crunch complements apple in salads and desserts." },
+    { flavor: "Pork", note: "Sweetness balances pork's richness in savory dishes." }
+  ]},
+  "peach": { category: "Fruit", pairings: [
+    { flavor: "Basil", note: "Herbal note adds depth to peach's sweetness." },
+    { flavor: "Vanilla", note: "Rounds out peach in cobblers and desserts." },
+    { flavor: "Prosciutto", note: "Salty-savory contrast, classic Italian appetizer pairing." },
+    { flavor: "Honey", note: "Enhances natural sweetness in grilled or fresh preparations." },
+    { flavor: "Ginger", note: "Warm spice that brightens peach in preserves and desserts." }
+  ]},
+  "banana": { category: "Fruit", pairings: [
+    { flavor: "Chocolate", note: "Rich sweetness pairs beautifully, classic dessert combo." },
+    { flavor: "Peanut butter", note: "Nutty richness complements banana's creaminess." },
+    { flavor: "Cinnamon", note: "Warm spice enhances banana in baked goods." },
+    { flavor: "Caramel", note: "Sweet, toasty depth found in banana desserts." },
+    { flavor: "Rum", note: "Adds complexity in classic bananas foster preparations." }
+  ]},
+  "dark chocolate": { category: "Sweet/Confection", pairings: [
+    { flavor: "Orange", note: "Bitter-sweet contrast, a timeless dessert pairing." },
+    { flavor: "Sea salt", note: "Enhances chocolate's depth and cuts bitterness." },
+    { flavor: "Chili", note: "Heat adds complexity, as in Mexican-style chocolate." },
+    { flavor: "Raspberry", note: "Tart fruit balances chocolate's richness." },
+    { flavor: "Espresso", note: "Deepens chocolate's bitterness in mochas and desserts." }
+  ]},
+  "goat cheese": { category: "Dairy", pairings: [
+    { flavor: "Honey", note: "Sweetness balances goat cheese's tang beautifully." },
+    { flavor: "Beet", note: "Earthy sweetness complements tangy creaminess in salads." },
+    { flavor: "Walnut", note: "Nutty crunch adds texture contrast." },
+    { flavor: "Thyme", note: "Herbal note that complements the cheese's earthiness." },
+    { flavor: "Fig", note: "Sweet, jammy fruit balances sharp tang." }
+  ]},
+  "parmesan": { category: "Dairy", pairings: [
+    { flavor: "Black pepper", note: "Sharp heat enhances parmesan's salty umami." },
+    { flavor: "Basil", note: "Fresh herbal note lightens parmesan's richness." },
+    { flavor: "Balsamic vinegar", note: "Sweet acidity cuts through salty richness." },
+    { flavor: "Pear", note: "Sweet fruit balances sharp, salty cheese." },
+    { flavor: "Garlic", note: "Savory depth reinforces parmesan in sauces." }
+  ]},
+  "mozzarella": { category: "Dairy", pairings: [
+    { flavor: "Tomato", note: "Classic Italian combination, mild creaminess against acidity." },
+    { flavor: "Basil", note: "Herbal freshness completes the caprese trio." },
+    { flavor: "Olive oil", note: "Rich, fruity finish that enhances mild cheese." },
+    { flavor: "Balsamic vinegar", note: "Sweet-tart contrast for a simple caprese salad." },
+    { flavor: "Prosciutto", note: "Salty, savory pairing for antipasto boards." }
+  ]},
+  "yogurt": { category: "Dairy", pairings: [
+    { flavor: "Honey", note: "Sweetness balances yogurt's natural tang." },
+    { flavor: "Cucumber", note: "Cool, fresh combination as in tzatziki or raita." },
+    { flavor: "Mint", note: "Refreshing herb that lifts tangy creaminess." },
+    { flavor: "Berries", note: "Sweet-tart fruit pairs well for breakfast bowls." },
+    { flavor: "Cumin", note: "Earthy warmth balances tang in savory marinades." }
+  ]},
+  "rice": { category: "Grain", pairings: [
+    { flavor: "Coconut milk", note: "Rich sweetness, essential in Southeast Asian rice dishes." },
+    { flavor: "Cardamom", note: "Floral spice that perfumes basmati preparations." },
+    { flavor: "Soy sauce", note: "Umami depth for fried rice and savory bowls." },
+    { flavor: "Lime", note: "Brightens rice in Latin American and Asian dishes." },
+    { flavor: "Saffron", note: "Adds color and floral complexity, as in paella or biryani." }
+  ]},
+  "chickpeas": { category: "Legume", pairings: [
+    { flavor: "Cumin", note: "Earthy warmth foundational to hummus and stews." },
+    { flavor: "Lemon", note: "Brightens richness, essential in hummus." },
+    { flavor: "Tahini", note: "Nutty creaminess, classic hummus partner." },
+    { flavor: "Garlic", note: "Savory punch that rounds out earthy legumes." },
+    { flavor: "Smoked paprika", note: "Adds depth and color to roasted chickpeas." }
+  ]},
+  "black beans": { category: "Legume", pairings: [
+    { flavor: "Cumin", note: "Earthy spice foundational to Latin American bean dishes." },
+    { flavor: "Lime", note: "Acidity brightens beans' earthy richness." },
+    { flavor: "Cilantro", note: "Fresh herb that lifts hearty bean dishes." },
+    { flavor: "Chili", note: "Heat complements beans in soups and stews." },
+    { flavor: "Onion", note: "Savory sweetness rounds out earthy legumes." }
+  ]},
+  "coffee": { category: "Beverage/Flavor", pairings: [
+    { flavor: "Cardamom", note: "Floral warmth cuts bitterness, Middle Eastern classic." },
+    { flavor: "Chocolate", note: "Rich pairing found in mochas and desserts." },
+    { flavor: "Cinnamon", note: "Warm spice that rounds out coffee's bitterness." },
+    { flavor: "Vanilla", note: "Sweet, mellow note that softens bitterness." },
+    { flavor: "Orange", note: "Citrus brightness contrasts coffee's depth in some recipes." }
+  ]},
+  "honey": { category: "Sweetener", pairings: [
+    { flavor: "Lemon", note: "Sweet-tart balance, classic in teas and dressings." },
+    { flavor: "Thyme", note: "Herbal note pairs beautifully in glazes." },
+    { flavor: "Goat cheese", note: "Sweetness balances tangy, earthy cheese." },
+    { flavor: "Walnut", note: "Nutty richness complements honey's floral sweetness." },
+    { flavor: "Ginger", note: "Warm spice enhances honey in teas and marinades." }
+  ]},
+  "olive oil": { category: "Fat/Oil", pairings: [
+    { flavor: "Garlic", note: "Infuses beautifully, foundational Mediterranean pairing." },
+    { flavor: "Lemon", note: "Bright acidity balances richness in dressings." },
+    { flavor: "Rosemary", note: "Aromatic herb that perfumes infused oils." },
+    { flavor: "Tomato", note: "Enhances sweetness and richness in sauces and salads." },
+    { flavor: "Sea salt", note: "Simple enhancement that draws out fruity notes." }
+  ]},
+  "butter": { category: "Fat/Oil", pairings: [
+    { flavor: "Sage", note: "Earthy herb that infuses beautifully in brown butter." },
+    { flavor: "Garlic", note: "Savory richness, classic in pan sauces." },
+    { flavor: "Lemon", note: "Acidity cuts richness in beurre blanc and sauces." },
+    { flavor: "Honey", note: "Sweetness enhances butter in baked goods and glazes." },
+    { flavor: "Thyme", note: "Herbal note that deepens savory butter sauces." }
+  ]},
+
+  /* ===================== ITALIAN CUISINE ===================== */
+  "pancetta": { category: "Italian · Cured Pork", pairings: [
+    { flavor: "Black pepper", note: "Sharp bite cuts the fat, essential in pasta alla gricia." },
+    { flavor: "Pecorino", note: "Salty, sheep's-milk sharpness reinforces pancetta's savoriness." },
+    { flavor: "Onion", note: "Sweetness balances the cured meat's saltiness when rendered." },
+    { flavor: "Sage", note: "Earthy herb note that complements rendered pork fat." },
+    { flavor: "White wine", note: "Acidity lifts richness in pan sauces and braises." }
+  ]},
+  "guanciale": { category: "Italian · Cured Pork", pairings: [
+    { flavor: "Pecorino romano", note: "The traditional partner in carbonara and amatriciana." },
+    { flavor: "Black pepper", note: "Coarse pepper is non-negotiable alongside guanciale's fat." },
+    { flavor: "Tomato", note: "Acidity cuts richness, the base of amatriciana sauce." },
+    { flavor: "Chili flakes", note: "Adds heat that plays against guanciale's cured richness." },
+    { flavor: "Egg yolk", note: "Creates the silky emulsion at the heart of carbonara." }
+  ]},
+  "prosciutto": { category: "Italian · Cured Pork", pairings: [
+    { flavor: "Melon", note: "Classic antipasto pairing — sweetness against salt." },
+    { flavor: "Fig", note: "Jammy sweetness complements prosciutto's delicate saltiness." },
+    { flavor: "Mozzarella", note: "Mild creaminess lets the cured meat's flavor lead." },
+    { flavor: "Arugula", note: "Peppery bitterness cuts through richness, common on pizzas." },
+    { flavor: "Parmesan", note: "Salty umami reinforces the cured meat's depth." }
+  ]},
+  "pecorino": { category: "Italian · Cheese", pairings: [
+    { flavor: "Black pepper", note: "The defining pairing in cacio e pepe." },
+    { flavor: "Honey", note: "Sweetness balances the cheese's sharp, salty bite." },
+    { flavor: "Fava beans", note: "Traditional spring pairing in central Italy." },
+    { flavor: "Guanciale", note: "Salty, savory depth for classic Roman pastas." },
+    { flavor: "Pear", note: "Sweet fruit softens pecorino's sharpness on a cheese board." }
+  ]},
+  "burrata": { category: "Italian · Cheese", pairings: [
+    { flavor: "Tomato", note: "Ripe, sweet acidity against burrata's creamy interior." },
+    { flavor: "Basil", note: "Fresh herbal lift, classic caprese-style plating." },
+    { flavor: "Olive oil", note: "Good finishing oil drizzled over enhances richness." },
+    { flavor: "Prosciutto", note: "Salty cured meat wrapped alongside or draped over." },
+    { flavor: "Balsamic vinegar", note: "A reduction adds sweet-tart contrast to the cream." }
+  ]},
+  "ricotta": { category: "Italian · Cheese", pairings: [
+    { flavor: "Lemon zest", note: "Brightens ricotta's mild creaminess, common in fillings." },
+    { flavor: "Honey", note: "Sweetness pairs beautifully for a simple dessert." },
+    { flavor: "Nutmeg", note: "Warm spice traditional in ricotta-filled pasta." },
+    { flavor: "Spinach", note: "Earthy vegetable balance, classic ravioli filling." },
+    { flavor: "Black pepper", note: "Adds savory edge when used in pastas or gnocchi." }
+  ]},
+  "pine nuts": { category: "Italian · Nut", pairings: [
+    { flavor: "Basil", note: "Foundational to pesto's buttery, herbal balance." },
+    { flavor: "Raisins", note: "Sweet contrast common in Sicilian dishes like pasta con le sarde." },
+    { flavor: "Parmesan", note: "Nutty and salty notes reinforce each other in pesto." },
+    { flavor: "Spinach", note: "Toasted nuttiness lifts sautéed greens." },
+    { flavor: "Anchovy", note: "Umami depth balances pine nuts' sweetness in Sicilian cooking." }
+  ]},
+  "anchovy": { category: "Italian · Seafood", pairings: [
+    { flavor: "Garlic", note: "Melts into a savory base for pasta and sauces." },
+    { flavor: "Chili flakes", note: "Heat plays against anchovy's briny intensity." },
+    { flavor: "Lemon", note: "Acidity balances the fish's saltiness." },
+    { flavor: "Capers", note: "Briny-on-briny depth, common in puttanesca." },
+    { flavor: "Parsley", note: "Fresh herb lightens anchovy's pungency." }
+  ]},
+  "capers": { category: "Italian · Brined", pairings: [
+    { flavor: "Lemon", note: "Bright acidity matches capers' briny sharpness." },
+    { flavor: "Anchovy", note: "Salty depth reinforced in puttanesca and tapenade." },
+    { flavor: "Butter", note: "Rich base that tames capers' sharp bite, as in piccata." },
+    { flavor: "Olive oil", note: "Carries the brine's flavor through sauces and dressings." },
+    { flavor: "Parsley", note: "Fresh herb note that balances the briny punch." }
+  ]},
+  "porcini": { category: "Italian · Mushroom", pairings: [
+    { flavor: "Thyme", note: "Earthy herb deepens porcini's woodsy umami." },
+    { flavor: "Parmesan", note: "Salty richness reinforces porcini's savory depth." },
+    { flavor: "White wine", note: "Acidity balances the mushroom's earthiness in risotto." },
+    { flavor: "Butter", note: "Rich medium that carries porcini's aroma in sauces." },
+    { flavor: "Garlic", note: "Savory backbone in classic sautéed preparations." }
+  ]},
+  "san marzano tomato": { category: "Italian · Vegetable", pairings: [
+    { flavor: "Basil", note: "The essential partner for a classic Neapolitan sauce." },
+    { flavor: "Garlic", note: "Savory foundation that builds a simple, bright sauce." },
+    { flavor: "Olive oil", note: "Fruity richness that rounds out natural sweetness." },
+    { flavor: "Oregano", note: "Dried herb adds depth in long-simmered sauces." },
+    { flavor: "Parmesan", note: "Salty finish that balances sweet acidity." }
+  ]},
+  "balsamic vinegar": { category: "Italian · Condiment", pairings: [
+    { flavor: "Strawberry", note: "Sweet acidity intensifies fruit in desserts and salads." },
+    { flavor: "Parmesan", note: "A drizzle over shavings is a classic antipasto pairing." },
+    { flavor: "Arugula", note: "Sweet-tart glaze balances peppery greens." },
+    { flavor: "Tomato", note: "Enhances natural sweetness in caprese-style salads." },
+    { flavor: "Olive oil", note: "Emulsified together as the base of a simple vinaigrette." }
+  ]},
+  "oregano": { category: "Italian · Herb", pairings: [
+    { flavor: "Tomato", note: "Dried oregano is foundational to red sauces and pizza." },
+    { flavor: "Garlic", note: "Savory pairing that builds Mediterranean flavor bases." },
+    { flavor: "Feta", note: "Classic Greek-Italian border pairing in salads." },
+    { flavor: "Olive oil", note: "Infuses easily, common finishing touch on breads." },
+    { flavor: "Lemon", note: "Brightens oregano's slightly bitter, pungent edge." }
+  ]},
+  "sage": { category: "Italian · Herb", pairings: [
+    { flavor: "Butter", note: "Brown butter and sage is a classic pasta finish." },
+    { flavor: "Pumpkin", note: "Earthy sweetness balances sage's slight bitterness, as in ravioli." },
+    { flavor: "Pork", note: "Traditional pairing in stuffings and roasts." },
+    { flavor: "Parmesan", note: "Salty richness rounds out sage's resinous notes." },
+    { flavor: "Brown butter", note: "Nutty richness carries sage's aroma beautifully." }
+  ]},
+  "arborio rice": { category: "Italian · Grain", pairings: [
+    { flavor: "White wine", note: "Deglazes and adds acidity at the start of risotto." },
+    { flavor: "Parmesan", note: "Stirred in at the end for creamy richness." },
+    { flavor: "Saffron", note: "Classic in risotto alla Milanese for color and aroma." },
+    { flavor: "Butter", note: "Mantecatura — beaten in off heat for silky texture." },
+    { flavor: "Porcini", note: "Earthy depth for a rich mushroom risotto." }
+  ]},
+
+  /* ===================== CHILEAN CUISINE ===================== */
+  "merken": { category: "Chilean · Spice", pairings: [
+    { flavor: "Garlic", note: "Savory backbone that carries merkén's smoky heat." },
+    { flavor: "Lime", note: "Acidity brightens the smoked chili's deep, earthy notes." },
+    { flavor: "Olive oil", note: "Carries merkén's smokiness into marinades and dressings." },
+    { flavor: "Corn", note: "Sweetness balances the pepper's smoky intensity." },
+    { flavor: "Pork", note: "Rich meat stands up to merkén's bold, smoked profile." }
+  ]},
+  "choclo": { category: "Chilean · Vegetable (Corn)", pairings: [
+    { flavor: "Basil", note: "Sweet herbal note lifts choclo's natural sugar, common in pastel de choclo." },
+    { flavor: "Ground beef", note: "Savory filling balanced by choclo's sweet corn topping." },
+    { flavor: "Onion", note: "Sautéed sweetness deepens the corn's flavor base." },
+    { flavor: "Butter", note: "Rich medium that enhances corn's sweetness in humitas." },
+    { flavor: "Merkén", note: "Smoky heat contrasts choclo's natural sweetness." }
+  ]},
+  "palta": { category: "Chilean · Fruit (Avocado)", pairings: [
+    { flavor: "Lemon", note: "Chileans favor lemon over lime — brightens palta's richness." },
+    { flavor: "Salt", note: "Simple, classic preparation for palta on bread or with seafood." },
+    { flavor: "Mayonnaise", note: "Creamy pairing in the classic completo hot dog topping." },
+    { flavor: "Tomato", note: "Fresh acidity balances palta's buttery texture, as in chapaleles or salads." },
+    { flavor: "Cilantro", note: "Fresh herbal lift common in palta-based dips." }
+  ]},
+  "pebre": { category: "Chilean · Condiment", pairings: [
+    { flavor: "Cilantro", note: "The dominant herb in this classic Chilean table condiment." },
+    { flavor: "Tomato", note: "Fresh base that carries the condiment's acidity." },
+    { flavor: "Onion", note: "Sharp bite that balances tomato's sweetness in the mix." },
+    { flavor: "Ají verde", note: "Fresh green chili gives pebre its characteristic heat." },
+    { flavor: "Lemon", note: "Acidity ties the condiment together, served with bread or grilled meats." }
+  ]},
+  "aji verde": { category: "Chilean · Chili", pairings: [
+    { flavor: "Cilantro", note: "Fresh, grassy pairing central to Chilean green sauces." },
+    { flavor: "Lemon", note: "Acidity balances the chili's sharp, green heat." },
+    { flavor: "Garlic", note: "Savory depth that rounds out the pepper's bite." },
+    { flavor: "Onion", note: "Sweetness tempers the chili's heat in pebre and salsas." },
+    { flavor: "Tomato", note: "Mellow acidity that carries the chili through condiments." }
+  ]},
+  "congrio": { category: "Chilean · Seafood (Conger Eel)", pairings: [
+    { flavor: "White wine", note: "Classic pairing in caldillo de congrio, Chile's celebrated fish stew." },
+    { flavor: "Garlic", note: "Savory depth foundational to Chilean seafood broths." },
+    { flavor: "Tomato", note: "Acidity and sweetness build the base of caldillo." },
+    { flavor: "Cilantro", note: "Fresh herb finish common in coastal Chilean fish stews." },
+    { flavor: "Potato", note: "Hearty starch that rounds out the stew alongside the fish." }
+  ]},
+  "machas": { category: "Chilean · Shellfish (Razor Clams)", pairings: [
+    { flavor: "Parmesan", note: "Machas a la parmesana is a beloved Chilean preparation." },
+    { flavor: "Lemon", note: "Brightens the clam's briny sweetness." },
+    { flavor: "White wine", note: "Acidity complements the shellfish's delicate flavor." },
+    { flavor: "Butter", note: "Rich base for baked or grilled preparations." },
+    { flavor: "Garlic", note: "Savory foundation for sautéed machas dishes." }
+  ]},
+  "pisco": { category: "Chilean · Spirit", pairings: [
+    { flavor: "Lime", note: "Essential in a pisco sour's tart, aromatic balance." },
+    { flavor: "Egg white", note: "Adds silky foam texture to the classic pisco sour." },
+    { flavor: "Ginger", note: "Warm spice that adds complexity to pisco cocktails." },
+    { flavor: "Mint", note: "Fresh herbal note in modern pisco cocktail variations." },
+    { flavor: "Simple syrup", note: "Sweetness balances pisco's grape-brandy intensity." }
+  ]},
+  "merluza": { category: "Chilean · Seafood (Hake)", pairings: [
+    { flavor: "Lemon", note: "Brightens the mild, flaky fish's delicate flavor." },
+    { flavor: "Garlic", note: "Savory depth common in Chilean fried or fritas preparations." },
+    { flavor: "Flour", note: "Light coating for frying, as in merluza frita." },
+    { flavor: "Tomato", note: "Base for simple stewed or baked preparations." },
+    { flavor: "Parsley", note: "Fresh herb that lifts the mild fish without overpowering." }
+  ]},
+  "chorizo chileno": { category: "Chilean · Sausage", pairings: [
+    { flavor: "Onion", note: "Sweet, caramelized partner for choripán, Chile's classic sandwich." },
+    { flavor: "Pebre", note: "Bright, herbal condiment that cuts the sausage's richness." },
+    { flavor: "Bread", note: "Essential vessel for choripán, grilled and split." },
+    { flavor: "Mustard", note: "Sharp tang that balances the sausage's fattiness." },
+    { flavor: "Merkén", note: "Smoky heat that reinforces the sausage's grilled flavor." }
+  ]}
+};
+
+// Build a flat searchable index (also handles common aliases)
+const ALIASES = {
+  "cheese": "mozzarella",
+  "beef steak": "beef",
+  "steak": "beef",
+  "chocolate": "dark chocolate",
+  "fish": "cod",
+  "beans": "black beans",
+  "spice": "cinnamon",
+  "avocado chileno": "palta",
+  "corn": "choclo",
+  "sweet corn": "choclo",
+  "conger eel": "congrio",
+  "conger": "congrio",
+  "razor clams": "machas",
+  "hake": "merluza",
+  "chilean sausage": "chorizo chileno",
+  "chilean chorizo": "chorizo chileno",
+  "green chili sauce": "aji verde",
+  "aji": "aji verde",
+  "smoked chili": "merken",
+  "smoked pepper": "merken",
+  "arborio": "arborio rice",
+  "risotto rice": "arborio rice",
+  "san marzano": "san marzano tomato",
+  "plum tomato": "san marzano tomato",
+  "cured pork cheek": "guanciale",
+  "pork cheek": "guanciale",
+  "cured pork loin": "pancetta",
+  "italian bacon": "pancetta"
+};
+
+const allKeys = Object.keys(DB);
+
+function normalize(str) {
+  return str.trim().toLowerCase();
+}
+
+function findMatches(query) {
+  const q = normalize(query);
+  if (!q) return [];
+  // direct alias resolution takes priority but we still show suggestions from all keys
+  const starts = allKeys.filter(k => k.startsWith(q));
+  const contains = allKeys.filter(k => !k.startsWith(q) && k.includes(q));
+  return [...starts, ...contains].slice(0, 8);
+}
+
+function resolveKey(query) {
+  const q = normalize(query);
+  if (DB[q]) return q;
+  if (ALIASES[q]) return ALIASES[q];
+  // fuzzy: exact contains match on a single result
+  const matches = allKeys.filter(k => k.includes(q));
+  if (matches.length === 1) return matches[0];
+  return null;
+}
+
+const searchInput = document.getElementById('searchInput');
+const autocompleteList = document.getElementById('autocompleteList');
+const resultsArea = document.getElementById('resultsArea');
+const hint = document.getElementById('hint');
+
+let activeIndex = -1;
+let currentMatches = [];
+
+function highlightMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return text.slice(0, idx) + '<mark>' + text.slice(idx, idx + query.length) + '</mark>' + text.slice(idx + query.length);
+}
+
+function renderAutocomplete(query) {
+  currentMatches = findMatches(query);
+  activeIndex = -1;
+
+  if (currentMatches.length === 0) {
+    autocompleteList.classList.remove('open');
+    autocompleteList.innerHTML = '';
+    return;
+  }
+
+  autocompleteList.innerHTML = currentMatches.map((key, i) => {
+    const item = DB[key];
+    return `<div class="ac-item" data-key="${key}" data-idx="${i}">
+      <span>${highlightMatch(key, query)}</span>
+      <span class="tag">${item.category}</span>
+    </div>`;
+  }).join('');
+
+  autocompleteList.classList.add('open');
+
+  autocompleteList.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.getAttribute('data-key');
+      searchInput.value = key;
+      autocompleteList.classList.remove('open');
+      showResults(key);
+    });
+  });
+}
+
+function updateActiveHighlight() {
+  autocompleteList.querySelectorAll('.ac-item').forEach((el, i) => {
+    el.classList.toggle('active', i === activeIndex);
+  });
+}
+
+// panelStack holds the ordered list of DB keys currently displayed.
+// panelStack[0] is always the "root" search result; anything after it
+// was opened by clicking a pairing card, and remembers which key it was
+// opened from (openedFrom) so we can show a small breadcrumb-style note.
+let panelStack = []; // [{ key, openedFrom }]
+
+function startNewSearch(key) {
+  panelStack = [{ key, openedFrom: null }];
+  renderPanelStack();
+}
+
+function expandPairing(fromKey, clickedFlavorName) {
+  const targetKey = resolveKey(clickedFlavorName);
+  if (!targetKey) return; // not expandable, shouldn't happen if UI is correct
+
+  // If this key is already open somewhere in the stack, just scroll to it
+  // instead of adding a duplicate panel.
+  const existingIndex = panelStack.findIndex(p => p.key === targetKey);
+  if (existingIndex !== -1) {
+    renderPanelStack(existingIndex);
+    return;
+  }
+
+  panelStack.push({ key: targetKey, openedFrom: fromKey });
+  renderPanelStack(panelStack.length - 1);
+}
+
+function closePanel(index) {
+  // Closing a panel also closes anything opened from it (and so on),
+  // since those child panels no longer have a parent to relate back to.
+  const keyBeingClosed = panelStack[index].key;
+  panelStack = panelStack.filter((p, i) => {
+    if (i < index) return true;
+    if (i === index) return false;
+    // drop any panel (at any depth) that traces back to the closed one
+    return !isDescendantOf(p, keyBeingClosed, index);
+  });
+  renderPanelStack();
+}
+
+function isDescendantOf(panel, ancestorKey, ancestorIndex) {
+  // Walk up the openedFrom chain within the current stack to see if
+  // this panel eventually traces back to ancestorKey.
+  let current = panel;
+  const visited = new Set();
+  while (current && current.openedFrom) {
+    if (visited.has(current.key)) break; // safety against cycles
+    visited.add(current.key);
+    if (current.openedFrom === ancestorKey) return true;
+    current = panelStack.find(p => p.key === current.openedFrom);
+  }
+  return false;
+}
+
+function chevronIconSVG() {
+  return `<svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`;
+}
+
+function linkIconSVG() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8"/></svg>`;
+}
+
+function renderPanelStack(scrollToIndex) {
+  if (panelStack.length === 0) {
+    resultsArea.innerHTML = '';
+    return;
+  }
+
+  hint.style.display = 'none';
+
+  const panelsHTML = panelStack.map((panelInfo, index) => {
+    const { key, openedFrom } = panelInfo;
+    const entry = DB[key];
+
+    if (!entry) {
+      return `<div class="result-panel"><div class="no-match">No matches found for "${key}".</div></div>`;
+    }
+
+    const cardsHTML = entry.pairings.map(p => {
+      const targetKey = resolveKey(p.flavor);
+      const isExpandable = !!targetKey;
+      const isOpen = isExpandable && panelStack.some(pp => pp.key === targetKey);
+      const classes = ['pairing-card'];
+      if (isExpandable) classes.push('expandable');
+      if (isOpen) classes.push('is-open');
+
+      return `
+        <div class="${classes.join(' ')}" ${isExpandable ? `data-expand-from="${key}" data-expand-flavor="${p.flavor.replace(/"/g, '&quot;')}"` : ''}>
+          <div class="flavor-name-row">
+            <div class="flavor-name">${p.flavor}</div>
+            ${isExpandable ? chevronIconSVG() : ''}
+          </div>
+          <div class="flavor-note">${p.note}</div>
+        </div>`;
+    }).join('');
+
+    const linkNoteHTML = openedFrom
+      ? `<div class="link-note">${linkIconSVG()} Paired from ${openedFrom.charAt(0).toUpperCase() + openedFrom.slice(1)}</div>`
+      : '';
+
+    return `
+      <div class="result-panel ${openedFrom ? 'linked' : ''}" data-panel-index="${index}">
+        ${linkNoteHTML}
+        <div class="result-header">
+          <h2>${key.charAt(0).toUpperCase() + key.slice(1)}</h2>
+          <span class="category-tag">${entry.category}</span>
+          ${index > 0 ? `<button class="close-panel-btn" data-close-index="${index}" title="Close">&times;</button>` : ''}
+        </div>
+        <div class="pairing-grid">
+          ${cardsHTML}
+        </div>
+      </div>`;
+  }).join('');
+
+  resultsArea.innerHTML = `<div class="results">${panelsHTML}</div>`;
+
+  // Wire up expandable pairing cards
+  resultsArea.querySelectorAll('.pairing-card.expandable').forEach(card => {
+    card.addEventListener('click', () => {
+      const fromKey = card.getAttribute('data-expand-from');
+      const flavorName = card.getAttribute('data-expand-flavor');
+      expandPairing(fromKey, flavorName);
+    });
+  });
+
+  // Wire up close buttons
+  resultsArea.querySelectorAll('.close-panel-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.getAttribute('data-close-index'), 10);
+      closePanel(idx);
+    });
+  });
+
+  if (typeof scrollToIndex === 'number') {
+    requestAnimationFrame(() => {
+      const el = resultsArea.querySelector(`[data-panel-index="${scrollToIndex}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+}
+
+// Kept for compatibility with the search/autocomplete code below —
+// starting a fresh search always resets the panel stack.
+function showResults(key) {
+  if (!key) {
+    resultsArea.innerHTML = `<div class="no-match">No matches found for "${searchInput.value}". Try a different ingredient, or check the spelling.</div>`;
+    hint.style.display = 'none';
+    return;
+  }
+  startNewSearch(key);
+}
+
+searchInput.addEventListener('input', (e) => {
+  const val = e.target.value;
+  if (!val.trim()) {
+    resultsArea.innerHTML = '';
+    autocompleteList.classList.remove('open');
+    hint.style.display = 'block';
+    return;
+  }
+  renderAutocomplete(val);
+
+  // If it's an exact/alias match, show results live too
+  const key = resolveKey(val);
+  if (key) {
+    showResults(key);
+  } else {
+    resultsArea.innerHTML = '';
+  }
+});
+
+searchInput.addEventListener('keydown', (e) => {
+  if (!autocompleteList.classList.contains('open')) {
+    if (e.key === 'Enter') {
+      const key = resolveKey(searchInput.value);
+      showResults(key);
+    }
+    return;
+  }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    activeIndex = Math.min(activeIndex + 1, currentMatches.length - 1);
+    updateActiveHighlight();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    activeIndex = Math.max(activeIndex - 1, 0);
+    updateActiveHighlight();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (activeIndex >= 0 && currentMatches[activeIndex]) {
+      const key = currentMatches[activeIndex];
+      searchInput.value = key;
+      autocompleteList.classList.remove('open');
+      showResults(key);
+    } else {
+      const key = resolveKey(searchInput.value);
+      autocompleteList.classList.remove('open');
+      showResults(key);
+    }
+  } else if (e.key === 'Escape') {
+    autocompleteList.classList.remove('open');
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-box')) {
+    autocompleteList.classList.remove('open');
+  }
+});
+</script>
+
+</body>
+</html>
