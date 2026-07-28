@@ -197,6 +197,7 @@ button.small{padding:4px 9px;font-size:10.5px;}
   text-transform:uppercase;
 }
 .tag.bye{color:var(--stamp);}
+.tag.antibye{color:var(--loss);}
 .tag.dq{color:var(--loss);}
 .icon-btn{
   background:none;border:none;color:var(--ink-soft);cursor:pointer;
@@ -223,6 +224,7 @@ button.small{padding:4px 9px;font-size:10.5px;}
   border:1px solid var(--rule);background:transparent;color:var(--ink-soft);
   text-transform:none;
 }
+/* Discrete, uniform hover color for pairing buttons instead of red */
 .result-btn:hover{
   background:var(--rule);
   color:var(--paper);
@@ -235,6 +237,7 @@ button.small{padding:4px 9px;font-size:10.5px;}
 .gw-input{width:38px;text-align:center;padding:4px;font-size:12px;}
 .gw-group{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
 .bye-note{font-family:var(--mono);font-size:11px;color:var(--stamp);font-style:italic;}
+.antibye-note{font-family:var(--mono);font-size:11px;color:var(--loss);font-style:italic;}
 .locked-note{font-family:var(--mono);font-size:10px;color:var(--win);}
 
 /* ===== Timer Component ===== */
@@ -431,6 +434,13 @@ th.sortable:hover{color:var(--ink);}
               <input type="number" id="cfg-pts-loss" value="0">
             </div>
           </div>
+          <div class="field">
+            <label>Percentage Floor (tiebreaker minimum)</label>
+            <input type="number" id="cfg-floor" value="0" step="0.01">
+          </div>
+          <div class="dim mono" style="font-size:10.5px;">
+            Standard rule: no player's or opponent's win % ever counts as less than this floor when computing tiebreakers, even if their actual win rate is lower. Prevents a single very bad record from unfairly cratering everyone who played them.
+          </div>
         </div>
       </div>
       <div class="btn-row">
@@ -441,6 +451,12 @@ th.sortable:hover{color:var(--ink);}
 
     <div class="section-label">How Standings & Data Are Calculated</div>
     <div class="card mono" style="font-size:12px;line-height:1.8;">
+      Players are ranked in this order:
+      <ol style="margin:8px 0 12px 18px;padding:0;">
+        <li><b>Match Points</b> — <span id="scoring-rule-text">3 per win, 1 per draw, 0 per loss</span> (a bye counts as a win).</li>
+        <li><b>Match Win % (MW%)</b> — match points ÷ (rounds played × max points), floored at the configured minimum.</li>
+        <li><b>Opponents' Match Win % (OMW%)</b> — average of each opponent's MW% (each individually floored first).</li>
+      </ol>
       <b>Metric Score Components:</b>
       <ul style="margin:4px 0 8px 18px;padding:0;">
         <li><b>MP:</b> Match Points / Match Wins calculation</li>
@@ -500,7 +516,6 @@ th.sortable:hover{color:var(--ink);}
       <h2 id="pairings-round-title">Round —</h2>
       <div class="btn-row" style="margin-top:0;">
         <select id="round-jump" class="pairing-table-select"></select>
-        <button type="button" class="secondary" id="download-pairings-pdf">⬇ PDF Pairings</button>
         <button type="button" class="secondary" id="reshuffle-pairings-btn" title="Reshuffle round pairings while preserving standard high-vs-high matchup rules">
           <svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Reshuffle Round
         </button>
@@ -680,7 +695,7 @@ const DEFAULT_STATE = {
     ptsWin:3,
     ptsDraw:1,
     ptsLoss:0,
-    floor:33,          // percent
+    floor:0,          // percent
     drawRuling:"retro" // "retro" = draw awards ptsDraw to both; "strict" = official ruling, draw = loss for both
   },
   players:[],           // {id,name,deck,dq:bool}
@@ -783,6 +798,7 @@ function fillConfigForm(){
   document.getElementById("cfg-pts-win").value = state.config.ptsWin;
   document.getElementById("cfg-pts-draw").value = state.config.ptsDraw;
   document.getElementById("cfg-pts-loss").value = state.config.ptsLoss;
+  document.getElementById("cfg-floor").value = state.config.floor;
   updateDrawRulingUI();
 }
 
@@ -814,6 +830,8 @@ document.getElementById("apply-config").addEventListener("click", ()=>{
   state.config.ptsWin = Number(document.getElementById("cfg-pts-win").value)||0;
   state.config.ptsDraw = Number(document.getElementById("cfg-pts-draw").value)||0;
   state.config.ptsLoss = Number(document.getElementById("cfg-pts-loss").value)||0;
+  state.config.floor = Number(document.getElementById("cfg-floor").value);
+  if(isNaN(state.config.floor)) state.config.floor = 0;
   saveState();
   renderAll();
   toast("Configuration applied.");
@@ -832,17 +850,67 @@ document.getElementById("reset-all").addEventListener("click", async ()=>{
 /* ============================================================
    PLAYERS
    ============================================================ */
-function addPlayer(name, deck){
+async function addPlayer(name, deck){
   name = name.trim();
   if(!name){ toast("Enter a player name first."); return; }
-  if(state.rounds.length>0){ toast("Cannot add players once pairings have been generated."); return; }
-  state.players.push({id:uid(), name, deck:(deck||"").trim(), dq:false});
+
+  if(state.rounds.length===0){
+    state.players.push({id:uid(), name, deck:(deck||"").trim(), dq:false});
+    saveState();
+    renderPlayers();
+    renderHeaderMeta();
+    return;
+  }
+
+  // Joining mid-tournament. The current (latest) round must be fully decided
+  // first — otherwise it's ambiguous whether the joining player missed that
+  // round or arrived in time to play it, which would make the antibye
+  // placement below incorrect either way.
+  const latest = state.rounds[state.rounds.length-1];
+  const currentRoundDone = latest.matches.every(m=>m.bye || m.antibye || (m.result && m.result.decided));
+  if(!currentRoundDone){
+    toast("Finish reporting all results for Round "+latest.number+" before adding a new player — otherwise it's unclear whether they missed that round.");
+    return;
+  }
+
+  const missedCount = state.rounds.length;
+  const ok = await confirmDialog(
+    "Round"+(missedCount===1?"":"s")+" 1"+(missedCount>1?"–"+missedCount:"")+" "+(missedCount===1?"has":"have")+" already been played. "+
+    name+" will be credited with an \"antibye\" for "+(missedCount===1?"that round":"each of those rounds")+" — a retroactive loss against the field's weakest performer at the time, the mirror of how a bye credits a win against the strongest. "+
+    name+" will be eligible for a normal pairing starting with Round "+(missedCount+1)+". Continue?"
+  );
+  if(!ok) return;
+
+  const newPlayer = {id:uid(), name, deck:(deck||"").trim(), dq:false};
+  state.players.push(newPlayer);
+
+  // Insert one antibye match into every already-played round for the new
+  // player. The result object is a plain, ordinary decided loss (0-2 against
+  // a null "opponent") — deliberately shaped just like a bye's decided win,
+  // so every existing scoring function (playerRecord, matchPointsFor,
+  // gameRecordFor, roundsPlayedFor) reads it correctly as a loss with zero
+  // additional branching. Only the tiebreaker-averaging functions
+  // (opponentsOf / opponentMWPValuesFor / the OOMW% loop) need to know about
+  // the antibye flag specifically, since those are the only places a bye
+  // needed special credit-recognition too.
+  for(let ri=0; ri<state.rounds.length; ri++){
+    state.rounds[ri].matches.push({
+      id: uid(), table:0, p1:newPlayer.id, p2:null, antibye:true,
+      result:{decided:true, gamesP1:0, gamesP2:2, draws:false}
+    });
+  }
+
   saveState();
   renderPlayers();
+  renderPairings();
+  renderCurrentRoundPanel();
+  renderStandings();
+  renderCustomStandings();
   renderHeaderMeta();
+  toast(name+" added, with an antibye recorded for "+(missedCount===1?"Round 1":("Rounds 1–"+missedCount))+".");
 }
-document.getElementById("add-player-btn").addEventListener("click", ()=>{
-  addPlayer(document.getElementById("new-player-name").value, document.getElementById("new-player-deck").value);
+document.getElementById("add-player-btn").addEventListener("click", async ()=>{
+  await addPlayer(document.getElementById("new-player-name").value, document.getElementById("new-player-deck").value);
   document.getElementById("new-player-name").value="";
   document.getElementById("new-player-deck").value="";
   document.getElementById("new-player-name").focus();
@@ -974,7 +1042,7 @@ function opponentsOf(id, uptoRoundIdx = state.rounds.length - 1){
   for(let ri=0; ri<=uptoRoundIdx && ri<state.rounds.length; ri++){
     const r = state.rounds[ri];
     r.matches.forEach(m=>{
-      if(m.bye) return;
+      if(m.bye || m.antibye) return;
       if(m.p1===id) opps.push(m.p2);
       else if(m.p2===id) opps.push(m.p1);
     });
@@ -1127,7 +1195,7 @@ document.getElementById("next-round-btn").addEventListener("click", async ()=>{
   if(state.rounds.length>0){
     const idx = state.rounds.length-1;
     const r = state.rounds[idx];
-    const allDone = r.matches.every(m=>m.bye || (m.result && m.result.decided));
+    const allDone = r.matches.every(m=>m.bye || m.antibye || (m.result && m.result.decided));
     if(!allDone){ toast("All matches in the current round need results before starting the next round."); return; }
     const total = calcTotalRounds();
     if(state.rounds.length>=total){
@@ -1211,6 +1279,16 @@ function renderPairings(showRoundNumber){
         <td class="match-table-no">—</td>
         <td>${escapeHtml(playerName(m.p1))} <span class="tag bye">Bye</span></td>
         <td class="center bye-note">auto-win</td>
+        <td class="dim">—</td>
+        <td></td>
+      </tr>`;
+      return;
+    }
+    if(m.antibye){
+      html += `<tr class="match-row">
+        <td class="match-table-no">—</td>
+        <td>${escapeHtml(playerName(m.p1))} <span class="tag antibye">Antibye</span></td>
+        <td class="center antibye-note" title="Retroactive placement: this player joined the tournament after this round and is credited with a loss against the field's weakest performer at the time.">auto-loss (joined late)</td>
         <td class="dim">—</td>
         <td></td>
       </tr>`;
@@ -1436,62 +1514,122 @@ function rawMWP(id, uptoRoundIdx = state.rounds.length - 1){
   return (pts/(rp*maxPerRound))*100;
 }
 function flooredMWP(id, uptoRoundIdx = state.rounds.length - 1){
-  return Math.max(rawMWP(id, uptoRoundIdx), (state.config.floor || 0));
+  return Math.max(rawMWP(id, uptoRoundIdx), state.config.floor);
+}
+
+// The single highest flooredMWP among all active players as of a given round.
+// Used to credit a bye round: a bye is treated as a win against the field's
+// best-performing player (rather than being excluded from tiebreaker math
+// entirely), since a bye is functionally the strongest possible result.
+// This is non-circular: flooredMWP/rawMWP only depend on a player's own
+// match points and rounds played, never on OMW or bye credit, so this can be
+// computed freely without any risk of a player's bye value feeding back into
+// the very number being used to calculate it.
+function bestFieldMWP(uptoRoundIdx = state.rounds.length - 1){
+  const ap = activePlayers();
+  if(ap.length===0) return state.config.floor;
+  let best = -Infinity;
+  ap.forEach(p=>{
+    const v = flooredMWP(p.id, uptoRoundIdx);
+    if(v>best) best = v;
+  });
+  return best===-Infinity ? state.config.floor : best;
+}
+
+// Mirror of bestFieldMWP(): the single LOWEST flooredMWP among all active
+// players as of a given round. Used to credit an "antibye" round — the
+// retroactive placement given to a player who joins mid-tournament for every
+// completed round they missed — as a loss against the field's weakest
+// performer, mirroring how a real bye credits a win against the strongest.
+// Same non-circularity guarantee as bestFieldMWP: flooredMWP/rawMWP never
+// depend on OMW or antibye credit, only on a player's own record.
+function worstFieldMWP(uptoRoundIdx = state.rounds.length - 1){
+  const ap = activePlayers();
+  if(ap.length===0) return state.config.floor;
+  let worst = Infinity;
+  ap.forEach(p=>{
+    const v = flooredMWP(p.id, uptoRoundIdx);
+    if(v<worst) worst = v;
+  });
+  return worst===Infinity ? state.config.floor : worst;
+}
+
+// Returns the list of floored MW% VALUES to average for a player's OMW%/OOMW%
+// calculation — one per round played, with a bye round contributing
+// bestFieldMWP() instead of being skipped, and an antibye round (the
+// retroactive placement for a player who joined mid-tournament) contributing
+// worstFieldMWP() instead of being skipped. This replaces raw opponentsOf()
+// wherever tiebreaker math is being built, so byes always help standing and
+// antibyes always hurt it, rather than either being neutral/excluded.
+function opponentMWPValuesFor(id, uptoRoundIdx = state.rounds.length - 1){
+  const values=[];
+  const best = bestFieldMWP(uptoRoundIdx);
+  const worst = worstFieldMWP(uptoRoundIdx);
+  for(let ri=0; ri<=uptoRoundIdx && ri<state.rounds.length; ri++){
+    const r = state.rounds[ri];
+    r.matches.forEach(m=>{
+      if(m.bye && m.p1===id){ values.push(best); return; }
+      if(m.antibye && m.p1===id){ values.push(worst); return; }
+      if(m.p1===id) values.push(flooredMWP(m.p2, uptoRoundIdx));
+      else if(m.p2===id) values.push(flooredMWP(m.p1, uptoRoundIdx));
+    });
+  }
+  return values;
 }
 
 function OMW(id, uptoRoundIdx = state.rounds.length - 1){
-  const opps = opponentsOf(id, uptoRoundIdx);
-  if(opps.length===0) return (state.config.floor || 0);
-  const sum = opps.reduce((acc,oid)=>acc+flooredMWP(oid, uptoRoundIdx),0);
-  return sum/opps.length;
+  const values = opponentMWPValuesFor(id, uptoRoundIdx);
+  if(values.length===0) return state.config.floor;
+  const sum = values.reduce((acc,v)=>acc+v,0);
+  return sum/values.length;
 }
 
 function calculateCustomMetric(id, uptoRoundIdx = state.rounds.length - 1) {
-  const rec = playerRecord(id, uptoRoundIdx);
-  const aaVal = rec.w * 3;
-  const AA = String(aaVal).padStart(2, '0');
+  // AA must always reflect actual Match Points as configured under Event Setup
+  // (win/draw/loss point values AND the retro-vs-strict draw ruling toggle).
+  // The previous version hardcoded `wins * 3` here, which silently ignored
+  // draws entirely and ignored custom point values or the strict-draw-ruling
+  // toggle — under "strict" rules (draw = loss for both) it would still give
+  // draw credit, and under custom point settings it would just be wrong.
+  const aaVal = matchPointsFor(id, uptoRoundIdx);
+  const AA = String(Math.min(99, Math.max(0, aaVal))).padStart(2, '0');
 
-  const opps = opponentsOf(id, uptoRoundIdx);
-
-  function getRawMW(pid) {
-    let w = 0, mp = 0;
-    for(let ri=0; ri<=uptoRoundIdx && ri<state.rounds.length; ri++){
-      const r = state.rounds[ri];
-      r.matches.forEach(m => {
-        if (!m.result || !m.result.decided) return;
-        if (m.p1 === pid || m.p2 === pid) {
-          mp++;
-          if (m.bye && m.p1 === pid) { w++; }
-          else {
-            const isP1 = m.p1 === pid;
-            const won = isP1 ? m.result.gamesP1 > m.result.gamesP2 : m.result.gamesP2 > m.result.gamesP1;
-            if (won) w++;
-          }
-        }
-      });
-    }
-    return mp > 0 ? (w / mp) : 0;
-  }
-
+  // OMW% (BBB): average floored MW% across every round played, with a bye
+  // round contributing bestFieldMWP() instead of being skipped — this is what
+  // makes a bye count as a win against the tournament's strongest opponent
+  // rather than a neutral, excluded round.
+  const ownOppValues = opponentMWPValuesFor(id, uptoRoundIdx);
   let omwPct = 0;
-  if (opps.length > 0) {
-    const sum = opps.reduce((acc, q) => acc + getRawMW(q), 0);
-    omwPct = (sum / opps.length) * 100;
+  if (ownOppValues.length > 0) {
+    omwPct = ownOppValues.reduce((acc,v)=>acc+v,0) / ownOppValues.length;
   }
   const bbbVal = Math.round(omwPct * 10);
   const BBB = String(Math.min(999, Math.max(0, bbbVal))).padStart(3, '0');
 
-  function getOMWP(qid) {
-    const qOpps = opponentsOf(qid, uptoRoundIdx);
-    if (qOpps.length === 0) return 0;
-    const sum = qOpps.reduce((acc, r) => acc + getRawMW(r), 0);
-    return sum / qOpps.length;
-  }
-
+  // OOMW% (CCC): average, across this player's own rounds, of each round's
+  // "opponent's opponents" MW% — where a bye round contributes bestFieldMWP()
+  // directly (there is no real opponent to look up opponents-of-opponents for,
+  // so the bye's own credited value is used as-is), and a real round contributes
+  // that real opponent's own OMW% (their opponentMWPValuesFor average).
   let oomwPct = 0;
-  if (opps.length > 0) {
-    const sum = opps.reduce((acc, q) => acc + getOMWP(q), 0);
-    oomwPct = (sum / opps.length) * 100;
+  {
+    const oomwContributions = [];
+    for(let ri=0; ri<=uptoRoundIdx && ri<state.rounds.length; ri++){
+      const r = state.rounds[ri];
+      r.matches.forEach(m=>{
+        if(m.bye && m.p1===id){ oomwContributions.push(bestFieldMWP(uptoRoundIdx)); return; }
+        if(m.antibye && m.p1===id){ oomwContributions.push(worstFieldMWP(uptoRoundIdx)); return; }
+        let oppId = null;
+        if(m.p1===id) oppId = m.p2;
+        else if(m.p2===id) oppId = m.p1;
+        if(oppId===null) return;
+        const oppValues = opponentMWPValuesFor(oppId, uptoRoundIdx);
+        oomwContributions.push(oppValues.length>0 ? (oppValues.reduce((a,v)=>a+v,0)/oppValues.length) : state.config.floor);
+      });
+    }
+    if(oomwContributions.length>0){
+      oomwPct = oomwContributions.reduce((a,v)=>a+v,0)/oomwContributions.length;
+    }
   }
   const cccVal = Math.round(oomwPct * 10);
   const CCC = String(Math.min(999, Math.max(0, cccVal))).padStart(3, '0');
@@ -1590,7 +1728,7 @@ function renderStandings(){
   const uptoIdx = (selectedDataRound && selectedDataRound > 0) ? (selectedDataRound - 1) : (state.rounds.length - 1);
   let rows = buildStandingsRows(uptoIdx);
 
-  const anyResults = state.rounds.some(r=>r.matches.some(m=>m.bye || (m.result&&m.result.decided)));
+  const anyResults = state.rounds.some(r=>r.matches.some(m=>m.bye || m.antibye || (m.result&&m.result.decided)));
   if(!anyResults || state.players.length===0){
     tbody.innerHTML=""; empty.style.display="block";
     return;
@@ -1611,7 +1749,7 @@ function renderStandings(){
     const tr = document.createElement("tr");
     tr.classList.add("clickable-row");
     if(r.dq) tr.style.opacity="0.4";
-    const mwFlagged = state.config.floor && r.mwpRaw < state.config.floor;
+    const mwFlagged = r.mwpRaw < state.config.floor;
     tr.innerHTML = `
       <td class="rank-cell center">${r.dq?'DQ':(i+1)}</td>
       <td style="font-weight:600;">${escapeHtml(r.name)}</td>
@@ -1722,7 +1860,7 @@ function renderCustomStandings() {
   const empty = document.getElementById("custom-standings-empty");
   const asOf = document.getElementById("custom-standings-asof");
 
-  const anyResults = state.rounds.some(r => r.matches.some(m => m.bye || (m.result && m.result.decided)));
+  const anyResults = state.rounds.some(r => r.matches.some(m => m.bye || m.antibye || (m.result && m.result.decided)));
   if (!anyResults || state.players.length === 0) {
     tbody.innerHTML = "";
     empty.style.display = "block";
@@ -1765,45 +1903,7 @@ function renderPrintSheet(type = "standard"){
   const tbodyEl = document.getElementById("print-standings-tbody");
   const footerEl = document.getElementById("print-footer-text");
 
-  if(type === "pairings") {
-    const roundNum = viewedRoundNumber || (state.rounds.length ? state.rounds[state.rounds.length-1].number : 0);
-    const round = state.rounds.find(r => r.number === roundNum);
-    
-    titleEl.textContent = `KONFORGA — PAIRINGS REPORT (ROUND ${roundNum})`;
-    theadEl.innerHTML = `
-      <tr>
-        <th style="width:50px;">Table</th>
-        <th>Player 1</th>
-        <th style="text-align:center;">vs</th>
-        <th>Player 2</th>
-      </tr>
-    `;
-    tbodyEl.innerHTML = "";
-    if(round) {
-      round.matches.forEach(m => {
-        const tr = document.createElement("tr");
-        if(m.bye) {
-          tr.innerHTML = `
-            <td>—</td>
-            <td>${escapeHtml(playerName(m.p1))} (Bye)</td>
-            <td style="text-align:center;">—</td>
-            <td>—</td>
-          `;
-        } else {
-          tr.innerHTML = `
-            <td>${m.table}</td>
-            <td>${escapeHtml(playerName(m.p1))}</td>
-            <td style="text-align:center;">VS</td>
-            <td>${escapeHtml(playerName(m.p2))}</td>
-          `;
-        }
-        tbodyEl.appendChild(tr);
-      });
-    }
-    footerEl.innerHTML = `
-      <span class="print-signature">Judge signature: ____________________________</span>
-    `;
-  } else if(type === "custom") {
+  if(type === "custom") {
     titleEl.textContent = "KONFORGA — STANDINGS REPORT";
     theadEl.innerHTML = `
       <tr>
@@ -1853,30 +1953,22 @@ function renderPrintSheet(type = "standard"){
       tbodyEl.appendChild(tr);
     });
     footerEl.innerHTML = `
-      Ranking order: Match Points → OMW% → MW%.
+      Ranking order: Match Points → OMW% → MW%. Percentages floored at ${state.config.floor}% per event configuration.
       <span class="print-signature">Judge signature: ____________________________</span>
     `;
   }
 }
 
 function triggerPrint(type){
-  if(type === "pairings") {
-    if(state.rounds.length === 0) {
-      toast("No active pairings to print.");
-      return;
-    }
-  } else {
-    const anyResults = state.rounds.some(r=>r.matches.some(m=>m.bye || (m.result&&m.result.decided)));
-    if(!anyResults || state.players.length===0){
-      toast("No data to export yet — report at least one result first.");
-      return;
-    }
+  const anyResults = state.rounds.some(r=>r.matches.some(m=>m.bye || m.antibye || (m.result&&m.result.decided)));
+  if(!anyResults || state.players.length===0){
+    toast("No data to export yet — report at least one result first.");
+    return;
   }
   renderPrintSheet(type);
   setTimeout(()=>window.print(), 50);
 }
 
-document.getElementById("download-pairings-pdf").addEventListener("click", ()=>triggerPrint("pairings"));
 document.getElementById("download-standings-pdf").addEventListener("click", ()=>triggerPrint("standard"));
 document.getElementById("download-custom-standings-pdf").addEventListener("click", ()=>triggerPrint("custom"));
 
