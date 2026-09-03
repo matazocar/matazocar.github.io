@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Incidence — graph &amp; hypergraph editor</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    /* ---- design tokens ---- */
+    --paper:      #f4f2ec;
+    --paper-dim:  #ebe8e0;
+    --ink:        #1c1e24;
+    --ink-soft:   #4a4d57;
+    --ink-faint:  #8b8d96;
+    --rule:       #d8d4c8;
+    --rule-soft:  #e3dfd2;
+
+    --edge-ink:   #2b4c9e;   /* ordinary edges / graph accent */
+    --edge-ink-soft: #6c85c4;
+    --hyper-ink:  #b5502e;   /* hyperedges / hypergraph accent */
+    --hyper-fill: rgba(181, 80, 46, 0.14);
+    --hyper-fill-strong: rgba(181, 80, 46, 0.22);
+
+    --node-fill:  #fbfaf6;
+    --node-stroke:#1c1e24;
+    --select:     #1c1e24;
+    --select-glow: rgba(43, 76, 158, 0.28);
+
+    --danger:     #9e3b3b;
+
+    --font-ui:    'Fivo','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --font-math:  'STIX Two Text','Georgia','Cambria',serif;
+    --font-mono:  'Berkeley Mono','JetBrains Mono','SF Mono',ui-monospace,'Menlo',monospace;
+
+    --panel-w: 396px;
+    --radius-s: 3px;
+    --radius-m: 6px;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-ui);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* App shell                                                         */
+  /* ---------------------------------------------------------------- */
+  #app{
+    display:grid;
+    grid-template-rows: auto 1fr;
+    height:100%;
+    width:100%;
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    gap:20px;
+    padding:0 18px;
+    height:52px;
+    border-bottom:1px solid var(--rule);
+    background:var(--paper);
+    z-index:20;
+    flex-shrink:0;
+  }
+  .brand{
+    display:flex; align-items:baseline; gap:8px;
+    font-family:var(--font-math);
+    font-size:19px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .brand .mark{
+    font-style:italic;
+    color:var(--edge-ink);
+  }
+  .brand .sub{
+    font-family:var(--font-ui);
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:0.09em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    padding-left:8px;
+    border-left:1px solid var(--rule);
+  }
+
+  .mode-switch{
+    display:flex;
+    border:1px solid var(--ink);
+    border-radius:999px;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .mode-switch button{
+    appearance:none; border:none; background:transparent;
+    font-family:var(--font-ui);
+    font-size:12px; font-weight:600; letter-spacing:0.02em;
+    padding:7px 16px;
+    cursor:pointer;
+    color:var(--ink-soft);
+    display:flex; align-items:center; gap:7px;
+    transition:background .12s ease, color .12s ease;
+  }
+  .mode-switch button .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:currentColor;
+    opacity:.5;
+  }
+  .mode-switch button.active{
+    background:var(--ink); color:var(--paper);
+  }
+  .mode-switch button.active .dot{ opacity:1; }
+  .mode-switch button:not(.active):hover{ background:var(--paper-dim); }
+
+  .toolbar{
+    display:flex; align-items:center; gap:4px;
+    flex:1;
+    min-width:0;
+  }
+  .tool-group{
+    display:flex; align-items:center; gap:2px;
+    padding:0 10px;
+    border-right:1px solid var(--rule-soft);
+    height:30px;
+  }
+  .tool-group:last-child{ border-right:none; }
+
+  button.tool{
+    appearance:none; border:1px solid transparent; background:transparent;
+    color:var(--ink-soft);
+    width:30px; height:30px;
+    border-radius:var(--radius-s);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    position:relative;
+    transition:background .1s ease, color .1s ease, border-color .1s ease;
+  }
+  button.tool svg{ width:16px; height:16px; }
+  button.tool:hover{ background:var(--paper-dim); color:var(--ink); }
+  button.tool.active{
+    background:var(--ink); color:var(--paper); border-color:var(--ink);
+  }
+  button.tool:disabled{ opacity:.32; cursor:default; }
+  button.tool:disabled:hover{ background:transparent; color:var(--ink-soft); }
+
+  button.text-btn{
+    appearance:none; border:1px solid var(--rule); background:var(--paper);
+    color:var(--ink); font-family:var(--font-ui); font-size:12px; font-weight:600;
+    padding:6px 13px; border-radius:var(--radius-s); cursor:pointer;
+    display:flex; align-items:center; gap:7px;
+    transition:background .1s ease, border-color .1s ease;
+    white-space:nowrap;
+  }
+  button.text-btn:hover{ background:var(--paper-dim); border-color:var(--ink-faint); }
+  button.text-btn.primary{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  button.text-btn.primary:hover{ background:#2e313a; }
+  button.text-btn svg{ width:13px; height:13px; }
+
+  .header-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+  /* tooltip */
+  [data-tip]{ position:relative; }
+  [data-tip]::after{
+    content:attr(data-tip);
+    position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--paper);
+    font-size:10.5px; font-weight:500; letter-spacing:0.01em;
+    padding:4px 8px; border-radius:4px;
+    white-space:nowrap; pointer-events:none;
+    opacity:0; visibility:hidden;
+    transition:opacity .12s ease .35s;
+    z-index:50;
+  }
+  [data-tip]:hover::after{ opacity:1; visibility:visible; }
+
+  /* ---------------------------------------------------------------- */
+  /* Workspace: canvas + side panel                                    */
+  /* ---------------------------------------------------------------- */
+  #workspace{
+    display:grid;
+    grid-template-columns: 1fr var(--panel-w);
+    min-height:0;
+    position:relative;
+  }
+
+  #canvas-wrap{
+    position:relative;
+    min-width:0;
+    background:
+      linear-gradient(var(--rule-soft) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--rule-soft) 1px, transparent 1px) 0 0/28px 28px,
+      var(--paper);
+    overflow:hidden;
+  }
+  #gcanvas{ position:absolute; inset:0; display:block; touch-action:none; }
+
+  .canvas-hint{
+    position:absolute; left:20px; bottom:18px;
+    font-size:11.5px; color:var(--ink-faint);
+    font-family:var(--font-ui);
+    display:flex; align-items:center; gap:8px;
+    background:rgba(244,242,236,.88);
+    padding:6px 11px; border-radius:5px;
+    pointer-events:none;
+    border:1px solid var(--rule-soft);
+    max-width:min(560px, calc(100vw - 440px));
+  }
+  .canvas-hint b{ color:var(--ink-soft); font-weight:600; }
+  .canvas-hint kbd{
+    font-family:var(--font-mono); font-size:10px;
+    background:var(--paper-dim); border:1px solid var(--rule);
+    padding:1px 5px; border-radius:3px; color:var(--ink-soft);
+  }
+
+  .empty-state{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    pointer-events:none;
+    color:var(--ink-faint);
+    text-align:center;
+    gap:10px;
+    padding:0 40px;
+  }
+  .empty-state .glyph{
+    font-family:var(--font-math); font-style:italic; font-size:44px;
+    color:var(--rule);
+    line-height:1;
+  }
+  .empty-state .msg{ font-size:13.5px; max-width:320px; line-height:1.55; }
+  .empty-state .msg b{ color:var(--ink-soft); }
+
+  .zoom-controls{
+    position:absolute; right:20px; bottom:18px;
+    display:flex; align-items:center;
+    background:var(--paper); border:1px solid var(--rule);
+    border-radius:6px; overflow:hidden;
+  }
+  .zoom-controls button{
+    appearance:none; border:none; background:transparent; cursor:pointer;
+    width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+    color:var(--ink-soft); font-size:15px;
+  }
+  .zoom-controls button:hover{ background:var(--paper-dim); }
+  .zoom-controls .zval{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);
+    padding:0 9px; border-left:1px solid var(--rule-soft); border-right:1px solid var(--rule-soft);
+    min-width:44px; text-align:center;
+  }
+
+  /* ---- side panel: tabs + code / inspector ---- */
+  #panel{
+    border-left:1px solid var(--rule);
+    background:var(--paper);
+    display:flex; flex-direction:column;
+    min-height:0;
+  }
+  .panel-tabs{
+    display:flex;
+    border-bottom:1px solid var(--rule);
+    flex-shrink:0;
+  }
+  .panel-tab{
+    flex:1;
+    appearance:none; border:none; background:transparent;
+    font-family:var(--font-ui); font-size:11.5px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase;
+    padding:12px 0 11px;
+    color:var(--ink-faint);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .panel-tab .count{
+    font-family:var(--font-mono); font-weight:500;
+    background:var(--paper-dim); color:var(--ink-soft);
+    font-size:9.5px; padding:1px 5px; border-radius:8px;
+    letter-spacing:0;
+  }
+  .panel-tab.active{ color:var(--ink); border-bottom-color:var(--ink); }
+  .panel-tab:hover:not(.active){ color:var(--ink-soft); }
+
+  .panel-body{ flex:1; min-height:0; overflow:hidden; display:none; flex-direction:column; }
+  .panel-body.active{ display:flex; }
+
+  /* ---- code panel ---- */
+  #code-toolbar{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px;
+    border-bottom:1px solid var(--rule-soft);
+    flex-shrink:0;
+    flex-wrap:wrap;
+  }
+  #code-toolbar .spacer{ flex:1; }
+  .chip{
+    font-family:var(--font-mono); font-size:10.5px;
+    color:var(--ink-soft);
+    background:var(--paper-dim);
+    border:1px solid var(--rule);
+    padding:4px 9px; border-radius:5px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:5px;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .chip:hover{ border-color:var(--ink-faint); }
+  .chip.on{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .chip input[type=checkbox]{ display:none; }
+
+  #code-scroll{
+    flex:1; min-height:0; overflow:auto;
+    background:#fbfaf6;
+  }
+  #code-out{
+    margin:0; padding:16px 16px 60px;
+    font-family:var(--font-mono);
+    font-size:11.6px;
+    line-height:1.68;
+    white-space:pre;
+    tab-size:2;
+    color:#2a2d33;
+  }
+  #code-out .kw{ color:#8a3f8f; }
+  #code-out .cmd{ color:#2b4c9e; }
+  #code-out .brace{ color:#8b8d96; }
+  #code-out .str{ color:#3f7d4f; }
+  #code-out .num{ color:#b5502e; }
+  #code-out .cmt{ color:#9a9689; font-style:italic; }
+
+  /* ---- inspector / structure panel ---- */
+  #inspector{
+    flex:1; min-height:0; overflow-y:auto;
+    padding:16px;
+  }
+  .insp-section{ margin-bottom:22px; }
+  .insp-section:last-child{ margin-bottom:8px; }
+  .insp-label{
+    font-size:10.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--ink-faint);
+    margin-bottom:9px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .insp-empty{
+    font-size:12px; color:var(--ink-faint); font-style:italic;
+    padding:10px 0;
+  }
+
+  .field-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .field-row label{ font-size:11.5px; color:var(--ink-soft); width:78px; flex-shrink:0; }
+  .field-row input[type=text], .field-row input[type=number]{
+    flex:1; min-width:0;
+    font-family:var(--font-mono); font-size:12px;
+    padding:6px 9px;
+    border:1px solid var(--rule); border-radius:4px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field-row input[type=text]:focus, .field-row input[type=number]:focus{
+    outline:none; border-color:var(--edge-ink);
+  }
+  .field-row select{
+    flex:1; font-family:var(--font-ui); font-size:12px;
+    padding:6px 8px; border:1px solid var(--rule); border-radius:4px;
+    background:var(--paper); color:var(--ink);
+  }
+  .swatches{ display:flex; gap:6px; flex:1; }
+  .swatch{
+    width:22px; height:22px; border-radius:50%;
+    cursor:pointer;
+    border:2px solid transparent;
+    position:relative;
+    flex-shrink:0;
+  }
+  .swatch.selected{ border-color:var(--ink); }
+  .swatch.selected::after{
+    content:''; position:absolute; inset:-4px; border:1px solid var(--ink); border-radius:50%;
+  }
+
+  .seg-control{ display:flex; flex:1; border:1px solid var(--rule); border-radius:4px; overflow:hidden; }
+  .seg-control button{
+    flex:1; appearance:none; border:none; background:var(--paper);
+    font-family:var(--font-ui); font-size:11px; font-weight:600;
+    padding:6px 4px; cursor:pointer; color:var(--ink-soft);
+    border-right:1px solid var(--rule);
+  }
+  .seg-control button:last-child{ border-right:none; }
+  .seg-control button.active{ background:var(--ink); color:var(--paper); }
+
+  .entity-list{ display:flex; flex-direction:column; gap:5px; }
+  .entity-row{
+    display:flex; align-items:center; gap:9px;
+    padding:7px 9px;
+    border:1px solid var(--rule-soft);
+    border-radius:5px;
+    cursor:pointer;
+    background:var(--paper);
+    transition:border-color .1s ease, background .1s ease;
+  }
+  .entity-row:hover{ border-color:var(--ink-faint); }
+  .entity-row.selected{ border-color:var(--ink); background:var(--paper-dim); }
+  .entity-swatch{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1.5px solid var(--ink); }
+  .entity-swatch.hyper{ border-radius:4px; }
+  .entity-label{ font-family:var(--font-math); font-size:12.5px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entity-meta{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); flex-shrink:0; }
+  .entity-del{
+    appearance:none; border:none; background:transparent; cursor:pointer;
+    color:var(--ink-faint); width:18px; height:18px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; border-radius:3px;
+  }
+  .entity-del:hover{ background:var(--danger); color:var(--paper); }
+  .entity-del svg{ width:11px; height:11px; }
+
+  .stat-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  }
+  .stat-box{
+    border:1px solid var(--rule-soft); border-radius:5px; padding:9px 11px;
+    background:var(--paper);
+  }
+  .stat-num{ font-family:var(--font-math); font-size:20px; font-weight:600; line-height:1; }
+  .stat-name{ font-size:10px; color:var(--ink-faint); margin-top:4px; letter-spacing:0.02em; }
+
+  /* delete / danger button */
+  .danger-btn{
+    width:100%;
+    appearance:none; border:1px solid var(--rule); background:var(--paper);
+    color:var(--danger); font-family:var(--font-ui); font-size:11.5px; font-weight:600;
+    padding:8px; border-radius:5px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .danger-btn:hover{ background:var(--danger); color:var(--paper); border-color:var(--danger); }
+  .danger-btn svg{ width:12px; height:12px; }
+
+  /* modal (import / clear confirm) */
+  .modal-veil{
+    position:fixed; inset:0; background:rgba(28,30,36,.42);
+    display:none; align-items:center; justify-content:center; z-index:100;
+  }
+  .modal-veil.open{ display:flex; }
+  .modal{
+    background:var(--paper); border-radius:8px; border:1px solid var(--rule);
+    width:420px; max-width:90vw;
+    box-shadow:0 18px 48px rgba(28,30,36,.22);
+    padding:22px;
+  }
+  .modal h3{ margin:0 0 8px; font-family:var(--font-math); font-size:17px; font-weight:600; }
+  .modal p{ margin:0 0 16px; font-size:12.5px; color:var(--ink-soft); line-height:1.55; }
+  .modal textarea{
+    width:100%; height:140px; font-family:var(--font-mono); font-size:11px;
+    border:1px solid var(--rule); border-radius:5px; padding:10px; resize:vertical;
+    background:var(--paper-dim); color:var(--ink);
+  }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--ink); color:var(--paper);
+    font-size:12px; font-weight:500;
+    padding:9px 16px; border-radius:6px;
+    opacity:0; pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+    z-index:200;
+    display:flex; align-items:center; gap:8px;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:var(--rule); border-radius:5px; border:2px solid var(--paper); }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--ink-faint); }
+
+  @media (max-width: 880px){
+    :root{ --panel-w: 340px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="brand">
+    <span class="mark">I</span>ncidence
+    <span class="sub">graph &amp; hypergraph → TikZ</span>
+  </div>
+
+  <div class="mode-switch" id="modeSwitch">
+    <button class="active" data-mode="graph"><span class="dot"></span>Graph</button>
+    <button data-mode="hyper"><span class="dot"></span>Hypergraph</button>
+  </div>
+
+  <div class="toolbar">
+    <div class="tool-group">
+      <button class="tool active" id="toolSelect" data-tip="Select / move — V">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3l14 8-6 2-2 6-6-16z"/></svg>
+      </button>
+      <button class="tool" id="toolNode" data-tip="Place vertex — N">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7"/></svg>
+      </button>
+      <button class="tool" id="toolEdge" data-tip="Draw edge — E">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="5" r="2.4"/><path d="M7 17.5L17 6.5"/></svg>
+      </button>
+      <button class="tool" id="toolHyper" data-tip="Lasso hyperedge — H">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9c0-3 3.5-5 8-5s8 2 8 5-3.5 6-8 6-8-3-8-6z"/><circle cx="9" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+
+    <div class="tool-group">
+      <button class="tool" id="toolDirected" data-tip="Toggle directed edges">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h13"/><path d="M13 7l6 5-6 5"/></svg>
+      </button>
+      <button class="tool" id="toolCurved" data-tip="Toggle curved edges">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18C8 6 16 6 20 18"/></svg>
+      </button>
+    </div>
+
+    <div class="tool-group">
+      <button class="tool" id="toolUndo" data-tip="Undo — ⌘Z">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7L3 11l4 4"/><path d="M3 11h11a6 6 0 010 12h-2"/></svg>
+      </button>
+      <button class="tool" id="toolRedo" data-tip="Redo — ⌘⇧Z">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 7l4 4-4 4"/><path d="M21 11H10a6 6 0 000 12h2"/></svg>
+      </button>
+    </div>
+
+    <div class="tool-group" style="border-right:none;">
+      <button class="tool" id="toolAutoLayout" data-tip="Auto-arrange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.3"/><circle cx="18" cy="6" r="2.3"/><circle cx="12" cy="18" r="2.3"/><path d="M7.6 7.2L11 16.3M16.4 7.2L13 16.3M8.3 6h7.4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <button class="text-btn" id="btnImport">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      Import
+    </button>
+    <button class="text-btn" id="btnExportJson">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V5m0 0l-4 4m4-4l4 4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      Save .json
+    </button>
+    <button class="text-btn primary" id="btnExportTex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/></svg>
+      Export .tex
+    </button>
+  </div>
+</header>
+
+<div id="workspace">
+  <div id="canvas-wrap">
+    <canvas id="gcanvas"></canvas>
+
+    <div class="empty-state" id="emptyState">
+      <div class="glyph">G = (V, E)</div>
+      <div class="msg">Click <b>Vertex</b>, then click the canvas to place points. Switch to <b>Edge</b> and drag between two vertices to connect them. TikZ code builds itself on the right, live.</div>
+    </div>
+
+    <div class="canvas-hint" id="canvasHint">
+      <span><b>N</b> vertex · <b>E</b> edge · <b>H</b> hyperedge lasso · <kbd>Del</kbd> remove selection</span>
+    </div>
+
+    <div class="zoom-controls">
+      <button id="zoomOut">−</button>
+      <div class="zval" id="zoomVal">100%</div>
+      <button id="zoomIn">+</button>
+      <button id="zoomFit" data-tip="Fit to view" style="border-left:1px solid var(--rule); font-size:11px;">⤢</button>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="code">TikZ source</button>
+      <button class="panel-tab" data-tab="structure">Structure <span class="count" id="structCount">0</span></button>
+    </div>
+
+    <div class="panel-body active" id="tab-code">
+      <div id="code-toolbar">
+        <label class="chip" id="chipStandalone"><input type="checkbox" checked><span>standalone doc</span></label>
+        <label class="chip" id="chipMatrix"><input type="checkbox"><span>node coords in units</span></label>
+        <div class="spacer"></div>
+        <button class="text-btn" id="btnCopyCode" style="padding:5px 11px; font-size:11px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 011-1h11"/></svg>
+          Copy
+        </button>
+      </div>
+      <div id="code-scroll"><pre id="code-out"></pre></div>
+    </div>
+
+    <div class="panel-body" id="tab-structure">
+      <div id="inspector"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="modal-veil" id="importVeil">
+  <div class="modal">
+    <h3>Import graph JSON</h3>
+    <p>Paste a JSON export from this tool (or build one by hand — see structure below). This replaces the current canvas.</p>
+    <textarea id="importText" placeholder='{"mode":"graph","nodes":[...],"edges":[...],"hyperedges":[...]}'></textarea>
+    <div class="modal-actions">
+      <button class="text-btn" id="importCancel">Cancel</button>
+      <button class="text-btn primary" id="importConfirm">Replace canvas</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-veil" id="clearVeil">
+  <div class="modal">
+    <h3>Clear canvas?</h3>
+    <p>This removes every vertex, edge, and hyperedge. This can't be undone once you navigate away, though ⌘Z will work immediately after.</p>
+    <div class="modal-actions">
+      <button class="text-btn" id="clearCancel">Cancel</button>
+      <button class="text-btn primary" id="clearConfirm" style="background:var(--danger); border-color:var(--danger);">Clear everything</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   INCIDENCE — graph & hypergraph → TikZ
+   Single-file offline tool. No external deps, no network calls.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   Constants & palettes
+   --------------------------------------------------------------------- */
+const NODE_COLORS = [
+  { key:'ink',    hex:'#1c1e24' },
+  { key:'edge',   hex:'#2b4c9e' },
+  { key:'hyper',  hex:'#b5502e' },
+  { key:'green',  hex:'#3f7d4f' },
+  { key:'plum',   hex:'#7c4a8f' },
+];
+const HYPEREDGE_COLORS = [
+  { key:'hyper',  hex:'#b5502e' },
+  { key:'edge',   hex:'#2b4c9e' },
+  { key:'green',  hex:'#3f7d4f' },
+  { key:'plum',   hex:'#7c4a8f' },
+  { key:'gold',   hex:'#a3831f' },
+];
+
+const UNIT_PX = 60;           // canvas pixels representing 1 tikz unit at zoom=1
+const NODE_R  = 15;           // node draw radius in px (screen, unzoomed)
+const HULL_PAD_UNITS = 0.5;   // default hyperedge padding, in tikz units — a real,
+                               // user-facing style parameter rather than a pixel artifact
+const GRID_SNAP = 0;          // 0 = free placement; can be set >0 for snapping later
+
+const MAX_HISTORY = 80;
+
+/* ---------------------------------------------------------------------
+   Application state
+   --------------------------------------------------------------------- */
+const state = {
+  mode: 'graph',              // 'graph' | 'hyper'
+  tool: 'select',             // 'select' | 'node' | 'edge' | 'hyper'
+  directed: false,
+  curvedDefault: false,
+
+  nodes: [],                  // {id, label, x, y (tikz units), shape, color}
+  edges: [],                  // {id, from, to, directed, curved, color, style:'solid'|'dashed'}
+  hyperedges: [],             // {id, members:[nodeId...], color, label}
+
+  selection: { type:null, id:null },  // currently selected single entity
+  lassoIds: [],                // nodes gathered while actively lassoing a hyperedge
+
+  nextNodeNum: 1,
+  nextEdgeNum: 1,
+  nextHyperNum: 1,
+
+  camera: { x:0, y:0, zoom:1 },  // pans/zooms in *screen px*, independent of tikz units
+
+  drag: null,                  // active drag/gesture info, see startDrag()
+  hoverNodeId: null,
+
+  history: [],
+  future: [],
+};
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+/* ---------------------------------------------------------------------
+   Geometry helpers (validated standalone before embedding — see notes)
+   --------------------------------------------------------------------- */
+
+// tikz-unit <-> screen-px conversion, through the camera transform.
+// World space = tikz units, always y-up. Screen space = canvas px, y-down.
+function worldToScreen(wx, wy){
+  return {
+    x: state.camera.x + wx * UNIT_PX * state.camera.zoom,
+    y: state.camera.y - wy * UNIT_PX * state.camera.zoom, // flip y
+  };
+}
+function screenToWorld(sx, sy){
+  return {
+    x: (sx - state.camera.x) / (UNIT_PX * state.camera.zoom),
+    y: -(sy - state.camera.y) / (UNIT_PX * state.camera.zoom),
+  };
+}
+
+function dist(a, b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function nodeById(id){ return state.nodes.find(n => n.id === id); }
+function edgeById(id){ return state.edges.find(e => e.id === id); }
+function hyperById(id){ return state.hyperedges.find(h => h.id === id); }
+
+function cross2(o,a,b){ return (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x); }
+
+function convexHull(points){
+  // Andrew's monotone chain. points: [{x,y}, ...] in ANY space (world or screen,
+  // caller's choice — this function is purely combinatorial/affine).
+  const pts = [...points].sort((a,b)=> a.x-b.x || a.y-b.y);
+  if (pts.length <= 2) return pts;
+  const lower = [];
+  for (const p of pts){
+    while (lower.length>=2 && cross2(lower[lower.length-2],lower[lower.length-1],p)<=0) lower.pop();
+    lower.push(p);
+  }
+  const upper = [];
+  for (let i=pts.length-1;i>=0;i--){
+    const p = pts[i];
+    while (upper.length>=2 && cross2(upper[upper.length-2],upper[upper.length-1],p)<=0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop(); upper.pop();
+  return lower.concat(upper);
+}
+
+function polygonSignedArea(pts){
+  let a = 0;
+  for (let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length]; a += p.x*q.y - q.x*p.y; }
+  return a/2;
+}
+
+// Outward miter-offset of a convex polygon's vertices by distance r (in whatever
+// units `pts` are given — world units when building for TikZ, screen px when
+// building for the live canvas preview at the current zoom). This is the shared
+// geometry both the canvas renderer and the TikZ generator draw from, so the
+// two outputs can never visually diverge.
+// Outward offset of a convex polygon's boundary by distance r, expressed as
+// TWO vertices per original edge (that edge's own offset start and end,
+// each pushed outward by exactly r along that edge's own normal).
+//
+// This deliberately avoids computing a single "miter" vertex per original
+// corner (this function's first version did that, and away from any single
+// bad corner it worked — but at a genuinely acute hull angle, as happens
+// with a hyperedge over several CONSECUTIVE points on a roughly circular
+// layout, the two adjacent edge normals point close to opposite directions.
+// The miter length needed to keep both offset edges exactly r away blows up
+// as the angle sharpens; clamping that blowup to a fixed multiple still left
+// the corner point visibly spiking out past the rest of the shape — the
+// "little pieces of line" artifact. Since every consumer of this list already
+// rounds corners of ANY angle correctly (verified separately), there's no
+// need to pre-compute a single corner point at all: emitting the two
+// straight-edge endpoints and letting the corner-rounding step join them is
+// both simpler and can't spike, at any angle, without a clamp to get wrong.)
+function offsetHullVertices(hull, r){
+  let pts = [...hull];
+  if (polygonSignedArea(pts) < 0) pts = pts.reverse();  // normalize to CCW
+  const n = pts.length;
+  const out = [];
+  function edgeNormal(a,b){
+    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+    return { x: dy/len, y: -dx/len };
+  }
+  for (let i=0;i<n;i++){
+    const a = pts[i], b = pts[(i+1)%n];
+    const nrm = edgeNormal(a,b);
+    out.push({ x: a.x + nrm.x*r, y: a.y + nrm.y*r });
+    out.push({ x: b.x + nrm.x*r, y: b.y + nrm.y*r });
+  }
+  return out;
+}
+
+function fmtNum(n){
+  // Round to 2 decimals for clean TikZ coordinates, strip trailing zeros
+  // (3.30 -> 3.3, 3.00 -> 3), and never emit "-0".
+  // Verified against 0, -0, integers, and floating rounding noise before use.
+  if (Object.is(n, -0)) n = 0;
+  let s = (Math.round(n * 100) / 100).toFixed(2);
+  s = s.replace(/0+$/, '').replace(/\.$/, '');
+  if (s === '' || s === '-') s = '0';
+  return s;
+}
+
+/* ---------------------------------------------------------------------
+   History (undo/redo) — snapshot-based. The graphs this tool targets are
+   small (dozens of entities, not thousands), so full-state snapshots are
+   simpler and more robust than an operation-diff log, at negligible cost.
+   --------------------------------------------------------------------- */
+function snapshot(){
+  return JSON.stringify({
+    mode: state.mode,
+    nodes: state.nodes,
+    edges: state.edges,
+    hyperedges: state.hyperedges,
+    nextNodeNum: state.nextNodeNum,
+    nextEdgeNum: state.nextEdgeNum,
+    nextHyperNum: state.nextHyperNum,
+  });
+}
+function restoreSnapshot(json){
+  const s = JSON.parse(json);
+  state.mode = s.mode;
+  state.nodes = s.nodes;
+  state.edges = s.edges;
+  state.hyperedges = s.hyperedges;
+  state.nextNodeNum = s.nextNodeNum;
+  state.nextEdgeNum = s.nextEdgeNum;
+  state.nextHyperNum = s.nextHyperNum;
+  state.selection = { type:null, id:null };
+  state.lassoIds = [];
+}
+let pendingSnapshot = null;
+function pushHistory(){
+  // call BEFORE a mutation, to capture the pre-mutation state
+  pendingSnapshot = snapshot();
+}
+function commitHistory(){
+  // call AFTER a mutation completes, only if something actually changed
+  if (pendingSnapshot === null) return;
+  const after = snapshot();
+  if (after === pendingSnapshot) { pendingSnapshot = null; return; } // no-op, skip
+  state.history.push(pendingSnapshot);
+  if (state.history.length > MAX_HISTORY) state.history.shift();
+  state.future = [];
+  pendingSnapshot = null;
+  syncModeSwitchToButtons();
+}
+function undo(){
+  if (!state.history.length) return;
+  const cur = snapshot();
+  const prev = state.history.pop();
+  state.future.push(cur);
+  restoreSnapshot(prev);
+  fullRerender();
+  toast('Undo');
+}
+function redo(){
+  if (!state.future.length) return;
+  const cur = snapshot();
+  const next = state.future.pop();
+  state.history.push(cur);
+  restoreSnapshot(next);
+  fullRerender();
+  toast('Redo');
+}
+
+/* ---------------------------------------------------------------------
+   Entity CRUD
+   --------------------------------------------------------------------- */
+function addNode(wx, wy){
+  pushHistory();
+  const n = {
+    id: uid('n'),
+    label: 'v_{' + state.nextNodeNum + '}',
+    x: wx, y: wy,
+    shape: 'circle',
+    color: 'ink',
+  };
+  state.nextNodeNum++;
+  state.nodes.push(n);
+  commitHistory();
+  return n;
+}
+
+function addEdge(fromId, toId){
+  if (fromId === toId) return null; // no self-loops via drag (kept out of v1 scope deliberately)
+  // prevent exact duplicate parallel edges in the same direction-pair, but allow
+  // a second edge if the direction differs (a<->b as two distinct directed edges
+  // is a legitimate multigraph pattern for a math user)
+  const dup = state.edges.find(e =>
+    (e.from===fromId && e.to===toId) || (!state.directed && e.from===toId && e.to===fromId)
+  );
+  if (dup) { toast('That edge already exists'); return null; }
+  pushHistory();
+  const e = {
+    id: uid('e'),
+    from: fromId, to: toId,
+    directed: state.directed,
+    curved: state.curvedDefault,
+    color: 'edge',
+    style: 'solid',
+  };
+  state.edges.push(e);
+  commitHistory();
+  return e;
+}
+
+function addHyperedge(memberIds){
+  const uniq = [...new Set(memberIds)];
+  if (uniq.length < 1) return null;
+  // guard against an exact duplicate hyperedge (same member set, any order)
+  const key = [...uniq].sort().join(',');
+  const dup = state.hyperedges.find(h => [...h.members].sort().join(',') === key);
+  if (dup) { toast('That hyperedge already exists'); return null; }
+  pushHistory();
+  const h = {
+    id: uid('h'),
+    members: uniq,
+    color: 'hyper',
+    label: 'e_{' + state.nextHyperNum + '}',
+    padding: HULL_PAD_UNITS,
+    style: 'hull', // 'hull' (convex region) | 'path' (route through members, in order)
+    showTrail: true, // path style only: whether the thin centerline stroke is drawn
+  };
+  state.nextHyperNum++;
+  state.hyperedges.push(h);
+  commitHistory();
+  return h;
+}
+
+function deleteNode(id){
+  pushHistory();
+  state.nodes = state.nodes.filter(n => n.id !== id);
+  state.edges = state.edges.filter(e => e.from !== id && e.to !== id);
+  state.hyperedges = state.hyperedges.map(h => ({ ...h, members: h.members.filter(m => m !== id) }))
+                                       .filter(h => h.members.length > 0);
+  if (state.selection.id === id) state.selection = { type:null, id:null };
+  commitHistory();
+}
+function deleteEdge(id){
+  pushHistory();
+  state.edges = state.edges.filter(e => e.id !== id);
+  if (state.selection.id === id) state.selection = { type:null, id:null };
+  commitHistory();
+}
+function deleteHyperedge(id){
+  pushHistory();
+  state.hyperedges = state.hyperedges.filter(h => h.id !== id);
+  if (state.selection.id === id) state.selection = { type:null, id:null };
+  commitHistory();
+}
+function deleteSelection(){
+  const { type, id } = state.selection;
+  if (!type) return;
+  if (type === 'node') deleteNode(id);
+  else if (type === 'edge') deleteEdge(id);
+  else if (type === 'hyper') deleteHyperedge(id);
+  fullRerender();
+}
+function clearAll(){
+  pushHistory();
+  state.nodes = []; state.edges = []; state.hyperedges = [];
+  state.nextNodeNum = 1; state.nextEdgeNum = 1; state.nextHyperNum = 1;
+  state.selection = { type:null, id:null };
+  state.lassoIds = [];
+  commitHistory();
+  fullRerender();
+}
+
+/* ---------------------------------------------------------------------
+   Canvas rendering
+   --------------------------------------------------------------------- */
+const canvas = document.getElementById('gcanvas');
+const ctx = canvas.getContext('2d');
+
+function colorHex(list, key){
+  const found = list.find(c => c.key === key);
+  return found ? found.hex : list[0].hex;
+}
+
+function resizeCanvas(){
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.round(rect.width  * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  canvas.style.width  = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  render();
+}
+
+function screenPtForNode(n){
+  return worldToScreen(n.x, n.y);
+}
+
+// --- hyperedge blob rendering. Two style branches for 3+ members:
+// hullBlobPath() (convex hull region) and tracePathTubePath() (a route
+// through the members in lasso order). Each mirrors a same-named TikZ
+// builder below — same construction, arcs of the true padding radius
+// centered at each real vertex — expressed once for Canvas2D and once for
+// TikZ's own path syntax, since the two engines don't share a path API.
+function drawHyperedgeBlob(h, isPreview){
+  const members = h.members.map(nodeById).filter(Boolean);
+  if (members.length === 0) return;
+  const color = colorHex(HYPEREDGE_COLORS, h.color);
+  const padPx = (h.padding ?? HULL_PAD_UNITS) * UNIT_PX * state.camera.zoom;
+
+  ctx.save();
+  const rgba = hexToRgba(color, isPreview ? 0.10 : 0.16);
+  ctx.fillStyle = rgba;
+  ctx.strokeStyle = hexToRgba(color, isPreview ? 0.55 : 0.85);
+  ctx.lineWidth = isPreview ? 1.5 : 2;
+  if (isPreview) ctx.setLineDash([5,4]);
+
+  if (members.length === 1){
+    const p = screenPtForNode(members[0]);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, padPx, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+  } else if (members.length === 2){
+    const p1 = screenPtForNode(members[0]), p2 = screenPtForNode(members[1]);
+    ctx.beginPath();
+    traceCapsulePath(ctx, p1, p2, padPx);
+    ctx.fillStyle = rgba;
+    ctx.fill();
+    if (h.style !== 'path' || h.showTrail !== false){
+      ctx.strokeStyle = hexToRgba(color, isPreview ? 0.55 : 0.85);
+      ctx.lineWidth = isPreview ? 1.5 : 2;
+      ctx.stroke();
+    }
+  } else if (h.style === 'path'){
+    const screenPts = members.map(screenPtForNode); // in lasso order, NOT hull order
+    ctx.beginPath();
+    tracePathTubeSpline(ctx, screenPts);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([]); // the thick pass below stands in for a fill — never dashed,
+                          // matching how fill() is dash-agnostic in the other branches
+    ctx.strokeStyle = rgba;
+    ctx.lineWidth = padPx * 2;
+    ctx.stroke();
+    if (h.showTrail !== false){
+      ctx.strokeStyle = hexToRgba(color, isPreview ? 0.55 : 0.85);
+      ctx.lineWidth = isPreview ? 1.5 : 2;
+      if (isPreview) ctx.setLineDash([5,4]); // only the crisp outline pass dashes
+      ctx.stroke();
+    }
+  } else {
+    const screenPts = members.map(screenPtForNode);
+    const hull = convexHull(screenPts);
+    ctx.beginPath();
+    hullBlobPath(ctx, hull, padPx);
+    ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Trace the outline of a hyperedge blob over 3+ member points: the convex
+// hull expanded outward by r, with each corner rounded by an arc of radius
+// EXACTLY r centered at that corner's true original vertex.
+//
+// This guarantees every point on the outline is at least r from every member
+// node's center — the node's own drawn circle (radius < r, since padding is
+// chosen larger than the node radius) is then always fully enclosed, by
+// construction, not as a side effect of tuning a rounding amount.
+//
+// This replaces an earlier version that routed hyperedge blobs through the
+// generic roundedPolygonPath — that function decides each corner's radius
+// from the spacing between adjacent points, clamping it down on short
+// segments; at a sharp hull angle the offset points bracketing that corner
+// sit close together, so the clamp shrank the corner radius well below r,
+// and the resulting arc (centered at a point roundedPolygonPath computes,
+// not at the true vertex) could sit closer to that vertex than the intended
+// padding — the containment failure this fixes. Centering each arc at the
+// real vertex with radius r (never shrunk) removes the possibility outright,
+// the same way traceCapsulePath's true-vertex-centered caps do for 2 points.
+function hullBlobPath(ctx, hull, r){
+  let pts = [...hull];
+  if (polygonSignedArea(pts) < 0) pts = pts.reverse(); // normalize to CCW
+  const n = pts.length;
+  const angle = (center, pt) => Math.atan2(pt.y-center.y, pt.x-center.x);
+
+  function edgeNormal(a,b){
+    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+    return { x: dy/len, y: -dx/len };
+  }
+
+  for (let i=0;i<n;i++){
+    const prev = pts[(i-1+n)%n], cur = pts[i], next = pts[(i+1)%n];
+    const nrmIn = edgeNormal(prev, cur), nrmOut = edgeNormal(cur, next);
+    const arcStart = { x: cur.x + nrmIn.x*r,  y: cur.y + nrmIn.y*r  };
+    const arcEnd    = { x: cur.x + nrmOut.x*r, y: cur.y + nrmOut.y*r };
+    if (i===0) ctx.moveTo(arcStart.x, arcStart.y); else ctx.lineTo(arcStart.x, arcStart.y);
+    ctx.arc(cur.x, cur.y, r, angle(cur, arcStart), angle(cur, arcEnd));
+  }
+  ctx.closePath();
+}
+
+// Trace a capsule (stadium) outline as ONE continuous closed path from p1 to
+// p2 with round caps of radius r: two straight sides connected by a
+// semicircular arc at each end. Each arc's start/end angle is derived
+// directly from the corner point the adjacent line segment ends at, so the
+// path has no seams — unlike computing each arc's angles independently and
+// hoping they line up, which (verified by construction, not guesswork) is
+// what previously produced a stray line cutting across the shape.
+function traceCapsulePath(ctx, p1, p2, r){
+  const dx = p2.x-p1.x, dy = p2.y-p1.y, len = Math.hypot(dx,dy) || 1;
+  const nx = dy/len, ny = -dx/len; // unit normal to the p1->p2 axis
+
+  const p1left  = { x: p1.x + nx*r, y: p1.y + ny*r };
+  const p1right = { x: p1.x - nx*r, y: p1.y - ny*r };
+  const p2left  = { x: p2.x + nx*r, y: p2.y + ny*r };
+  const p2right = { x: p2.x - nx*r, y: p2.y - ny*r };
+
+  const angle = (center, pt) => Math.atan2(pt.y-center.y, pt.x-center.x);
+
+  ctx.moveTo(p1left.x, p1left.y);
+  ctx.lineTo(p2left.x, p2left.y);
+  ctx.arc(p2.x, p2.y, r, angle(p2, p2left), angle(p2, p2right));   // cap at p2
+  ctx.lineTo(p1right.x, p1right.y);
+  ctx.arc(p1.x, p1.y, r, angle(p1, p1right), angle(p1, p1left));   // cap at p1
+  ctx.closePath();
+}
+
+// Build a smooth cubic-Bezier spline through 2+ points, in the given order,
+// using the standard (uniform, tension=0) Catmull-Rom-to-Bezier conversion:
+// the curve passes through EVERY point exactly (unlike a plain Bezier fit,
+// which only touches its endpoints) — required here, since a hyperedge must
+// visibly pass through each member, not merely approximate a path near them.
+// Missing neighbors at the two ends (needed to define a tangent there) are
+// filled in by reflecting the adjacent real point through the endpoint, the
+// standard way to give Catmull-Rom well-defined end tangents without a
+// separate formula for the first/last segment.
+// Returns an array of {p0,p1,p2,p3} cubic segments, p0/p3 exactly equal to
+// consecutive input points, p1/p2 the corresponding control points.
+function catmullRomSegments(points){
+  const n = points.length;
+  const ext = [
+    { x: 2*points[0].x-points[1].x, y: 2*points[0].y-points[1].y },
+    ...points,
+    { x: 2*points[n-1].x-points[n-2].x, y: 2*points[n-1].y-points[n-2].y },
+  ];
+  const segs = [];
+  for (let i=1;i<=n-1;i++){
+    const P0=ext[i-1], P1=ext[i], P2=ext[i+1], P3=ext[i+2];
+    segs.push({
+      p0: P1,
+      p1: { x: P1.x+(P2.x-P0.x)/6, y: P1.y+(P2.y-P0.y)/6 },
+      p2: { x: P2.x-(P3.x-P1.x)/6, y: P2.y-(P3.y-P1.y)/6 },
+      p3: P2,
+    });
+  }
+  return segs;
+}
+
+// Flatten the same Catmull-Rom spline into a dense polyline of sample
+// points — used where the code needs to reason about distance to the
+// actual drawn curve (hit-testing) rather than draw it directly (which
+// tracePathTubeSpline/pathTubeTikzSpline do natively via their engines'
+// own Bezier primitives, so they don't need this flattening at all).
+function sampleCatmullRom(points, samplesPerSegment){
+  const segs = catmullRomSegments(points);
+  const out = [];
+  segs.forEach((s, segIdx) => {
+    // start at i=1 for every segment after the first, so the shared point
+    // between consecutive segments (t=0 of this one == t=1 of the last) is
+    // only added once
+    const startI = segIdx === 0 ? 0 : 1;
+    for (let i=startI; i<=samplesPerSegment; i++){
+      const t = i/samplesPerSegment;
+      const mt = 1-t;
+      out.push({
+        x: mt*mt*mt*s.p0.x + 3*mt*mt*t*s.p1.x + 3*mt*t*t*s.p2.x + t*t*t*s.p3.x,
+        y: mt*mt*mt*s.p0.y + 3*mt*mt*t*s.p1.y + 3*mt*t*t*s.p2.y + t*t*t*s.p3.y,
+      });
+    }
+  });
+  return out;
+}
+
+// Trace a smooth spline "path tube" through 2+ points, IN THE GIVEN ORDER
+// (unlike hullBlobPath, which reorders points into a convex hull) — a
+// hyperedge drawn as a continuous route through its members rather than a
+// region containing them.
+//
+// This traces the CENTERLINE (the Catmull-Rom spline) as one continuous
+// Bezier path; the caller strokes it with a thick, round-capped, round-
+// joined line rather than filling an explicit offset outline. Containment
+// is then immediate rather than something needing per-joint casework: every
+// member point lies exactly ON the centerline by construction, so it is
+// trivially within padding distance of the stroke's edge for any padding
+// r>0 — measured directly against Canvas2D's actual rendered stroke width
+// (not just reasoned about) before relying on this, including through the
+// tightest curvature in a test path, before this was written.
+//
+// This replaces an earlier version built from straight polyline segments
+// joined at each vertex (an arc on the outer side of each bend, a bounded
+// bevel on the inner side — itself a fix for a spike bug in a first
+// attempt). That version was geometrically sound — no spikes, full
+// containment — but it visibly read as rigid segments pivoting at hinge
+// points rather than one continuous line, which is the shape a hyperedge
+// drawn as a "path" is meant to evoke. A spline through the same points
+// removes the straight sections and hinge corners entirely, rather than
+// smoothing them.
+function tracePathTubeSpline(ctx, points){
+  const segs = catmullRomSegments(points);
+  ctx.moveTo(segs[0].p0.x, segs[0].p0.y);
+  segs.forEach(s => ctx.bezierCurveTo(s.p1.x, s.p1.y, s.p2.x, s.p2.y, s.p3.x, s.p3.y));
+}
+
+function drawEdge(e, isSelected){
+  const a = nodeById(e.from), b = nodeById(e.to);
+  if (!a || !b) return;
+  const pa = screenPtForNode(a), pb = screenPtForNode(b);
+  const color = isSelected ? '#1c1e24' : colorHex(NODE_COLORS, e.color);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = isSelected ? 2.6 : 1.8;
+  if (e.style === 'dashed') ctx.setLineDash([7,5]); else ctx.setLineDash([]);
+
+  // trim the line so it starts/ends at the node's circle edge, not its center —
+  // both for straight and curved edges, computed relative to node radius on screen
+  const r = NODE_R * state.camera.zoom;
+
+  ctx.beginPath();
+  let midForArrow, angleForArrow, endPoint;
+  if (e.curved){
+    const mx = (pa.x+pb.x)/2, my=(pa.y+pb.y)/2;
+    const dx = pb.x-pa.x, dy = pb.y-pa.y, len = Math.hypot(dx,dy)||1;
+    const nx = dy/len, ny=-dx/len;
+    const bend = len*0.18;
+    const ctrl = { x: mx+nx*bend, y: my+ny*bend };
+    // trim start/end along the curve direction approx using tangent at endpoints
+    const startTrim = trimTowards(pa, ctrl, r);
+    const endTrim = trimTowards(pb, ctrl, r);
+    ctx.moveTo(startTrim.x, startTrim.y);
+    ctx.quadraticCurveTo(ctrl.x, ctrl.y, endTrim.x, endTrim.y);
+    endPoint = endTrim;
+    angleForArrow = Math.atan2(endTrim.y-ctrl.y, endTrim.x-ctrl.x);
+  } else {
+    const startTrim = trimTowards(pa, pb, r);
+    const endTrim = trimTowards(pb, pa, r);
+    ctx.moveTo(startTrim.x, startTrim.y);
+    ctx.lineTo(endTrim.x, endTrim.y);
+    endPoint = endTrim;
+    angleForArrow = Math.atan2(pb.y-pa.y, pb.x-pa.x);
+  }
+  ctx.stroke();
+
+  if (e.directed){
+    drawArrowhead(endPoint, angleForArrow, color);
+  }
+  ctx.restore();
+}
+
+function trimTowards(from, towards, r){
+  const dx = towards.x-from.x, dy = towards.y-from.y, len = Math.hypot(dx,dy)||1;
+  return { x: from.x + (dx/len)*r, y: from.y + (dy/len)*r };
+}
+
+function drawArrowhead(tip, angle, color){
+  const size = 9;
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.translate(tip.x, tip.y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.lineTo(-size, size*0.55);
+  ctx.lineTo(-size*0.7, 0);
+  ctx.lineTo(-size, -size*0.55);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawNode(n, isSelected, isHovered, isLassoed){
+  const p = screenPtForNode(n);
+  const r = NODE_R * state.camera.zoom;
+  const color = colorHex(NODE_COLORS, n.color);
+
+  ctx.save();
+  if (isSelected){
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r+6, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(43,76,158,0.18)';
+    ctx.fill();
+  } else if (isLassoed){
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r+5, 0, Math.PI*2);
+    ctx.strokeStyle = colorHex(HYPEREDGE_COLORS,'hyper');
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3,3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.beginPath();
+  if (n.shape === 'square'){
+    ctx.rect(p.x-r*0.86, p.y-r*0.86, r*1.72, r*1.72);
+  } else {
+    ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+  }
+  ctx.fillStyle = '#fbfaf6';
+  ctx.fill();
+  ctx.lineWidth = isSelected ? 2.6 : (isHovered ? 2.2 : 1.8);
+  ctx.strokeStyle = color;
+  ctx.stroke();
+
+  // label — rendered as approximate math text (real LaTeX rendering happens only
+  // in the exported .tex; here we just strip the common LaTeX markup so the
+  // on-canvas text reads naturally, e.g. "v_{1}" -> "v₁", "\alpha" -> "α")
+  ctx.fillStyle = '#1c1e24';
+  ctx.font = `italic ${Math.max(11, 13*state.camera.zoom)}px 'STIX Two Text', Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(prettifyLabel(n.label), p.x, p.y+1);
+  ctx.restore();
+}
+
+const GREEK = {alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',chi:'χ',psi:'ψ',omega:'ω',Gamma:'Γ',Delta:'Δ',Theta:'Θ',Lambda:'Λ',Xi:'Ξ',Pi:'Π',Sigma:'Σ',Phi:'Φ',Psi:'Ψ',Omega:'Ω'};
+const SUBDIGITS = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
+function prettifyLabel(label){
+  if (!label) return '';
+  let s = String(label);
+  s = s.replace(/\\([a-zA-Z]+)/g, (m,name) => GREEK[name] || name);
+  s = s.replace(/_\{?(-?[0-9]+)\}?/g, (m, digits) => {
+    const neg = digits.startsWith('-');
+    const body = (neg?digits.slice(1):digits).split('').map(d=>SUBDIGITS[d]||d).join('');
+    return (neg?'₋':'') + body;
+  });
+  s = s.replace(/[{}$]/g, '');
+  return s;
+}
+
+function render(){
+  const wrap = document.getElementById('canvas-wrap');
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  ctx.clearRect(0,0,w,h);
+
+  // hyperedges first (background layer — mirrors the TikZ `backgrounds` library
+  // approach validated earlier, so edges/nodes always render on top of blobs)
+  if (state.mode === 'hyper'){
+    state.hyperedges.forEach(h => drawHyperedgeBlob(h, false));
+    if (state.tool === 'hyper' && state.lassoIds.length){
+      drawHyperedgeBlob({ members: state.lassoIds, color:'hyper', padding: HULL_PAD_UNITS }, true);
+    }
+  }
+
+  state.edges.forEach(e => drawEdge(e, state.selection.type==='edge' && state.selection.id===e.id));
+
+  state.nodes.forEach(n => drawNode(
+    n,
+    state.selection.type==='node' && state.selection.id===n.id,
+    state.hoverNodeId === n.id,
+    state.mode==='hyper' && state.tool==='hyper' && state.lassoIds.includes(n.id)
+  ));
+
+  // in-progress edge-drag preview
+  if (state.drag && state.drag.kind === 'draw-edge'){
+    const a = nodeById(state.drag.fromId);
+    if (a){
+      const pa = screenPtForNode(a);
+      ctx.save();
+      ctx.strokeStyle = '#8b8d96';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([5,4]);
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(state.drag.curX, state.drag.curY);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  document.getElementById('emptyState').style.display = state.nodes.length ? 'none' : 'flex';
+  document.getElementById('zoomVal').textContent = Math.round(state.camera.zoom*100) + '%';
+}
+
+/* ---------------------------------------------------------------------
+   Hit testing
+   --------------------------------------------------------------------- */
+function nodeAtScreen(sx, sy){
+  const r = NODE_R * state.camera.zoom + 4;
+  // iterate reversed so most-recently-added (visually on top) wins ties
+  for (let i = state.nodes.length-1; i>=0; i--){
+    const n = state.nodes[i];
+    const p = screenPtForNode(n);
+    if (dist({x:sx,y:sy}, p) <= r) return n;
+  }
+  return null;
+}
+
+function edgeAtScreen(sx, sy){
+  const THRESH = 7;
+  for (let i = state.edges.length-1; i>=0; i--){
+    const e = state.edges[i];
+    const a = nodeById(e.from), b = nodeById(e.to);
+    if (!a || !b) continue;
+    const pa = screenPtForNode(a), pb = screenPtForNode(b);
+    let d;
+    if (e.curved){
+      const mx=(pa.x+pb.x)/2, my=(pa.y+pb.y)/2;
+      const dx=pb.x-pa.x, dy=pb.y-pa.y, len=Math.hypot(dx,dy)||1;
+      const nx=dy/len, ny=-dx/len, bend=len*0.18;
+      const ctrl = { x:mx+nx*bend, y:my+ny*bend };
+      d = distToQuadratic({x:sx,y:sy}, pa, ctrl, pb);
+    } else {
+      d = distToSegment({x:sx,y:sy}, pa, pb);
+    }
+    if (d <= THRESH) return e;
+  }
+  return null;
+}
+
+function distToSegment(p, a, b){
+  const dx=b.x-a.x, dy=b.y-a.y;
+  const len2 = dx*dx+dy*dy;
+  if (len2 === 0) return dist(p,a);
+  let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/len2;
+  t = Math.max(0, Math.min(1, t));
+  return dist(p, { x:a.x+t*dx, y:a.y+t*dy });
+}
+function distToQuadratic(p, a, ctrl, b){
+  // sample-based approximation — plenty accurate for hit-testing at this scale
+  let best = Infinity;
+  for (let t=0;t<=1;t+=0.05){
+    const x = (1-t)*(1-t)*a.x + 2*(1-t)*t*ctrl.x + t*t*b.x;
+    const y = (1-t)*(1-t)*a.y + 2*(1-t)*t*ctrl.y + t*t*b.y;
+    best = Math.min(best, dist(p, {x,y}));
+  }
+  return best;
+}
+
+function hyperedgeAtScreen(sx, sy){
+  // only relevant for selecting via click on the blob interior (used sparingly —
+  // primary hyperedge selection happens through the Structure panel list)
+  for (let i = state.hyperedges.length-1; i>=0; i--){
+    const h = state.hyperedges[i];
+    const members = h.members.map(nodeById).filter(Boolean);
+    if (members.length === 0) continue;
+    const padPx = (h.padding ?? HULL_PAD_UNITS) * UNIT_PX * state.camera.zoom;
+    if (members.length === 1){
+      if (dist({x:sx,y:sy}, screenPtForNode(members[0])) <= padPx) return h;
+    } else if (members.length === 2){
+      if (distToSegment({x:sx,y:sy}, screenPtForNode(members[0]), screenPtForNode(members[1])) <= padPx) return h;
+    } else if (h.style === 'path'){
+      const pts = members.map(screenPtForNode); // lasso order
+      const sampled = sampleCatmullRom(pts, 12); // dense polyline approximating the drawn curve
+      let hit = false;
+      for (let s=0;s<sampled.length-1;s++){
+        if (distToSegment({x:sx,y:sy}, sampled[s], sampled[s+1]) <= padPx){ hit = true; break; }
+      }
+      if (hit) return h;
+    } else {
+      const hull = convexHull(members.map(screenPtForNode));
+      if (pointInPolygon({x:sx,y:sy}, offsetHullVertices(hull, padPx))) return h;
+    }
+  }
+  return null;
+}
+function pointInPolygon(p, poly){
+  let inside = false;
+  for (let i=0,j=poly.length-1; i<poly.length; j=i++){
+    const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
+    const intersect = ((yi>p.y) !== (yj>p.y)) && (p.x < (xj-xi)*(p.y-yi)/(yj-yi)+xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/* ---------------------------------------------------------------------
+   Pointer interaction
+   --------------------------------------------------------------------- */
+let spaceHeld = false;
+
+function getPointerPos(evt){
+  const rect = canvas.getBoundingClientRect();
+  const p = evt.touches ? evt.touches[0] : evt;
+  return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+}
+
+canvas.addEventListener('pointerdown', onPointerDown);
+canvas.addEventListener('pointermove', onPointerMove);
+window.addEventListener('pointerup', onPointerUp);
+canvas.addEventListener('dblclick', onDblClick);
+canvas.addEventListener('wheel', onWheel, { passive:false });
+
+function onPointerDown(evt){
+  if (evt.button === 2) return;
+  const pos = getPointerPos(evt);
+  canvas.setPointerCapture(evt.pointerId);
+
+  if (spaceHeld || evt.button === 1){
+    state.drag = { kind:'pan', startX:pos.x, startY:pos.y, camX0:state.camera.x, camY0:state.camera.y };
+    return;
+  }
+
+  if (state.tool === 'node'){
+    const w = screenToWorld(pos.x, pos.y);
+    const n = addNode(w.x, w.y);
+    selectEntity('node', n.id);
+    fullRerender();
+    return;
+  }
+
+  if (state.tool === 'edge'){
+    const hit = nodeAtScreen(pos.x, pos.y);
+    if (hit){
+      state.drag = { kind:'draw-edge', fromId: hit.id, curX:pos.x, curY:pos.y };
+    }
+    return;
+  }
+
+  if (state.tool === 'hyper' && state.mode === 'hyper'){
+    const hit = nodeAtScreen(pos.x, pos.y);
+    if (hit){
+      if (!state.lassoIds.includes(hit.id)) state.lassoIds.push(hit.id);
+      else state.lassoIds = state.lassoIds.filter(id => id!==hit.id);
+      render();
+    }
+    return;
+  }
+
+  // select tool (default)
+  const hitNode = nodeAtScreen(pos.x, pos.y);
+  if (hitNode){
+    selectEntity('node', hitNode.id);
+    state.drag = { kind:'move-node', id:hitNode.id, offX: hitNode.x - screenToWorld(pos.x,pos.y).x, offY: hitNode.y - screenToWorld(pos.x,pos.y).y, moved:false };
+    pushHistory();
+    fullRerender();
+    return;
+  }
+  const hitEdge = edgeAtScreen(pos.x, pos.y);
+  if (hitEdge){
+    selectEntity('edge', hitEdge.id);
+    fullRerender();
+    return;
+  }
+  if (state.mode === 'hyper'){
+    const hitHyper = hyperedgeAtScreen(pos.x, pos.y);
+    if (hitHyper){
+      selectEntity('hyper', hitHyper.id);
+      fullRerender();
+      return;
+    }
+  }
+  selectEntity(null,null);
+  state.drag = { kind:'pan', startX:pos.x, startY:pos.y, camX0:state.camera.x, camY0:state.camera.y };
+  fullRerender();
+}
+
+function onPointerMove(evt){
+  const pos = getPointerPos(evt);
+
+  if (!state.drag){
+    const h = nodeAtScreen(pos.x, pos.y);
+    const newHover = h ? h.id : null;
+    if (newHover !== state.hoverNodeId){
+      state.hoverNodeId = newHover;
+      canvas.style.cursor = h ? 'pointer' : (state.tool==='node' ? 'crosshair' : (state.tool==='edge'||state.tool==='hyper' ? 'crosshair':'default'));
+      render();
+    }
+    return;
+  }
+
+  if (state.drag.kind === 'pan'){
+    state.camera.x = state.drag.camX0 + (pos.x - state.drag.startX);
+    state.camera.y = state.drag.camY0 + (pos.y - state.drag.startY);
+    render();
+  } else if (state.drag.kind === 'move-node'){
+    const w = screenToWorld(pos.x, pos.y);
+    const n = nodeById(state.drag.id);
+    if (n){
+      n.x = w.x + state.drag.offX;
+      n.y = w.y + state.drag.offY;
+      state.drag.moved = true;
+      render();
+    }
+  } else if (state.drag.kind === 'draw-edge'){
+    state.drag.curX = pos.x; state.drag.curY = pos.y;
+    render();
+  }
+}
+
+function onPointerUp(evt){
+  if (!state.drag) return;
+  const pos = getPointerPos(evt);
+
+  if (state.drag.kind === 'draw-edge'){
+    const target = nodeAtScreen(pos.x, pos.y);
+    if (target && target.id !== state.drag.fromId){
+      const e = addEdge(state.drag.fromId, target.id);
+      if (e) selectEntity('edge', e.id);
+    }
+  } else if (state.drag.kind === 'move-node'){
+    if (state.drag.moved) commitHistory(); else pendingSnapshot = null;
+  }
+
+  state.drag = null;
+  fullRerender();
+}
+
+function onDblClick(evt){
+  const pos = getPointerPos(evt);
+  const hit = nodeAtScreen(pos.x, pos.y);
+  if (hit){
+    selectEntity('node', hit.id);
+    switchPanelTab('structure');
+    setTimeout(() => {
+      const inp = document.querySelector('#inspector input[data-field="label"]');
+      if (inp){ inp.focus(); inp.select(); }
+    }, 30);
+  }
+}
+
+function onWheel(evt){
+  evt.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const sx = evt.clientX - rect.left, sy = evt.clientY - rect.top;
+  const wBefore = screenToWorld(sx, sy);
+  const factor = Math.pow(1.0015, -evt.deltaY);
+  state.camera.zoom = Math.max(0.25, Math.min(3, state.camera.zoom * factor));
+  const wAfter = screenToWorld(sx, sy);
+  // keep the point under the cursor fixed while zooming
+  state.camera.x += (wAfter.x - wBefore.x) * UNIT_PX * state.camera.zoom;
+  state.camera.y -= (wAfter.y - wBefore.y) * UNIT_PX * state.camera.zoom;
+  render();
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !isTypingTarget(e.target)){ spaceHeld = true; canvas.style.cursor='grab'; e.preventDefault(); }
+  if (isTypingTarget(e.target)) return;
+
+  if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z'){
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+    return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace'){
+    if (state.selection.type){ e.preventDefault(); deleteSelection(); }
+    return;
+  }
+  if (e.key.toLowerCase()==='v') setTool('select');
+  if (e.key.toLowerCase()==='n') setTool('node');
+  if (e.key.toLowerCase()==='e') setTool('edge');
+  if (e.key.toLowerCase()==='h' && state.mode==='hyper') setTool('hyper');
+  if (e.key === 'Escape'){
+    state.lassoIds = [];
+    selectEntity(null,null);
+    fullRerender();
+  }
+  if (e.key === 'Enter' && state.tool==='hyper' && state.lassoIds.length){
+    const h = addHyperedge(state.lassoIds);
+    state.lassoIds = [];
+    if (h) selectEntity('hyper', h.id);
+    fullRerender();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space'){ spaceHeld = false; canvas.style.cursor='default'; }
+});
+function isTypingTarget(el){
+  return el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.isContentEditable);
+}
+
+/* ---------------------------------------------------------------------
+   TikZ generation
+   All coordinates are already stored in tikz "world" units (state.nodes[i].x/y,
+   y-up) — no further transform needed here, since worldToScreen/screenToWorld
+   only exist for the canvas camera. This function reads world-space directly.
+   --------------------------------------------------------------------- */
+function nodeTikzId(index){ return 'v' + index; }
+
+function tikzNodeStyleName(color){ return 'nodecolor' + color; }
+
+function generateTikz(opts){
+  opts = opts || {};
+  const standalone = opts.standalone !== false;
+  const showUnits = !!opts.showUnits;
+
+  const nodeIdMap = {};
+  state.nodes.forEach((n,i) => { nodeIdMap[n.id] = nodeTikzId(i); });
+
+  const usedNodeColors = [...new Set(state.nodes.map(n=>n.color))];
+  const usedEdgeColors = [...new Set(state.edges.map(e=>e.color))];
+  const usedHyperColors = [...new Set(state.hyperedges.map(h=>h.color))];
+
+  // \definecolor statements must precede the style block that references them,
+  // so these are collected and emitted first.
+  const colorDefs = collectColorDefs(usedNodeColors, usedEdgeColors, usedHyperColors);
+
+  const lines = [];
+  if (standalone){
+    lines.push('\\documentclass[tikz,border=8pt]{standalone}');
+    lines.push('\\usepackage{amsmath,amssymb}');
+    lines.push('\\usetikzlibrary{backgrounds,arrows.meta,calc}');
+    lines.push('\\begin{document}');
+  }
+  colorDefs.forEach(d => lines.push(d));
+  if (colorDefs.length) lines.push('');
+
+  lines.push('\\begin{tikzpicture}[');
+  lines.push('  >={Stealth[length=6pt]},');
+  lines.push('  vertexbase/.style={circle, draw=black, fill=white, line width=0.9pt, minimum size=7mm, inner sep=0pt, font=\\small},');
+  usedNodeColors.forEach(c => {
+    lines.push(`  ${tikzNodeStyleName(c)}/.style={vertexbase, draw=${colorRefName(c,'node')}},`);
+  });
+  lines.push('  edgebase/.style={line width=0.9pt},');
+  usedEdgeColors.forEach(c => {
+    lines.push(`  edgecolor${c}/.style={edgebase, draw=${colorRefName(c,'node')}},`);
+  });
+  usedHyperColors.forEach(c => {
+    lines.push(`  hyperedgecolor${c}/.style={draw=${colorRefName(c,'hyper')}, fill=${colorRefName(c,'hyper')}!16, line width=1.1pt},`);
+  });
+  lines.push(']');
+  lines.push('');
+
+  if (state.mode === 'hyper' && state.hyperedges.length){
+    lines.push('% hyperedges (drawn first, behind vertices and ordinary edges)');
+    lines.push('\\begin{scope}[on background layer]');
+    state.hyperedges.forEach((h, idx) => {
+      lines.push(hyperedgeTikzLine(h, idx, nodeIdMap));
+    });
+    lines.push('\\end{scope}');
+    lines.push('');
+  }
+
+  lines.push('% vertices');
+  state.nodes.forEach((n,i) => {
+    const id = nodeTikzId(i);
+    lines.push(`\\node[${tikzNodeStyleName(n.color)}] (${id}) at (${fmtNum(n.x)}${showUnits?'\\,\\mathrm{u}':''}, ${fmtNum(n.y)}${showUnits?'\\,\\mathrm{u}':''}) {$${n.label}$};`);
+  });
+
+  if (state.edges.length){
+    lines.push('');
+    lines.push('% edges');
+    state.edges.forEach(e => {
+      const a = nodeIdMap[e.from], b = nodeIdMap[e.to];
+      if (!a || !b) return;
+      const styleParts = [`edgecolor${e.color}`];
+      if (e.directed) styleParts.push('->');
+      if (e.style === 'dashed') styleParts.push('dashed');
+      const styleStr = styleParts.join(',');
+      if (e.curved){
+        lines.push(`\\draw[${styleStr}] (${a}) to[bend left=22] (${b});`);
+      } else {
+        lines.push(`\\draw[${styleStr}] (${a}) -- (${b});`);
+      }
+    });
+  }
+
+  lines.push('');
+  lines.push('\\end{tikzpicture}');
+  if (standalone) lines.push('\\end{document}');
+
+  return lines.join('\n');
+}
+
+// simple named-color registry so \definecolor statements are only emitted once
+// per distinct hex value actually used in the current graph
+let colorDefRegistry = {};
+function collectColorDefs(nodeColorKeys, edgeColorKeys, hyperColorKeys){
+  colorDefRegistry = {};
+  const defs = [];
+  const addIfNew = (key, hex, kind) => {
+    const name = 'c' + kind + key;
+    if (colorDefRegistry[name]) return;
+    colorDefRegistry[name] = hex;
+    const rgb = hexToRgbTuple(hex);
+    defs.push(`\\definecolor{${name}}{RGB}{${rgb.r},${rgb.g},${rgb.b}}`);
+  };
+  [...new Set([...nodeColorKeys, ...edgeColorKeys])].forEach(k => addIfNew(k, colorHex(NODE_COLORS,k), 'node'));
+  hyperColorKeys.forEach(k => addIfNew(k, colorHex(HYPEREDGE_COLORS,k), 'hyper'));
+  return defs;
+}
+function colorRefName(key, kind){ return 'c' + kind + key; }
+function hexToRgbTuple(hex){
+  const h = hex.replace('#','');
+  return { r:parseInt(h.substring(0,2),16), g:parseInt(h.substring(2,4),16), b:parseInt(h.substring(4,6),16) };
+}
+
+// Build the two \draw statements needed to reproduce, in TikZ, the same
+// two-pass technique the canvas renderer uses for STROKE-ONLY hyperedge
+// shapes (the 2-node capsule and the spline path-tube): a thick, translucent
+// pass standing in for a fill, then a thin, near-opaque pass for the crisp
+// rim. This is deliberately NOT the shared `hyperedgecolor<x>` style used by
+// the 1-node circle and 3+-node hull cases — that style bakes in both
+// `draw=` and `fill=` because those two shapes are genuinely closed regions,
+// where a single \draw naturally fills-and-strokes together. A capsule or
+// spline tube is an OPEN path stroked thick to LOOK like a filled region;
+// reusing the fill-bearing style for these two initially seemed harmless
+// (fill has no effect without a closed path, or so it seemed) but TikZ
+// auto-closes an open path before filling whenever `fill` is present as an
+// option — confirmed against the primary manual — so the shared style was
+// silently closing and filling these open curves with a nonsensical
+// self-intersecting region, and, separately, using only the outline color/
+// width meant the whole tube rendered fully opaque instead of the intended
+// soft wash. Building these two shapes from their own two explicit
+// `fill=none` passes avoids both problems outright.
+// `includeRim` (default true) lets a caller omit the thin rim pass — the
+// crisp centerline trace a path-style hyperedge otherwise draws inside the
+// wide tube — while keeping the wide translucent pass, matching the
+// canvas renderer's own showTrail toggle.
+function twoPassStrokeLines(h, coords, widthPt, extraOpts, includeRim){
+  const colorName = colorRefName(h.color, 'hyper');
+  const fillPass  = `\\draw[draw=${colorName}, fill=none, opacity=0.16, line width=${widthPt}pt, ${extraOpts}] ${coords};`;
+  if (includeRim === false) return fillPass;
+  const rimPass   = `\\draw[draw=${colorName}, fill=none, opacity=0.85, line width=1.1pt, ${extraOpts}] ${coords};`;
+  return fillPass + '\n' + rimPass;
+}
+
+function hyperedgeTikzLine(h, idx, nodeIdMap){
+  const members = h.members.map(nodeById).filter(Boolean);
+  const style = `hyperedgecolor${h.color}`;
+  const pad = h.padding ?? HULL_PAD_UNITS;
+  if (members.length === 1){
+    const n = members[0];
+    return `\\draw[${style}] (${fmtNum(n.x)},${fmtNum(n.y)}) circle (${fmtNum(pad)});`;
+  }
+  if (members.length === 2){
+    const [a,b] = members;
+    const widthPt = fmtNum(pad * 2 * 28.45); // tikz units -> pt (1 unit == 1cm == 28.4527 pt)
+    const coords = `(${fmtNum(a.x)},${fmtNum(a.y)}) -- (${fmtNum(b.x)},${fmtNum(b.y)})`;
+    const includeRim = h.style !== 'path' || h.showTrail !== false;
+    return twoPassStrokeLines(h, coords, widthPt, 'line cap=round', includeRim);
+  }
+  if (h.style === 'path'){
+    const pts = members.map(n => ({x:n.x, y:n.y})); // lasso order, not hull order
+    const widthPt = fmtNum(pad * 2 * 28.45); // tikz units -> pt (1 unit == 1cm == 28.4527 pt)
+    return twoPassStrokeLines(h, pathTubeTikzSpline(pts), widthPt, 'line cap=round, line join=round', h.showTrail !== false);
+  }
+  const hull = convexHull(members.map(n => ({x:n.x, y:n.y})));
+  return `\\draw[${style}] ${hullBlobTikzPath(hull, pad)};`;
+}
+
+// Build the hyperedge blob outline as an explicit TikZ path string, using the
+// `arc(<start>:<end>:<radius>)` operation to sweep an arc of EXACTLY radius
+// pad, centered at each TRUE original hull vertex — mirroring hullBlobPath's
+// canvas construction exactly, so the same containment guarantee applies
+// here: every point on the outline is at least `pad` from every member
+// node's center, by construction.
+//
+// This replaces an earlier version that emitted the offset points as plain
+// coordinates and let TikZ's own `rounded corners=X` round them. That
+// mechanism (confirmed against the PGF manual) derives each corner's actual
+// rounding from the spacing between adjacent path points, clamping down on
+// short segments — at a sharp hull angle the offset points bracketing that
+// corner sit close together, so the effective rounding radius shrank well
+// below the requested X regardless of how large X was set, and the
+// resulting arc could sit closer to the vertex than the intended padding.
+// Centering each arc at the real vertex with TikZ's own `arc` operation
+// removes that dependency on segment spacing entirely.
+function hullBlobTikzPath(hull, r){
+  let pts = [...hull];
+  if (polygonSignedArea(pts) < 0) pts = pts.reverse(); // normalize to CCW
+  const n = pts.length;
+  function edgeNormal(a,b){
+    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+    return { x: dy/len, y: -dx/len };
+  }
+  const parts = [];
+  for (let i=0;i<n;i++){
+    const prev = pts[(i-1+n)%n], cur = pts[i], next = pts[(i+1)%n];
+    const nrmIn = edgeNormal(prev, cur), nrmOut = edgeNormal(cur, next);
+    const arcStart = { x: cur.x + nrmIn.x*r,  y: cur.y + nrmIn.y*r  };
+    const arcEnd    = { x: cur.x + nrmOut.x*r, y: cur.y + nrmOut.y*r };
+    const angStart = Math.atan2(arcStart.y-cur.y, arcStart.x-cur.x) * 180/Math.PI;
+    let angEnd = Math.atan2(arcEnd.y-cur.y, arcEnd.x-cur.x) * 180/Math.PI;
+    // force the same increasing-angle sweep direction validated for the
+    // canvas version (default arc() sweep, confirmed to bulge outward)
+    if (angEnd < angStart) angEnd += 360;
+    parts.push((i===0?'':'-- ') + `(${fmtNum(arcStart.x)},${fmtNum(arcStart.y)})`);
+    parts.push(`arc (${fmtNum(angStart)}:${fmtNum(angEnd)}:${fmtNum(r)})`);
+  }
+  parts.push('-- cycle');
+  return parts.join(' ');
+}
+
+// Build the same Catmull-Rom-to-Bezier spline as catmullRomSegments()
+// above, but rendered into TikZ's native cubic-Bezier path syntax
+// (`.. controls (c1) and (c2) .. (dest)`, confirmed against the primary PGF
+// manual, tikz.dev section 14.3) rather than Canvas2D calls — the TikZ
+// counterpart to tracePathTubeSpline(). Returns the centerline path string;
+// the caller wraps it in a \draw with line width/cap/join set to reproduce
+// the same thick round-capped, round-joined stroke, using TikZ's own
+// line cap=round / line join=round options (also confirmed against the
+// manual) — the direct TikZ equivalent of the canvas construction, not an
+// approximation of it.
+function pathTubeTikzSpline(points){
+  const segs = catmullRomSegments(points);
+  const parts = [`(${fmtNum(segs[0].p0.x)},${fmtNum(segs[0].p0.y)})`];
+  segs.forEach(s => {
+    parts.push(`.. controls (${fmtNum(s.p1.x)},${fmtNum(s.p1.y)}) and (${fmtNum(s.p2.x)},${fmtNum(s.p2.y)}) .. (${fmtNum(s.p3.x)},${fmtNum(s.p3.y)})`);
+  });
+  return parts.join(' ');
+}
+
+/* ---------------------------------------------------------------------
+   Code panel — syntax-highlighted TikZ display
+   --------------------------------------------------------------------- */
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function highlightTikz(src){
+  const lines = src.split('\n').map(line => {
+    let l = escapeHtml(line);
+    if (/^\s*%/.test(line)){
+      return `<span class="cmt">${l}</span>`;
+    }
+    // TeX commands like \draw, \node, \begin{...}
+    l = l.replace(/(\\[a-zA-Z]+)/g, '<span class="cmd">$1</span>');
+    // braces
+    l = l.replace(/([{}])/g, '<span class="brace">$1</span>');
+    // numbers
+    l = l.replace(/(-?\d+\.?\d*)/g, '<span class="num">$1</span>');
+    return l;
+  });
+  return lines.join('\n');
+}
+
+let codeUpdateScheduled = false;
+function updateCodePanel(){
+  if (codeUpdateScheduled) return;
+  codeUpdateScheduled = true;
+  requestAnimationFrame(() => {
+    codeUpdateScheduled = false;
+    const standalone = document.getElementById('chipStandalone').querySelector('input').checked;
+    const showUnits = document.getElementById('chipMatrix').querySelector('input').checked;
+    const src = generateTikz({ standalone, showUnits });
+    document.getElementById('code-out').innerHTML = highlightTikz(src);
+  });
+}
+
+/* ---------------------------------------------------------------------
+   Structure / inspector panel
+   --------------------------------------------------------------------- */
+function selectEntity(type, id){
+  state.selection = { type, id };
+  renderInspector();
+}
+
+function switchPanelTab(tab){
+  document.querySelectorAll('.panel-tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.panel-body').forEach(b => b.classList.toggle('active', b.id === 'tab-'+tab));
+}
+
+function fieldRow(labelText, inputHtml){
+  return `<div class="field-row"><label>${labelText}</label>${inputHtml}</div>`;
+}
+
+function colorSwatchesHtml(list, selected, fieldName){
+  return `<div class="swatches">` + list.map(c =>
+    `<div class="swatch ${c.key===selected?'selected':''}" style="background:${c.hex}" data-color-field="${fieldName}" data-color-key="${c.key}"></div>`
+  ).join('') + `</div>`;
+}
+
+function renderInspector(){
+  const el = document.getElementById('inspector');
+  const { type, id } = state.selection;
+
+  let html = '';
+
+  if (type === 'node'){
+    const n = nodeById(id);
+    if (!n){ state.selection={type:null,id:null}; return renderInspector(); }
+    html += `<div class="insp-section">
+      <div class="insp-label">Vertex</div>
+      ${fieldRow('Label', `<input type="text" data-field="label" value="${escapeAttr(n.label)}" placeholder="v_{1}">`)}
+      ${fieldRow('Shape', `<div class="seg-control" data-field="shape">
+          <button class="${n.shape==='circle'?'active':''}" data-val="circle">Circle</button>
+          <button class="${n.shape==='square'?'active':''}" data-val="square">Square</button>
+        </div>`)}
+      ${fieldRow('Color', colorSwatchesHtml(NODE_COLORS, n.color, 'color'))}
+      ${fieldRow('Position', `<input type="number" step="0.1" data-field="x" value="${n.x}" style="margin-right:6px;"><input type="number" step="0.1" data-field="y" value="${n.y}">`)}
+    </div>
+    <button class="danger-btn" id="btnDeleteEntity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
+      Delete vertex
+    </button>`;
+  } else if (type === 'edge'){
+    const e = edgeById(id);
+    if (!e){ state.selection={type:null,id:null}; return renderInspector(); }
+    const a = nodeById(e.from), b = nodeById(e.to);
+    html += `<div class="insp-section">
+      <div class="insp-label">Edge</div>
+      <div style="font-family:var(--font-math); font-size:13px; color:var(--ink-soft); margin-bottom:12px;">
+        ${a?prettifyLabel(a.label):'?'} ${e.directed?'→':'—'} ${b?prettifyLabel(b.label):'?'}
+      </div>
+      ${fieldRow('Directed', `<div class="seg-control" data-field="directed">
+          <button class="${!e.directed?'active':''}" data-val="false">No</button>
+          <button class="${e.directed?'active':''}" data-val="true">Yes</button>
+        </div>`)}
+      ${fieldRow('Curved', `<div class="seg-control" data-field="curved">
+          <button class="${!e.curved?'active':''}" data-val="false">Straight</button>
+          <button class="${e.curved?'active':''}" data-val="true">Curved</button>
+        </div>`)}
+      ${fieldRow('Style', `<div class="seg-control" data-field="style">
+          <button class="${e.style==='solid'?'active':''}" data-val="solid">Solid</button>
+          <button class="${e.style==='dashed'?'active':''}" data-val="dashed">Dashed</button>
+        </div>`)}
+      ${fieldRow('Color', colorSwatchesHtml(NODE_COLORS, e.color, 'color'))}
+    </div>
+    <button class="danger-btn" id="btnDeleteEntity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
+      Delete edge
+    </button>`;
+  } else if (type === 'hyper'){
+    const h = hyperById(id);
+    if (!h){ state.selection={type:null,id:null}; return renderInspector(); }
+    const memberLabels = h.members.map(mid => { const n=nodeById(mid); return n?prettifyLabel(n.label):'?'; }).join(', ');
+    html += `<div class="insp-section">
+      <div class="insp-label">Hyperedge</div>
+      ${fieldRow('Label', `<input type="text" data-field="label" value="${escapeAttr(h.label)}" placeholder="e_{1}">`)}
+      <div style="font-family:var(--font-math); font-size:12.5px; color:var(--ink-soft); margin:-2px 0 12px; padding-left:88px;">
+        {${memberLabels}} · ${h.members.length} member${h.members.length===1?'':'s'}
+      </div>
+      ${fieldRow('Color', colorSwatchesHtml(HYPEREDGE_COLORS, h.color, 'color'))}
+      ${fieldRow('Shape', `<div class="seg-control" data-field="style">
+          <button class="${(h.style ?? 'hull')==='hull'?'active':''}" data-val="hull">Region</button>
+          <button class="${h.style==='path'?'active':''}" data-val="path">Path</button>
+        </div>`)}
+      ${h.style==='path' ? fieldRow('Trail', `<div class="seg-control" data-field="showTrail">
+          <button class="${(h.showTrail ?? true)?'active':''}" data-val="true">Show</button>
+          <button class="${h.showTrail===false?'active':''}" data-val="false">Hide</button>
+        </div>`) : ''}
+      ${fieldRow('Padding', `<input type="number" step="0.1" min="0.1" max="2" data-field="padding" value="${h.padding ?? HULL_PAD_UNITS}">`)}
+    </div>
+    <button class="danger-btn" id="btnDeleteEntity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
+      Delete hyperedge
+    </button>`;
+  }
+
+  // structure summary — always shown below whatever's selected (or alone if nothing selected)
+  html += renderStructureSummary();
+
+  el.innerHTML = html;
+  bindInspectorEvents();
+  updateStructCount();
+}
+
+function escapeAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+
+function renderStructureSummary(){
+  let html = `<div class="insp-section">
+    <div class="insp-label">Overview</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num">${state.nodes.length}</div><div class="stat-name">vertices</div></div>
+      <div class="stat-box"><div class="stat-num">${state.edges.length}</div><div class="stat-name">edges</div></div>`;
+  if (state.mode === 'hyper'){
+    html += `<div class="stat-box"><div class="stat-num">${state.hyperedges.length}</div><div class="stat-name">hyperedges</div></div>
+      <div class="stat-box"><div class="stat-num">${avgHyperDegree()}</div><div class="stat-name">avg. arity</div></div>`;
+  } else {
+    html += `<div class="stat-box"><div class="stat-num">${avgDegree()}</div><div class="stat-name">avg. degree</div></div>`;
+  }
+  html += `</div></div>`;
+
+  if (state.nodes.length){
+    html += `<div class="insp-section"><div class="insp-label">Vertices</div><div class="entity-list">`;
+    state.nodes.forEach(n => {
+      html += `<div class="entity-row ${state.selection.type==='node'&&state.selection.id===n.id?'selected':''}" data-entity-type="node" data-entity-id="${n.id}">
+        <div class="entity-swatch" style="background:${colorHex(NODE_COLORS,n.color)}"></div>
+        <div class="entity-label">${prettifyLabel(n.label)}</div>
+        <div class="entity-meta">${degreeOf(n.id)}°</div>
+        <button class="entity-del" data-del-type="node" data-del-id="${n.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (state.edges.length){
+    html += `<div class="insp-section"><div class="insp-label">Edges</div><div class="entity-list">`;
+    state.edges.forEach(e => {
+      const a = nodeById(e.from), b = nodeById(e.to);
+      html += `<div class="entity-row ${state.selection.type==='edge'&&state.selection.id===e.id?'selected':''}" data-entity-type="edge" data-entity-id="${e.id}">
+        <div class="entity-swatch" style="background:${colorHex(NODE_COLORS,e.color)}"></div>
+        <div class="entity-label">${a?prettifyLabel(a.label):'?'} ${e.directed?'→':'—'} ${b?prettifyLabel(b.label):'?'}</div>
+        <button class="entity-del" data-del-type="edge" data-del-id="${e.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (state.mode === 'hyper' && state.hyperedges.length){
+    html += `<div class="insp-section"><div class="insp-label">Hyperedges</div><div class="entity-list">`;
+    state.hyperedges.forEach(h => {
+      html += `<div class="entity-row ${state.selection.type==='hyper'&&state.selection.id===h.id?'selected':''}" data-entity-type="hyper" data-entity-id="${h.id}">
+        <div class="entity-swatch hyper" style="background:${colorHex(HYPEREDGE_COLORS,h.color)}"></div>
+        <div class="entity-label">${prettifyLabel(h.label)} = {${h.members.map(mid=>{const n=nodeById(mid);return n?prettifyLabel(n.label):'?';}).join(', ')}}</div>
+        <button class="entity-del" data-del-type="hyper" data-del-id="${h.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (!state.nodes.length){
+    html += `<div class="insp-empty">Nothing on the canvas yet. Pick the vertex tool and click to start.</div>`;
+  }
+
+  if (state.nodes.length){
+    html += `<button class="danger-btn" id="btnClearAll" style="margin-top:4px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
+      Clear canvas
+    </button>`;
+  }
+
+  return html;
+}
+
+function degreeOf(nodeId){
+  return state.edges.filter(e => e.from===nodeId || e.to===nodeId).length;
+}
+function avgDegree(){
+  if (!state.nodes.length) return '0';
+  const total = state.nodes.reduce((s,n)=>s+degreeOf(n.id),0);
+  return (total/state.nodes.length).toFixed(1);
+}
+function avgHyperDegree(){
+  if (!state.hyperedges.length) return '0';
+  const total = state.hyperedges.reduce((s,h)=>s+h.members.length,0);
+  return (total/state.hyperedges.length).toFixed(1);
+}
+function updateStructCount(){
+  const n = state.nodes.length + state.edges.length + (state.mode==='hyper'?state.hyperedges.length:0);
+  document.getElementById('structCount').textContent = n;
+}
+
+function bindInspectorEvents(){
+  const el = document.getElementById('inspector');
+
+  el.querySelectorAll('input[data-field]').forEach(inp => {
+    inp.addEventListener('input', () => onFieldChange(inp.dataset.field, inp.value));
+    inp.addEventListener('blur', () => commitFieldEdit());
+    inp.addEventListener('keydown', (e) => { if (e.key==='Enter') inp.blur(); });
+  });
+
+  el.querySelectorAll('.seg-control[data-field] button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = btn.closest('.seg-control').dataset.field;
+      const val = btn.dataset.val === 'true' ? true : (btn.dataset.val === 'false' ? false : btn.dataset.val);
+      pushHistory();
+      applyFieldToSelection(field, val);
+      commitHistory();
+      fullRerender();
+    });
+  });
+
+  el.querySelectorAll('.swatch[data-color-field]').forEach(sw => {
+    sw.addEventListener('click', () => {
+      pushHistory();
+      applyFieldToSelection('color', sw.dataset.colorKey);
+      commitHistory();
+      fullRerender();
+    });
+  });
+
+  el.querySelectorAll('.entity-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.entity-del')) return;
+      selectEntity(row.dataset.entityType, row.dataset.entityId);
+      render();
+    });
+  });
+
+  el.querySelectorAll('.entity-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const t = btn.dataset.delType, id = btn.dataset.delId;
+      if (t==='node') deleteNode(id);
+      else if (t==='edge') deleteEdge(id);
+      else if (t==='hyper') deleteHyperedge(id);
+      fullRerender();
+    });
+  });
+
+  const clearBtn = document.getElementById('btnClearAll');
+  if (clearBtn) clearBtn.addEventListener('click', () => openModal('clearVeil'));
+
+  const delBtn = document.getElementById('btnDeleteEntity');
+  if (delBtn) delBtn.addEventListener('click', () => deleteSelection());
+}
+
+let fieldEditPushed = false;
+function onFieldChange(field, value){
+  if (!fieldEditPushed){ pushHistory(); fieldEditPushed = true; }
+  let v = value;
+  if (field==='x' || field==='y' || field==='padding'){
+    v = parseFloat(value);
+    if (Number.isNaN(v)) return;
+  }
+  applyFieldToSelection(field, v);
+  render();
+  updateCodePanel();
+}
+function commitFieldEdit(){
+  if (fieldEditPushed){ commitHistory(); fieldEditPushed = false; }
+  renderInspector(); // re-render to reflect any normalization (e.g. label prettify in list)
+}
+function applyFieldToSelection(field, value){
+  const { type, id } = state.selection;
+  if (type==='node'){ const n=nodeById(id); if(n) n[field]=value; }
+  else if (type==='edge'){ const e=edgeById(id); if(e) e[field]=value; }
+  else if (type==='hyper'){ const h=hyperById(id); if(h) h[field]=value; }
+}
+
+/* ---------------------------------------------------------------------
+   Top-level render orchestration
+   --------------------------------------------------------------------- */
+function fullRerender(){
+  render();
+  renderInspector();
+  updateCodePanel();
+}
+
+/* ---------------------------------------------------------------------
+   Toolbar / mode / tool wiring
+   --------------------------------------------------------------------- */
+function setTool(tool){
+  if (tool === 'hyper' && state.mode !== 'hyper') return; // lasso only meaningful in hypergraph mode
+  state.tool = tool;
+  if (tool !== 'hyper') state.lassoIds = [];
+  document.querySelectorAll('#toolSelect,#toolNode,#toolEdge,#toolHyper').forEach(b=>b.classList.remove('active'));
+  const map = { select:'toolSelect', node:'toolNode', edge:'toolEdge', hyper:'toolHyper' };
+  const btn = document.getElementById(map[tool]);
+  if (btn) btn.classList.add('active');
+  canvas.style.cursor = (tool==='select') ? 'default' : 'crosshair';
+  render();
+}
+
+function setMode(mode){
+  state.mode = mode;
+  document.querySelectorAll('#modeSwitch button').forEach(b => b.classList.toggle('active', b.dataset.mode===mode));
+  document.getElementById('toolHyper').disabled = (mode !== 'hyper');
+  if (mode !== 'hyper' && state.tool==='hyper'){ setTool('select'); }
+  const hint = document.getElementById('canvasHint');
+  hint.innerHTML = mode==='hyper'
+    ? `<span><b>N</b> vertex · <b>H</b> lasso (click nodes, <kbd>Enter</kbd> to close) · <kbd>Del</kbd> remove selection</span>`
+    : `<span><b>N</b> vertex · <b>E</b> edge · <kbd>Del</kbd> remove selection</span>`;
+  updateEmptyStateText();
+  fullRerender();
+}
+
+function updateEmptyStateText(){
+  const msg = document.querySelector('#emptyState .msg');
+  const glyph = document.querySelector('#emptyState .glyph');
+  if (state.mode === 'hyper'){
+    glyph.textContent = 'H = (V, E)';
+    msg.innerHTML = `Click <b>Vertex</b> to place points, then <b>Hyperedge</b> to click several vertices and press <kbd style="font-family:var(--font-mono);background:var(--paper-dim);border:1px solid var(--rule);padding:1px 5px;border-radius:3px;">Enter</kbd> — any number of vertices, not just two. Each one can be a filled region or a path through its vertices — pick which in the Structure panel.`;
+  } else {
+    glyph.textContent = 'G = (V, E)';
+    msg.innerHTML = `Click <b>Vertex</b>, then click the canvas to place points. Switch to <b>Edge</b> and drag between two vertices to connect them. TikZ code builds itself on the right, live.`;
+  }
+}
+
+function syncModeSwitchToButtons(){
+  document.getElementById('toolDirected').classList.toggle('active', state.directed);
+  document.getElementById('toolCurved').classList.toggle('active', state.curvedDefault);
+  document.getElementById('toolUndo').disabled = state.history.length===0;
+  document.getElementById('toolRedo').disabled = state.future.length===0;
+}
+
+document.getElementById('modeSwitch').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-mode]');
+  if (btn) setMode(btn.dataset.mode);
+});
+
+document.getElementById('toolSelect').addEventListener('click', ()=>setTool('select'));
+document.getElementById('toolNode').addEventListener('click', ()=>setTool('node'));
+document.getElementById('toolEdge').addEventListener('click', ()=>setTool('edge'));
+document.getElementById('toolHyper').addEventListener('click', ()=>setTool('hyper'));
+
+document.getElementById('toolDirected').addEventListener('click', () => {
+  state.directed = !state.directed;
+  syncModeSwitchToButtons();
+});
+document.getElementById('toolCurved').addEventListener('click', () => {
+  state.curvedDefault = !state.curvedDefault;
+  syncModeSwitchToButtons();
+});
+document.getElementById('toolUndo').addEventListener('click', undo);
+document.getElementById('toolRedo').addEventListener('click', redo);
+
+document.getElementById('toolAutoLayout').addEventListener('click', () => {
+  autoLayout();
+});
+
+function autoLayout(){
+  if (state.nodes.length < 2) return;
+  pushHistory();
+  // simple circular layout — predictable, always non-overlapping, and a
+  // reasonable starting point a mathematician will typically rearrange by hand
+  const n = state.nodes.length;
+  const R = Math.max(2, n * 0.55);
+  state.nodes.forEach((node, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI/2;
+    node.x = Math.round(Math.cos(angle) * R * 100) / 100;
+    node.y = Math.round(Math.sin(angle) * R * 100) / 100;
+  });
+  commitHistory();
+  fullRerender();
+  fitToView();
+}
+
+/* ---------------------------------------------------------------------
+   Zoom controls
+   --------------------------------------------------------------------- */
+document.getElementById('zoomIn').addEventListener('click', () => zoomBy(1.2));
+document.getElementById('zoomOut').addEventListener('click', () => zoomBy(1/1.2));
+document.getElementById('zoomFit').addEventListener('click', fitToView);
+
+function zoomBy(factor){
+  const wrap = document.getElementById('canvas-wrap');
+  const cx = wrap.clientWidth/2, cy = wrap.clientHeight/2;
+  const wBefore = screenToWorld(cx,cy);
+  state.camera.zoom = Math.max(0.25, Math.min(3, state.camera.zoom*factor));
+  const wAfter = screenToWorld(cx,cy);
+  state.camera.x += (wAfter.x-wBefore.x)*UNIT_PX*state.camera.zoom;
+  state.camera.y -= (wAfter.y-wBefore.y)*UNIT_PX*state.camera.zoom;
+  render();
+}
+
+function fitToView(){
+  const wrap = document.getElementById('canvas-wrap');
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  if (!state.nodes.length){
+    state.camera = { x:w/2, y:h/2, zoom:1 };
+    render();
+    return;
+  }
+  const xs = state.nodes.map(n=>n.x), ys = state.nodes.map(n=>n.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+  const spanX = Math.max(maxX-minX, 1), spanY = Math.max(maxY-minY, 1);
+  const pad = 2.4;
+  const zoomX = w / ((spanX+pad)*UNIT_PX);
+  const zoomY = h / ((spanY+pad)*UNIT_PX);
+  state.camera.zoom = Math.max(0.25, Math.min(2, Math.min(zoomX,zoomY)));
+  const centerX = (minX+maxX)/2, centerY=(minY+maxY)/2;
+  state.camera.x = w/2 - centerX*UNIT_PX*state.camera.zoom;
+  state.camera.y = h/2 + centerY*UNIT_PX*state.camera.zoom;
+  render();
+}
+
+/* ---------------------------------------------------------------------
+   Code panel toolbar (standalone toggle, units toggle, copy)
+   --------------------------------------------------------------------- */
+['chipStandalone','chipMatrix'].forEach(id => {
+  const chip = document.getElementById(id);
+  chip.addEventListener('click', (e) => {
+    const cb = chip.querySelector('input');
+    if (e.target.tagName !== 'INPUT') cb.checked = !cb.checked;
+    chip.classList.toggle('on', cb.checked);
+    updateCodePanel();
+  });
+});
+
+document.getElementById('btnCopyCode').addEventListener('click', async () => {
+  const standalone = document.getElementById('chipStandalone').querySelector('input').checked;
+  const showUnits = document.getElementById('chipMatrix').querySelector('input').checked;
+  const src = generateTikz({ standalone, showUnits });
+  try {
+    await navigator.clipboard.writeText(src);
+    toast('TikZ copied to clipboard');
+  } catch(err){
+    toast('Could not access clipboard — select and copy manually');
+  }
+});
+
+document.querySelectorAll('.panel-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchPanelTab(tab.dataset.tab));
+});
+
+/* ---------------------------------------------------------------------
+   Import / Export
+   --------------------------------------------------------------------- */
+function serializeGraph(){
+  return JSON.stringify({
+    version: 1,
+    mode: state.mode,
+    directed: state.directed,
+    curvedDefault: state.curvedDefault,
+    nodes: state.nodes,
+    edges: state.edges,
+    hyperedges: state.hyperedges,
+    nextNodeNum: state.nextNodeNum,
+    nextEdgeNum: state.nextEdgeNum,
+    nextHyperNum: state.nextHyperNum,
+  }, null, 2);
+}
+
+function downloadText(filename, text, mime){
+  const blob = new Blob([text], { type: mime || 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+document.getElementById('btnExportJson').addEventListener('click', () => {
+  downloadText('graph.json', serializeGraph(), 'application/json');
+  toast('Saved graph.json');
+});
+
+document.getElementById('btnExportTex').addEventListener('click', () => {
+  const src = generateTikz({ standalone:true });
+  downloadText('graph.tex', src, 'text/x-tex');
+  toast('Exported graph.tex');
+});
+
+document.getElementById('btnImport').addEventListener('click', () => openModal('importVeil'));
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+document.getElementById('importCancel').addEventListener('click', ()=>closeModal('importVeil'));
+document.getElementById('importConfirm').addEventListener('click', () => {
+  const text = document.getElementById('importText').value.trim();
+  if (!text){ closeModal('importVeil'); return; }
+  try {
+    const data = JSON.parse(text);
+    pushHistory();
+    state.mode = data.mode === 'hyper' ? 'hyper' : 'graph';
+    state.directed = !!data.directed;
+    state.curvedDefault = !!data.curvedDefault;
+    state.nodes = Array.isArray(data.nodes) ? data.nodes : [];
+    state.edges = Array.isArray(data.edges) ? data.edges : [];
+    state.hyperedges = Array.isArray(data.hyperedges) ? data.hyperedges : [];
+    state.nextNodeNum = data.nextNodeNum || (state.nodes.length+1);
+    state.nextEdgeNum = data.nextEdgeNum || (state.edges.length+1);
+    state.nextHyperNum = data.nextHyperNum || (state.hyperedges.length+1);
+    state.selection = { type:null, id:null };
+    commitHistory();
+    setMode(state.mode);
+    fitToView();
+    fullRerender();
+    closeModal('importVeil');
+    toast('Graph imported');
+  } catch(err){
+    toast('Could not parse that JSON — check the format');
+  }
+});
+
+document.getElementById('clearCancel').addEventListener('click', ()=>closeModal('clearVeil'));
+document.getElementById('clearConfirm').addEventListener('click', () => {
+  clearAll();
+  closeModal('clearVeil');
+  toast('Canvas cleared');
+});
+
+document.querySelectorAll('.modal-veil').forEach(veil => {
+  veil.addEventListener('click', (e) => { if (e.target===veil) veil.classList.remove('open'); });
+});
+
+/* ---------------------------------------------------------------------
+   Toast
+   --------------------------------------------------------------------- */
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------------------------------------------------------------------
+   Init
+   --------------------------------------------------------------------- */
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+setMode('graph');
+setTool('node');
+fitToView();
+fullRerender();
+syncModeSwitchToButtons();
+</script>
+</body>
+</html>
+
