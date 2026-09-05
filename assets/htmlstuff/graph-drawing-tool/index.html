@@ -1007,6 +1007,38 @@ function colorHex(list, key){
   return found ? found.hex : list[0].hex;
 }
 
+// Resolve an entity's actual display color: its custom RGB hex when
+// color==='other' (falling back to the same neutral gray the inspector's
+// RGB inputs default to, #888888, if 'other' was set with no customColor
+// chosen yet), otherwise the ordinary palette lookup. Every canvas/
+// inspector-swatch call site that used to read colorHex(list, entity.color)
+// reads resolveColor(entity, list) instead — colorHex itself is
+// intentionally left alone, since it's also called elsewhere with a bare
+// hardcoded key that was never tied to any entity's stored color and has
+// no custom-color concept to resolve.
+function resolveColor(entity, list){
+  if (entity.color === 'other') return entity.customColor || '#888888';
+  return colorHex(list, entity.color);
+}
+
+// A stable identifier for an entity's color, safe to use in TikZ style/color
+// names (\definecolor and every draw=/fill= reference). Equal to the plain
+// color KEY for every palette color — so every existing TikZ style name,
+// and every previously-verified compiled example, is completely unchanged
+// — but for a custom color, two entities that happen to share
+// color==='other' can still have entirely different customColor hexes, so
+// the slug is derived from the hex itself instead of the shared key. This
+// is what lets the used-colors collection below dedupe/name custom colors
+// correctly instead of silently collapsing every custom-colored entity onto
+// one shared (and, for all but one of them, wrong) style.
+function colorSlug(entity){
+  if (entity.color === 'other'){
+    const hex = entity.customColor || '#888888'; // matches the inspector's own default swatch fallback
+    return 'custom' + hex.replace('#','').toLowerCase();
+  }
+  return entity.color;
+}
+
 function resizeCanvas(){
   const wrap = document.getElementById('canvas-wrap');
   const rect = wrap.getBoundingClientRect();
@@ -1032,7 +1064,7 @@ function screenPtForNode(n){
 function drawHyperedgeBlob(h, isPreview){
   const members = h.members.map(nodeById).filter(Boolean);
   if (members.length === 0) return;
-  const color = colorHex(HYPEREDGE_COLORS, h.color);
+  const color = resolveColor(h, HYPEREDGE_COLORS);
   const padPx = (h.padding ?? HULL_PAD_UNITS) * UNIT_PX * state.camera.zoom;
 
   ctx.save();
@@ -1248,7 +1280,7 @@ function drawEdge(e, isSelected){
   const a = nodeById(e.from), b = nodeById(e.to);
   if (!a || !b) return;
   const pa = screenPtForNode(a), pb = screenPtForNode(b);
-  const color = isSelected ? '#1c1e24' : colorHex(NODE_COLORS, e.color);
+  const color = isSelected ? '#1c1e24' : resolveColor(e, NODE_COLORS);
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
@@ -1315,7 +1347,7 @@ function drawArrowhead(tip, angle, color){
 function drawNode(n, isSelected, isHovered, isLassoed){
   const p = screenPtForNode(n);
   const r = NODE_R * state.camera.zoom;
-  const color = colorHex(NODE_COLORS, n.color);
+  const color = resolveColor(n, NODE_COLORS);
 
   ctx.save();
   if (isSelected){
@@ -1381,7 +1413,7 @@ function measureTextBlock(t){
 
 function drawTextLabel(t, isSelected){
   const p = worldToScreen(t.x, t.y);
-  const color = colorHex(NODE_COLORS, t.color);
+  const color = resolveColor(t, NODE_COLORS);
 
   ctx.save();
   ctx.textAlign = 'center';
@@ -1822,14 +1854,16 @@ function generateTikz(opts){
   const nodeIdMap = {};
   state.nodes.forEach((n,i) => { nodeIdMap[n.id] = nodeTikzId(i); });
 
-  const usedNodeColors = [...new Set(state.nodes.map(n=>n.color))];
-  const usedEdgeColors = [...new Set(state.edges.map(e=>e.color))];
-  const usedHyperColors = [...new Set(state.hyperedges.map(h=>h.color))];
-  const usedTextColors = [...new Set(state.texts.map(t=>t.color))];
+  const usedNodeColors = collectUsedColorSlugs(state.nodes, NODE_COLORS);
+  const usedEdgeColors = collectUsedColorSlugs(state.edges, NODE_COLORS);
+  const usedHyperColors = collectUsedColorSlugs(state.hyperedges, HYPEREDGE_COLORS);
+  const usedTextColors = collectUsedColorSlugs(state.texts, NODE_COLORS);
 
   // \definecolor statements must precede the style block that references them,
-  // so these are collected and emitted first.
-  const colorDefs = collectColorDefs([...usedNodeColors, ...usedTextColors], usedEdgeColors, usedHyperColors);
+  // so these are collected and emitted first. Dedupes by slug across ALL
+  // four entity kinds at once (mergeColorPairs), so a color shared between,
+  // say, a node and a text label emits one \definecolor, not two.
+  const colorDefs = collectColorDefs(mergeColorPairs(usedNodeColors, usedEdgeColors, usedHyperColors, usedTextColors));
 
   const lines = [];
   if (standalone){
@@ -1844,15 +1878,15 @@ function generateTikz(opts){
   lines.push('\\begin{tikzpicture}[');
   lines.push('  >={Stealth[length=6pt]},');
   lines.push('  vertexbase/.style={circle, draw=black, fill=white, line width=0.9pt, minimum size=7mm, inner sep=0pt, font=\\small},');
-  usedNodeColors.forEach(c => {
-    lines.push(`  ${tikzNodeStyleName(c)}/.style={vertexbase, draw=${colorRefName(c,'node')}},`);
+  usedNodeColors.forEach(({slug}) => {
+    lines.push(`  ${tikzNodeStyleName(slug)}/.style={vertexbase, draw=${colorRefName(slug)}},`);
   });
   lines.push('  edgebase/.style={line width=0.9pt},');
-  usedEdgeColors.forEach(c => {
-    lines.push(`  edgecolor${c}/.style={edgebase, draw=${colorRefName(c,'node')}},`);
+  usedEdgeColors.forEach(({slug}) => {
+    lines.push(`  edgecolor${slug}/.style={edgebase, draw=${colorRefName(slug)}},`);
   });
-  usedHyperColors.forEach(c => {
-    lines.push(`  hyperedgecolor${c}/.style={draw=${colorRefName(c,'hyper')}, fill=${colorRefName(c,'hyper')}!16, line width=1.1pt},`);
+  usedHyperColors.forEach(({slug}) => {
+    lines.push(`  hyperedgecolor${slug}/.style={draw=${colorRefName(slug)}, fill=${colorRefName(slug)}!16, line width=1.1pt},`);
   });
   lines.push(']');
   lines.push('');
@@ -1870,7 +1904,7 @@ function generateTikz(opts){
   lines.push('% vertices');
   state.nodes.forEach((n,i) => {
     const id = nodeTikzId(i);
-    lines.push(`\\node[${tikzNodeStyleName(n.color)}] (${id}) at (${fmtNum(n.x)}${showUnits?'\\,\\mathrm{u}':''}, ${fmtNum(n.y)}${showUnits?'\\,\\mathrm{u}':''}) {$${n.label}$};`);
+    lines.push(`\\node[${tikzNodeStyleName(colorSlug(n))}] (${id}) at (${fmtNum(n.x)}${showUnits?'\\,\\mathrm{u}':''}, ${fmtNum(n.y)}${showUnits?'\\,\\mathrm{u}':''}) {$${n.label}$};`);
   });
 
   if (state.edges.length){
@@ -1879,7 +1913,7 @@ function generateTikz(opts){
     state.edges.forEach(e => {
       const a = nodeIdMap[e.from], b = nodeIdMap[e.to];
       if (!a || !b) return;
-      const styleParts = [`edgecolor${e.color}`];
+      const styleParts = [`edgecolor${colorSlug(e)}`];
       if (e.directed) styleParts.push('->');
       if (e.style === 'dashed') styleParts.push('dashed');
       const styleStr = styleParts.join(',');
@@ -1916,7 +1950,7 @@ function generateTikz(opts){
 // EACH line individually in $...$, for the same reason — a single $...$
 // pair cannot itself contain a \\ line break.
 function textTikzLine(t, showUnits){
-  const colorOpt = `text=${colorRefName(t.color,'node')}`;
+  const colorOpt = `text=${colorRefName(colorSlug(t))}`;
   const scaleOpt = (t.fontSize && t.fontSize !== 1) ? `, scale=${fmtNum(t.fontSize)}` : '';
   const lines = String(t.content ?? '').split('\n');
   const body = lines
@@ -1931,24 +1965,55 @@ function textTikzLine(t, showUnits){
 // simple named-color registry so \definecolor statements are only emitted once
 // per distinct hex value actually used in the current graph
 let colorDefRegistry = {};
-function collectColorDefs(nodeColorKeys, edgeColorKeys, hyperColorKeys){
+
+// Walk a list of entities and build one {slug, hex} pair per DISTINCT
+// resolved color, in first-seen order — the per-entity-kind half of the
+// color-collection step in generateTikz. Two entities that resolve to the
+// same color (whether both are 'ink', or both are unrelated custom RGB
+// values that happen to be identical) collapse into one pair here, exactly
+// like the plain Set-based key dedup this replaces did for the fixed
+// palette alone.
+function collectUsedColorSlugs(entities, palette){
+  const map = new Map();
+  entities.forEach(entity => {
+    const slug = colorSlug(entity);
+    if (!map.has(slug)) map.set(slug, { slug, hex: resolveColor(entity, palette) });
+  });
+  return [...map.values()];
+}
+
+// Merge several already-deduped {slug,hex} lists (e.g. node colors + text
+// colors) into one, deduping again across the combined set by slug — so a
+// color shared between two different entity KINDS still only gets a single
+// \definecolor, the same guarantee collectUsedColorSlugs gives within one
+// kind.
+function mergeColorPairs(...lists){
+  const map = new Map();
+  lists.forEach(list => list.forEach(pair => { if (!map.has(pair.slug)) map.set(pair.slug, pair); }));
+  return [...map.values()];
+}
+
+function collectColorDefs(colorPairs){
   colorDefRegistry = {};
   const defs = [];
-  const addIfNew = (key, hex, kind) => {
-    const name = 'c' + kind + key;
+  colorPairs.forEach(({slug, hex}) => {
+    const name = 'c' + slug;
     if (colorDefRegistry[name]) return;
     colorDefRegistry[name] = hex;
     const rgb = hexToRgbTuple(hex);
     defs.push(`\\definecolor{${name}}{RGB}{${rgb.r},${rgb.g},${rgb.b}}`);
-  };
-  [...new Set([...nodeColorKeys, ...edgeColorKeys])].forEach(k => addIfNew(k, colorHex(NODE_COLORS,k), 'node'));
-  hyperColorKeys.forEach(k => addIfNew(k, colorHex(HYPEREDGE_COLORS,k), 'hyper'));
+  });
   return defs;
 }
-function colorRefName(key, kind){ return 'c' + kind + key; }
+function colorRefName(slug){ return 'c' + slug; }
 function hexToRgbTuple(hex){
   const h = hex.replace('#','');
   return { r:parseInt(h.substring(0,2),16), g:parseInt(h.substring(2,4),16), b:parseInt(h.substring(4,6),16) };
+}
+function rgbToHex(r, g, b){
+  const clamp = n => Math.max(0, Math.min(255, Math.round(n)));
+  const toHex2 = n => clamp(n).toString(16).padStart(2, '0');
+  return '#' + toHex2(r) + toHex2(g) + toHex2(b);
 }
 
 // Build the two \draw statements needed to reproduce, in TikZ, the same
@@ -1974,7 +2039,7 @@ function hexToRgbTuple(hex){
 // wide tube — while keeping the wide translucent pass, matching the
 // canvas renderer's own showTrail toggle.
 function twoPassStrokeLines(h, coords, widthPt, extraOpts, includeRim){
-  const colorName = colorRefName(h.color, 'hyper');
+  const colorName = colorRefName(colorSlug(h));
   const fillPass  = `\\draw[draw=${colorName}, fill=none, opacity=0.16, line width=${widthPt}pt, ${extraOpts}] ${coords};`;
   if (includeRim === false) return fillPass;
   const rimPass   = `\\draw[draw=${colorName}, fill=none, opacity=0.85, line width=1.1pt, ${extraOpts}] ${coords};`;
@@ -1983,7 +2048,7 @@ function twoPassStrokeLines(h, coords, widthPt, extraOpts, includeRim){
 
 function hyperedgeTikzLine(h, idx, nodeIdMap){
   const members = h.members.map(nodeById).filter(Boolean);
-  const style = `hyperedgecolor${h.color}`;
+  const style = `hyperedgecolor${colorSlug(h)}`;
   const pad = h.padding ?? HULL_PAD_UNITS;
   if (members.length === 1){
     const n = members[0];
@@ -2120,10 +2185,32 @@ function fieldRow(labelText, inputHtml){
   return `<div class="field-row"><label>${labelText}</label>${inputHtml}</div>`;
 }
 
-function colorSwatchesHtml(list, selected, fieldName){
-  return `<div class="swatches">` + list.map(c =>
-    `<div class="swatch ${c.key===selected?'selected':''}" style="background:${c.hex}" data-color-field="${fieldName}" data-color-key="${c.key}"></div>`
-  ).join('') + `</div>`;
+// Full color picker for an entity: the fixed-palette swatches, plus one extra "Other" swatch that opens a
+// trio of R/G/B number inputs for a custom color. Returns TWO field rows
+// already wrapped (Color, and — only when "Other" is currently selected —
+// RGB) rather than one, since the caller previously wrapped a single
+// swatches row in its own fieldRow('Color', ...) call; folding the label in
+// here keeps every call site a single line even though there are now two
+// possible rows to emit.
+function colorPickerRows(entity, list, fieldName){
+  const isCustom = entity.color === 'other';
+  const customHex = entity.customColor || '#888888';
+  const swatchesHtml = `<div class="swatches">` + list.map(c =>
+    `<div class="swatch ${c.key===entity.color?'selected':''}" style="background:${c.hex}" data-color-field="${fieldName}" data-color-key="${c.key}"></div>`
+  ).join('') +
+    `<div class="swatch ${isCustom?'selected':''}" style="background:${isCustom?customHex:'conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)'}" data-color-field="${fieldName}" data-color-key="other" title="Other (custom RGB)"></div>` +
+    `</div>`;
+  let rows = fieldRow('Color', swatchesHtml);
+  if (isCustom){
+    const rgb = hexToRgbTuple(customHex);
+    rows += fieldRow('RGB', `<div style="display:flex; gap:6px; flex:1;">` +
+      ['r','g','b'].map((ch,i) => {
+        const val = [rgb.r, rgb.g, rgb.b][i];
+        return `<input type="number" min="0" max="255" step="1" data-rgb-channel="${ch}" data-rgb-entity-field="${fieldName}" value="${val}" style="width:0; flex:1; font-family:var(--font-mono); font-size:12px; padding:6px 7px; border:1px solid var(--rule); border-radius:4px; background:var(--paper); color:var(--ink);">`;
+      }).join('') +
+      `</div>`);
+  }
+  return rows;
 }
 
 function renderInspector(){
@@ -2142,7 +2229,7 @@ function renderInspector(){
           <button class="${n.shape==='circle'?'active':''}" data-val="circle">Circle</button>
           <button class="${n.shape==='square'?'active':''}" data-val="square">Square</button>
         </div>`)}
-      ${fieldRow('Color', colorSwatchesHtml(NODE_COLORS, n.color, 'color'))}
+      ${colorPickerRows(n, NODE_COLORS, 'color')}
       ${fieldRow('Position', `<input type="number" step="0.1" data-field="x" value="${n.x}" style="margin-right:6px;"><input type="number" step="0.1" data-field="y" value="${n.y}">`)}
     </div>
     <button class="danger-btn" id="btnDeleteEntity">
@@ -2170,7 +2257,7 @@ function renderInspector(){
           <button class="${e.style==='solid'?'active':''}" data-val="solid">Solid</button>
           <button class="${e.style==='dashed'?'active':''}" data-val="dashed">Dashed</button>
         </div>`)}
-      ${fieldRow('Color', colorSwatchesHtml(NODE_COLORS, e.color, 'color'))}
+      ${colorPickerRows(e, NODE_COLORS, 'color')}
     </div>
     <button class="danger-btn" id="btnDeleteEntity">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
@@ -2186,7 +2273,7 @@ function renderInspector(){
       <div style="font-family:var(--font-math); font-size:12.5px; color:var(--ink-soft); margin:-2px 0 12px; padding-left:88px;">
         {${memberLabels}} · ${h.members.length} member${h.members.length===1?'':'s'}
       </div>
-      ${fieldRow('Color', colorSwatchesHtml(HYPEREDGE_COLORS, h.color, 'color'))}
+      ${colorPickerRows(h, HYPEREDGE_COLORS, 'color')}
       ${fieldRow('Shape', `<div class="seg-control" data-field="style">
           <button class="${(h.style ?? 'hull')==='hull'?'active':''}" data-val="hull">Region</button>
           <button class="${h.style==='path'?'active':''}" data-val="path">Path</button>
@@ -2211,7 +2298,7 @@ function renderInspector(){
           <button class="${!t.mathMode?'active':''}" data-val="false">Plain</button>
           <button class="${t.mathMode?'active':''}" data-val="true">Math</button>
         </div>`)}
-      ${fieldRow('Color', colorSwatchesHtml(NODE_COLORS, t.color, 'color'))}
+      ${colorPickerRows(t, NODE_COLORS, 'color')}
       ${fieldRow('Size', `<input type="number" step="0.1" min="0.4" max="4" data-field="fontSize" value="${t.fontSize ?? 1}">`)}
     </div>
     <button class="danger-btn" id="btnDeleteEntity">
@@ -2248,7 +2335,7 @@ function renderStructureSummary(){
     html += `<div class="insp-section"><div class="insp-label">Vertices</div><div class="entity-list">`;
     state.nodes.forEach(n => {
       html += `<div class="entity-row ${state.selection.type==='node'&&state.selection.id===n.id?'selected':''}" data-entity-type="node" data-entity-id="${n.id}">
-        <div class="entity-swatch" style="background:${colorHex(NODE_COLORS,n.color)}"></div>
+        <div class="entity-swatch" style="background:${resolveColor(n,NODE_COLORS)}"></div>
         <div class="entity-label">${prettifyLabel(n.label)}</div>
         <div class="entity-meta">${degreeOf(n.id)}°</div>
         <button class="entity-del" data-del-type="node" data-del-id="${n.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -2262,7 +2349,7 @@ function renderStructureSummary(){
     state.edges.forEach(e => {
       const a = nodeById(e.from), b = nodeById(e.to);
       html += `<div class="entity-row ${state.selection.type==='edge'&&state.selection.id===e.id?'selected':''}" data-entity-type="edge" data-entity-id="${e.id}">
-        <div class="entity-swatch" style="background:${colorHex(NODE_COLORS,e.color)}"></div>
+        <div class="entity-swatch" style="background:${resolveColor(e,NODE_COLORS)}"></div>
         <div class="entity-label">${a?prettifyLabel(a.label):'?'} ${e.directed?'→':'—'} ${b?prettifyLabel(b.label):'?'}</div>
         <button class="entity-del" data-del-type="edge" data-del-id="${e.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>`;
@@ -2274,7 +2361,7 @@ function renderStructureSummary(){
     html += `<div class="insp-section"><div class="insp-label">Hyperedges</div><div class="entity-list">`;
     state.hyperedges.forEach(h => {
       html += `<div class="entity-row ${state.selection.type==='hyper'&&state.selection.id===h.id?'selected':''}" data-entity-type="hyper" data-entity-id="${h.id}">
-        <div class="entity-swatch hyper" style="background:${colorHex(HYPEREDGE_COLORS,h.color)}"></div>
+        <div class="entity-swatch hyper" style="background:${resolveColor(h,HYPEREDGE_COLORS)}"></div>
         <div class="entity-label">${prettifyLabel(h.label)} = {${h.members.map(mid=>{const n=nodeById(mid);return n?prettifyLabel(n.label):'?';}).join(', ')}}</div>
         <button class="entity-del" data-del-type="hyper" data-del-id="${h.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>`;
@@ -2287,7 +2374,7 @@ function renderStructureSummary(){
     state.texts.forEach(t => {
       const firstLine = String(t.content ?? '').split('\n')[0] || '(empty)';
       html += `<div class="entity-row ${state.selection.type==='text'&&state.selection.id===t.id?'selected':''}" data-entity-type="text" data-entity-id="${t.id}">
-        <div class="entity-swatch" style="background:${colorHex(NODE_COLORS,t.color)}; border-radius:2px;"></div>
+        <div class="entity-swatch" style="background:${resolveColor(t,NODE_COLORS)}; border-radius:2px;"></div>
         <div class="entity-label">${t.mathMode ? prettifyLabel(firstLine) : escapeHtml(firstLine)}</div>
         <button class="entity-del" data-del-type="text" data-del-id="${t.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>`;
@@ -2356,6 +2443,25 @@ function bindInspectorEvents(){
       commitHistory();
       fullRerender();
     });
+  });
+
+  el.querySelectorAll('input[data-rgb-channel]').forEach(inp => {
+    const onRgbChange = () => {
+      // the three R/G/B inputs are separate DOM elements but together
+      // determine one customColor hex string, so any single channel's
+      // change re-reads all three current values (not just its own) to
+      // build the combined hex, rather than trying to track partial state
+      const group = el.querySelectorAll(`input[data-rgb-channel][data-rgb-entity-field="${inp.dataset.rgbEntityField}"]`);
+      const channels = { r:0, g:0, b:0 };
+      group.forEach(g => {
+        const n = Math.max(0, Math.min(255, parseInt(g.value,10) || 0));
+        channels[g.dataset.rgbChannel] = n;
+      });
+      onFieldChange('customColor', rgbToHex(channels.r, channels.g, channels.b));
+    };
+    inp.addEventListener('input', onRgbChange);
+    inp.addEventListener('blur', () => commitFieldEdit());
+    inp.addEventListener('keydown', (e) => { if (e.key==='Enter') inp.blur(); });
   });
 
   el.querySelectorAll('.entity-row').forEach(row => {
