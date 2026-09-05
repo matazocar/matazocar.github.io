@@ -355,7 +355,9 @@
   }
 
   .field-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .field-row:has(textarea){ align-items:flex-start; }
   .field-row label{ font-size:11.5px; color:var(--ink-soft); width:78px; flex-shrink:0; }
+  .field-row:has(textarea) label{ padding-top:6px; }
   .field-row input[type=text], .field-row input[type=number]{
     flex:1; min-width:0;
     font-family:var(--font-mono); font-size:12px;
@@ -511,6 +513,9 @@
       <button class="tool" id="toolHyper" data-tip="Lasso hyperedge — H">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9c0-3 3.5-5 8-5s8 2 8 5-3.5 6-8 6-8-3-8-6z"/><circle cx="9" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"/></svg>
       </button>
+      <button class="tool" id="toolText" data-tip="Place text / math — T">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h14M12 6v12"/></svg>
+      </button>
     </div>
 
     <div class="tool-group">
@@ -564,7 +569,7 @@
     </div>
 
     <div class="canvas-hint" id="canvasHint">
-      <span><b>N</b> vertex · <b>E</b> edge · <b>H</b> hyperedge lasso · <kbd>Del</kbd> remove selection</span>
+      <span><b>N</b> vertex · <b>E</b> edge · <b>H</b> hyperedge lasso · <b>T</b> text · <kbd>Del</kbd> remove selection</span>
     </div>
 
     <div class="zoom-controls">
@@ -665,13 +670,14 @@ const MAX_HISTORY = 80;
    --------------------------------------------------------------------- */
 const state = {
   mode: 'graph',              // 'graph' | 'hyper'
-  tool: 'select',             // 'select' | 'node' | 'edge' | 'hyper'
+  tool: 'select',             // 'select' | 'node' | 'edge' | 'hyper' | 'text'
   directed: false,
   curvedDefault: false,
 
   nodes: [],                  // {id, label, x, y (tikz units), shape, color}
   edges: [],                  // {id, from, to, directed, curved, color, style:'solid'|'dashed'}
   hyperedges: [],             // {id, members:[nodeId...], color, label}
+  texts: [],                  // {id, content, x, y (tikz units), color, mathMode:bool, fontSize}
 
   selection: { type:null, id:null },  // currently selected single entity
   lassoIds: [],                // nodes gathered while actively lassoing a hyperedge
@@ -679,6 +685,7 @@ const state = {
   nextNodeNum: 1,
   nextEdgeNum: 1,
   nextHyperNum: 1,
+  nextTextNum: 1,
 
   camera: { x:0, y:0, zoom:1 },  // pans/zooms in *screen px*, independent of tikz units
 
@@ -715,6 +722,7 @@ function dist(a, b){ return Math.hypot(a.x-b.x, a.y-b.y); }
 function nodeById(id){ return state.nodes.find(n => n.id === id); }
 function edgeById(id){ return state.edges.find(e => e.id === id); }
 function hyperById(id){ return state.hyperedges.find(h => h.id === id); }
+function textById(id){ return state.texts.find(t => t.id === id); }
 
 function cross2(o,a,b){ return (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x); }
 
@@ -806,9 +814,11 @@ function snapshot(){
     nodes: state.nodes,
     edges: state.edges,
     hyperedges: state.hyperedges,
+    texts: state.texts,
     nextNodeNum: state.nextNodeNum,
     nextEdgeNum: state.nextEdgeNum,
     nextHyperNum: state.nextHyperNum,
+    nextTextNum: state.nextTextNum,
   });
 }
 function restoreSnapshot(json){
@@ -817,9 +827,11 @@ function restoreSnapshot(json){
   state.nodes = s.nodes;
   state.edges = s.edges;
   state.hyperedges = s.hyperedges;
+  state.texts = s.texts ?? [];
   state.nextNodeNum = s.nextNodeNum;
   state.nextEdgeNum = s.nextEdgeNum;
   state.nextHyperNum = s.nextHyperNum;
+  state.nextTextNum = s.nextTextNum ?? 1;
   state.selection = { type:null, id:null };
   state.lassoIds = [];
 }
@@ -874,6 +886,22 @@ function addNode(wx, wy){
   state.nodes.push(n);
   commitHistory();
   return n;
+}
+
+function addTextLabel(wx, wy){
+  pushHistory();
+  const t = {
+    id: uid('t'),
+    content: 'text ' + state.nextTextNum,
+    x: wx, y: wy,
+    color: 'ink',
+    mathMode: false, // false: plain text, rendered as-is in TikZ. true: wrapped in $...$
+    fontSize: 1,      // relative scale, 1 = the tool's default text size
+  };
+  state.nextTextNum++;
+  state.texts.push(t);
+  commitHistory();
+  return t;
 }
 
 function addEdge(fromId, toId){
@@ -943,18 +971,25 @@ function deleteHyperedge(id){
   if (state.selection.id === id) state.selection = { type:null, id:null };
   commitHistory();
 }
+function deleteTextLabel(id){
+  pushHistory();
+  state.texts = state.texts.filter(t => t.id !== id);
+  if (state.selection.id === id) state.selection = { type:null, id:null };
+  commitHistory();
+}
 function deleteSelection(){
   const { type, id } = state.selection;
   if (!type) return;
   if (type === 'node') deleteNode(id);
   else if (type === 'edge') deleteEdge(id);
   else if (type === 'hyper') deleteHyperedge(id);
+  else if (type === 'text') deleteTextLabel(id);
   fullRerender();
 }
 function clearAll(){
   pushHistory();
-  state.nodes = []; state.edges = []; state.hyperedges = [];
-  state.nextNodeNum = 1; state.nextEdgeNum = 1; state.nextHyperNum = 1;
+  state.nodes = []; state.edges = []; state.hyperedges = []; state.texts = [];
+  state.nextNodeNum = 1; state.nextEdgeNum = 1; state.nextHyperNum = 1; state.nextTextNum = 1;
   state.selection = { type:null, id:null };
   state.lassoIds = [];
   commitHistory();
@@ -1321,6 +1356,53 @@ function drawNode(n, isSelected, isHovered, isLassoed){
   ctx.restore();
 }
 
+// A free-floating text/math annotation, not attached to any vertex. Supports
+// multi-line content (split on literal newlines the user typed) and two
+// display modes: mathMode draws it the same italic-serif way node labels
+// are drawn (and prettifyLabel-transforms it the same way, so \alpha, x_{1},
+// etc. read naturally on canvas); plain mode draws it upright, without
+// running it through the math-label glyph substitutions, since ordinary
+// prose has no reason to have stray backslash-words or underscores rewritten.
+// Shared block-size measurement for a text label, used both to draw the
+// selection highlight (drawTextLabel) and to hit-test clicks (textAtScreen)
+// — kept in one place so the two can never silently drift out of sync with
+// each other, since the click target should always match what's drawn.
+function measureTextBlock(t){
+  const scale = (t.fontSize ?? 1) * state.camera.zoom;
+  const sizePx = Math.max(10, 14 * scale);
+  const lines = String(t.content ?? '').split('\n');
+  const lineHeight = sizePx * 1.3;
+  ctx.font = `${t.mathMode ? 'italic ' : ''}${sizePx}px 'STIX Two Text', Georgia, serif`;
+  const lineWidths = lines.map(l => ctx.measureText(t.mathMode ? prettifyLabel(l) : l).width);
+  const blockW = Math.max(20, lineWidths.reduce((max,w) => Math.max(max,w), 0));
+  const blockH = Math.max(lineHeight, lines.length * lineHeight);
+  return { sizePx, lines, lineHeight, blockW, blockH };
+}
+
+function drawTextLabel(t, isSelected){
+  const p = worldToScreen(t.x, t.y);
+  const color = colorHex(NODE_COLORS, t.color);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const { sizePx, lines, lineHeight, blockW, blockH } = measureTextBlock(t);
+  ctx.font = `${t.mathMode ? 'italic ' : ''}${sizePx}px 'STIX Two Text', Georgia, serif`;
+
+  if (isSelected){
+    ctx.fillStyle = 'rgba(43,76,158,0.14)';
+    ctx.fillRect(p.x - blockW/2 - 8, p.y - blockH/2 - 6, blockW + 16, blockH + 12);
+  }
+
+  ctx.fillStyle = color;
+  const startY = p.y - (lines.length-1) * lineHeight/2;
+  lines.forEach((line, i) => {
+    ctx.fillText(t.mathMode ? prettifyLabel(line) : line, p.x, startY + i*lineHeight);
+  });
+  ctx.restore();
+}
+
 const GREEK = {alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',chi:'χ',psi:'ψ',omega:'ω',Gamma:'Γ',Delta:'Δ',Theta:'Θ',Lambda:'Λ',Xi:'Ξ',Pi:'Π',Sigma:'Σ',Phi:'Φ',Psi:'Ψ',Omega:'Ω'};
 const SUBDIGITS = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
 function prettifyLabel(label){
@@ -1359,6 +1441,8 @@ function render(){
     state.mode==='hyper' && state.tool==='hyper' && state.lassoIds.includes(n.id)
   ));
 
+  state.texts.forEach(t => drawTextLabel(t, state.selection.type==='text' && state.selection.id===t.id));
+
   // in-progress edge-drag preview
   if (state.drag && state.drag.kind === 'draw-edge'){
     const a = nodeById(state.drag.fromId);
@@ -1376,7 +1460,7 @@ function render(){
     }
   }
 
-  document.getElementById('emptyState').style.display = state.nodes.length ? 'none' : 'flex';
+  document.getElementById('emptyState').style.display = (state.nodes.length || state.texts.length) ? 'none' : 'flex';
   document.getElementById('zoomVal').textContent = Math.round(state.camera.zoom*100) + '%';
 }
 
@@ -1390,6 +1474,17 @@ function nodeAtScreen(sx, sy){
     const n = state.nodes[i];
     const p = screenPtForNode(n);
     if (dist({x:sx,y:sy}, p) <= r) return n;
+  }
+  return null;
+}
+
+function textAtScreen(sx, sy){
+  // iterate reversed so most-recently-added (visually on top) wins ties
+  for (let i = state.texts.length-1; i>=0; i--){
+    const t = state.texts[i];
+    const p = worldToScreen(t.x, t.y);
+    const { blockW, blockH } = measureTextBlock(t);
+    if (Math.abs(sx-p.x) <= blockW/2+8 && Math.abs(sy-p.y) <= blockH/2+6) return t;
   }
   return null;
 }
@@ -1507,6 +1602,19 @@ function onPointerDown(evt){
     return;
   }
 
+  if (state.tool === 'text'){
+    const w = screenToWorld(pos.x, pos.y);
+    const t = addTextLabel(w.x, w.y);
+    selectEntity('text', t.id);
+    switchPanelTab('structure');
+    fullRerender();
+    setTimeout(() => {
+      const inp = document.querySelector('#inspector textarea[data-field="content"]');
+      if (inp){ inp.focus(); inp.select(); }
+    }, 30);
+    return;
+  }
+
   if (state.tool === 'edge'){
     const hit = nodeAtScreen(pos.x, pos.y);
     if (hit){
@@ -1540,6 +1648,14 @@ function onPointerDown(evt){
     fullRerender();
     return;
   }
+  const hitText = textAtScreen(pos.x, pos.y);
+  if (hitText){
+    selectEntity('text', hitText.id);
+    state.drag = { kind:'move-text', id:hitText.id, offX: hitText.x - screenToWorld(pos.x,pos.y).x, offY: hitText.y - screenToWorld(pos.x,pos.y).y, moved:false };
+    pushHistory();
+    fullRerender();
+    return;
+  }
   if (state.mode === 'hyper'){
     const hitHyper = hyperedgeAtScreen(pos.x, pos.y);
     if (hitHyper){
@@ -1561,7 +1677,8 @@ function onPointerMove(evt){
     const newHover = h ? h.id : null;
     if (newHover !== state.hoverNodeId){
       state.hoverNodeId = newHover;
-      canvas.style.cursor = h ? 'pointer' : (state.tool==='node' ? 'crosshair' : (state.tool==='edge'||state.tool==='hyper' ? 'crosshair':'default'));
+      const crosshairTools = ['node','edge','hyper','text'];
+      canvas.style.cursor = h ? 'pointer' : (crosshairTools.includes(state.tool) ? 'crosshair' : 'default');
       render();
     }
     return;
@@ -1577,6 +1694,15 @@ function onPointerMove(evt){
     if (n){
       n.x = w.x + state.drag.offX;
       n.y = w.y + state.drag.offY;
+      state.drag.moved = true;
+      render();
+    }
+  } else if (state.drag.kind === 'move-text'){
+    const w = screenToWorld(pos.x, pos.y);
+    const t = textById(state.drag.id);
+    if (t){
+      t.x = w.x + state.drag.offX;
+      t.y = w.y + state.drag.offY;
       state.drag.moved = true;
       render();
     }
@@ -1596,7 +1722,7 @@ function onPointerUp(evt){
       const e = addEdge(state.drag.fromId, target.id);
       if (e) selectEntity('edge', e.id);
     }
-  } else if (state.drag.kind === 'move-node'){
+  } else if (state.drag.kind === 'move-node' || state.drag.kind === 'move-text'){
     if (state.drag.moved) commitHistory(); else pendingSnapshot = null;
   }
 
@@ -1612,6 +1738,16 @@ function onDblClick(evt){
     switchPanelTab('structure');
     setTimeout(() => {
       const inp = document.querySelector('#inspector input[data-field="label"]');
+      if (inp){ inp.focus(); inp.select(); }
+    }, 30);
+    return;
+  }
+  const hitText = textAtScreen(pos.x, pos.y);
+  if (hitText){
+    selectEntity('text', hitText.id);
+    switchPanelTab('structure');
+    setTimeout(() => {
+      const inp = document.querySelector('#inspector textarea[data-field="content"]');
       if (inp){ inp.focus(); inp.select(); }
     }, 30);
   }
@@ -1648,6 +1784,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase()==='n') setTool('node');
   if (e.key.toLowerCase()==='e') setTool('edge');
   if (e.key.toLowerCase()==='h' && state.mode==='hyper') setTool('hyper');
+  if (e.key.toLowerCase()==='t') setTool('text');
   if (e.key === 'Escape'){
     state.lassoIds = [];
     selectEntity(null,null);
@@ -1688,10 +1825,11 @@ function generateTikz(opts){
   const usedNodeColors = [...new Set(state.nodes.map(n=>n.color))];
   const usedEdgeColors = [...new Set(state.edges.map(e=>e.color))];
   const usedHyperColors = [...new Set(state.hyperedges.map(h=>h.color))];
+  const usedTextColors = [...new Set(state.texts.map(t=>t.color))];
 
   // \definecolor statements must precede the style block that references them,
   // so these are collected and emitted first.
-  const colorDefs = collectColorDefs(usedNodeColors, usedEdgeColors, usedHyperColors);
+  const colorDefs = collectColorDefs([...usedNodeColors, ...usedTextColors], usedEdgeColors, usedHyperColors);
 
   const lines = [];
   if (standalone){
@@ -1753,11 +1891,41 @@ function generateTikz(opts){
     });
   }
 
+  if (state.texts.length){
+    lines.push('');
+    lines.push('% free text / annotations');
+    state.texts.forEach(t => {
+      lines.push(textTikzLine(t, showUnits));
+    });
+  }
+
   lines.push('');
   lines.push('\\end{tikzpicture}');
   if (standalone) lines.push('\\end{document}');
 
   return lines.join('\n');
+}
+
+// Build the \node statement for one free-floating text/math annotation.
+// Plain-mode content is emitted as-is, each line joined by TikZ's own line
+// break (\\) inside an align=center node — verified against a real compile
+// that this, not wrapping the whole block in one pair of $...$, is the
+// correct way to break a multi-line TikZ node (a raw $...$ spanning a \\
+// genuinely fails to compile: confirmed with "Missing \endgroup inserted"
+// before settling on per-line wrapping instead). Math-mode content wraps
+// EACH line individually in $...$, for the same reason — a single $...$
+// pair cannot itself contain a \\ line break.
+function textTikzLine(t, showUnits){
+  const colorOpt = `text=${colorRefName(t.color,'node')}`;
+  const scaleOpt = (t.fontSize && t.fontSize !== 1) ? `, scale=${fmtNum(t.fontSize)}` : '';
+  const lines = String(t.content ?? '').split('\n');
+  const body = lines
+    .map(line => t.mathMode ? `$${line}$` : line)
+    .join(' \\\\ ');
+  const alignOpt = lines.length > 1 ? ', align=center' : '';
+  const x = fmtNum(t.x) + (showUnits ? '\\,\\mathrm{u}' : '');
+  const y = fmtNum(t.y) + (showUnits ? '\\,\\mathrm{u}' : '');
+  return `\\node[${colorOpt}${scaleOpt}${alignOpt}] at (${x}, ${y}) {${body}};`;
 }
 
 // simple named-color registry so \definecolor statements are only emitted once
@@ -2033,6 +2201,23 @@ function renderInspector(){
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
       Delete hyperedge
     </button>`;
+  } else if (type === 'text'){
+    const t = textById(id);
+    if (!t){ state.selection={type:null,id:null}; return renderInspector(); }
+    html += `<div class="insp-section">
+      <div class="insp-label">Text</div>
+      ${fieldRow('Content', `<textarea data-field="content" placeholder="type 1 or more lines" rows="3" style="flex:1; min-width:0; font-family:var(--font-mono); font-size:12px; padding:6px 9px; border:1px solid var(--rule); border-radius:4px; background:var(--paper); color:var(--ink); resize:vertical;">${escapeHtml(String(t.content ?? ''))}</textarea>`)}
+      ${fieldRow('Mode', `<div class="seg-control" data-field="mathMode">
+          <button class="${!t.mathMode?'active':''}" data-val="false">Plain</button>
+          <button class="${t.mathMode?'active':''}" data-val="true">Math</button>
+        </div>`)}
+      ${fieldRow('Color', colorSwatchesHtml(NODE_COLORS, t.color, 'color'))}
+      ${fieldRow('Size', `<input type="number" step="0.1" min="0.4" max="4" data-field="fontSize" value="${t.fontSize ?? 1}">`)}
+    </div>
+    <button class="danger-btn" id="btnDeleteEntity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
+      Delete text
+    </button>`;
   }
 
   // structure summary — always shown below whatever's selected (or alone if nothing selected)
@@ -2097,11 +2282,24 @@ function renderStructureSummary(){
     html += `</div></div>`;
   }
 
-  if (!state.nodes.length){
+  if (state.texts.length){
+    html += `<div class="insp-section"><div class="insp-label">Text</div><div class="entity-list">`;
+    state.texts.forEach(t => {
+      const firstLine = String(t.content ?? '').split('\n')[0] || '(empty)';
+      html += `<div class="entity-row ${state.selection.type==='text'&&state.selection.id===t.id?'selected':''}" data-entity-type="text" data-entity-id="${t.id}">
+        <div class="entity-swatch" style="background:${colorHex(NODE_COLORS,t.color)}; border-radius:2px;"></div>
+        <div class="entity-label">${t.mathMode ? prettifyLabel(firstLine) : escapeHtml(firstLine)}</div>
+        <button class="entity-del" data-del-type="text" data-del-id="${t.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (!state.nodes.length && !state.texts.length){
     html += `<div class="insp-empty">Nothing on the canvas yet. Pick the vertex tool and click to start.</div>`;
   }
 
-  if (state.nodes.length){
+  if (state.nodes.length || state.texts.length){
     html += `<button class="danger-btn" id="btnClearAll" style="margin-top:4px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
       Clear canvas
@@ -2125,17 +2323,19 @@ function avgHyperDegree(){
   return (total/state.hyperedges.length).toFixed(1);
 }
 function updateStructCount(){
-  const n = state.nodes.length + state.edges.length + (state.mode==='hyper'?state.hyperedges.length:0);
+  const n = state.nodes.length + state.edges.length + (state.mode==='hyper'?state.hyperedges.length:0) + state.texts.length;
   document.getElementById('structCount').textContent = n;
 }
 
 function bindInspectorEvents(){
   const el = document.getElementById('inspector');
 
-  el.querySelectorAll('input[data-field]').forEach(inp => {
+  el.querySelectorAll('input[data-field], textarea[data-field]').forEach(inp => {
     inp.addEventListener('input', () => onFieldChange(inp.dataset.field, inp.value));
     inp.addEventListener('blur', () => commitFieldEdit());
-    inp.addEventListener('keydown', (e) => { if (e.key==='Enter') inp.blur(); });
+    if (inp.tagName === 'INPUT'){
+      inp.addEventListener('keydown', (e) => { if (e.key==='Enter') inp.blur(); });
+    }
   });
 
   el.querySelectorAll('.seg-control[data-field] button').forEach(btn => {
@@ -2173,6 +2373,7 @@ function bindInspectorEvents(){
       if (t==='node') deleteNode(id);
       else if (t==='edge') deleteEdge(id);
       else if (t==='hyper') deleteHyperedge(id);
+      else if (t==='text') deleteTextLabel(id);
       fullRerender();
     });
   });
@@ -2205,6 +2406,7 @@ function applyFieldToSelection(field, value){
   if (type==='node'){ const n=nodeById(id); if(n) n[field]=value; }
   else if (type==='edge'){ const e=edgeById(id); if(e) e[field]=value; }
   else if (type==='hyper'){ const h=hyperById(id); if(h) h[field]=value; }
+  else if (type==='text'){ const t=textById(id); if(t) t[field]=value; }
 }
 
 /* ---------------------------------------------------------------------
@@ -2223,8 +2425,8 @@ function setTool(tool){
   if (tool === 'hyper' && state.mode !== 'hyper') return; // lasso only meaningful in hypergraph mode
   state.tool = tool;
   if (tool !== 'hyper') state.lassoIds = [];
-  document.querySelectorAll('#toolSelect,#toolNode,#toolEdge,#toolHyper').forEach(b=>b.classList.remove('active'));
-  const map = { select:'toolSelect', node:'toolNode', edge:'toolEdge', hyper:'toolHyper' };
+  document.querySelectorAll('#toolSelect,#toolNode,#toolEdge,#toolHyper,#toolText').forEach(b=>b.classList.remove('active'));
+  const map = { select:'toolSelect', node:'toolNode', edge:'toolEdge', hyper:'toolHyper', text:'toolText' };
   const btn = document.getElementById(map[tool]);
   if (btn) btn.classList.add('active');
   canvas.style.cursor = (tool==='select') ? 'default' : 'crosshair';
@@ -2238,8 +2440,8 @@ function setMode(mode){
   if (mode !== 'hyper' && state.tool==='hyper'){ setTool('select'); }
   const hint = document.getElementById('canvasHint');
   hint.innerHTML = mode==='hyper'
-    ? `<span><b>N</b> vertex · <b>H</b> lasso (click nodes, <kbd>Enter</kbd> to close) · <kbd>Del</kbd> remove selection</span>`
-    : `<span><b>N</b> vertex · <b>E</b> edge · <kbd>Del</kbd> remove selection</span>`;
+    ? `<span><b>N</b> vertex · <b>H</b> lasso (click nodes, <kbd>Enter</kbd> to close) · <b>T</b> text · <kbd>Del</kbd> remove selection</span>`
+    : `<span><b>N</b> vertex · <b>E</b> edge · <b>T</b> text · <kbd>Del</kbd> remove selection</span>`;
   updateEmptyStateText();
   fullRerender();
 }
@@ -2272,6 +2474,7 @@ document.getElementById('toolSelect').addEventListener('click', ()=>setTool('sel
 document.getElementById('toolNode').addEventListener('click', ()=>setTool('node'));
 document.getElementById('toolEdge').addEventListener('click', ()=>setTool('edge'));
 document.getElementById('toolHyper').addEventListener('click', ()=>setTool('hyper'));
+document.getElementById('toolText').addEventListener('click', ()=>setTool('text'));
 
 document.getElementById('toolDirected').addEventListener('click', () => {
   state.directed = !state.directed;
@@ -2326,12 +2529,13 @@ function zoomBy(factor){
 function fitToView(){
   const wrap = document.getElementById('canvas-wrap');
   const w = wrap.clientWidth, h = wrap.clientHeight;
-  if (!state.nodes.length){
+  const points = [...state.nodes, ...state.texts];
+  if (!points.length){
     state.camera = { x:w/2, y:h/2, zoom:1 };
     render();
     return;
   }
-  const xs = state.nodes.map(n=>n.x), ys = state.nodes.map(n=>n.y);
+  const xs = points.map(p=>p.x), ys = points.map(p=>p.y);
   const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
   const spanX = Math.max(maxX-minX, 1), spanY = Math.max(maxY-minY, 1);
   const pad = 2.4;
@@ -2385,9 +2589,11 @@ function serializeGraph(){
     nodes: state.nodes,
     edges: state.edges,
     hyperedges: state.hyperedges,
+    texts: state.texts,
     nextNodeNum: state.nextNodeNum,
     nextEdgeNum: state.nextEdgeNum,
     nextHyperNum: state.nextHyperNum,
+    nextTextNum: state.nextTextNum,
   }, null, 2);
 }
 
@@ -2429,9 +2635,11 @@ document.getElementById('importConfirm').addEventListener('click', () => {
     state.nodes = Array.isArray(data.nodes) ? data.nodes : [];
     state.edges = Array.isArray(data.edges) ? data.edges : [];
     state.hyperedges = Array.isArray(data.hyperedges) ? data.hyperedges : [];
+    state.texts = Array.isArray(data.texts) ? data.texts : [];
     state.nextNodeNum = data.nextNodeNum || (state.nodes.length+1);
     state.nextEdgeNum = data.nextEdgeNum || (state.edges.length+1);
     state.nextHyperNum = data.nextHyperNum || (state.hyperedges.length+1);
+    state.nextTextNum = data.nextTextNum || (state.texts.length+1);
     state.selection = { type:null, id:null };
     commitHistory();
     setMode(state.mode);
