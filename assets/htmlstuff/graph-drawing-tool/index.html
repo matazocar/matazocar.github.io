@@ -397,6 +397,34 @@
   .seg-control button:last-child{ border-right:none; }
   .seg-control button.active{ background:var(--ink); color:var(--paper); }
 
+  .thickness-slider{ flex:1; display:flex; flex-direction:column; gap:5px; }
+  .thickness-slider input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:18px; background:transparent; cursor:pointer; margin:0;
+  }
+  .thickness-slider input[type=range]::-webkit-slider-runnable-track{
+    height:3px; background:var(--rule); border-radius:2px;
+  }
+  .thickness-slider input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:15px; height:15px; border-radius:50%;
+    background:var(--paper); border:2px solid var(--edge-ink);
+    margin-top:-6px; cursor:grab;
+  }
+  .thickness-slider input[type=range]::-webkit-slider-thumb:active{ cursor:grabbing; }
+  .thickness-slider input[type=range]::-moz-range-track{
+    height:3px; background:var(--rule); border-radius:2px;
+  }
+  .thickness-slider input[type=range]::-moz-range-thumb{
+    width:11px; height:11px; border-radius:50%;
+    background:var(--paper); border:2px solid var(--edge-ink);
+    cursor:grab;
+  }
+  .thickness-labels{
+    display:flex; justify-content:space-between;
+    font-size:10px; color:var(--ink-faint); font-family:var(--font-ui);
+  }
+
   .entity-list{ display:flex; flex-direction:column; gap:5px; }
   .entity-row{
     display:flex; align-items:center; gap:9px;
@@ -544,6 +572,10 @@
   </div>
 
   <div class="header-right">
+    <button class="text-btn" id="btnClassicGraphs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.3"/><circle cx="18" cy="6" r="2.3"/><circle cx="12" cy="18" r="2.3"/><path d="M7.6 7.2L10.6 16.3M16.4 7.2L13.4 16.3M8.3 6h7.4"/></svg>
+      Classic graphs
+    </button>
     <button class="text-btn" id="btnImport">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
       Import
@@ -626,6 +658,36 @@
     <div class="modal-actions">
       <button class="text-btn" id="clearCancel">Cancel</button>
       <button class="text-btn primary" id="clearConfirm" style="background:var(--danger); border-color:var(--danger);">Clear everything</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-veil" id="classicVeil">
+  <div class="modal">
+    <h3>Classic graphs</h3>
+    <p>Adds a standard named graph to the canvas, alongside anything already there.</p>
+    <div class="seg-control" id="classicPicker" style="margin-bottom:14px;">
+      <button class="active" data-classic="complete">Complete K<sub>n</sub></button>
+      <button data-classic="bipartite">Bipartite K<sub>m,n</sub></button>
+      <button data-classic="petersen">Petersen</button>
+    </div>
+    <div id="classicParamsComplete" class="field-row">
+      <label>n</label>
+      <input type="number" id="classicN" min="1" max="30" step="1" value="5">
+    </div>
+    <div id="classicParamsBipartite" class="field-row" style="display:none;">
+      <label>m , n</label>
+      <div style="display:flex; gap:8px; flex:1;">
+        <input type="number" id="classicM2" min="1" max="20" step="1" value="3" style="flex:1; min-width:0;">
+        <input type="number" id="classicN2" min="1" max="20" step="1" value="4" style="flex:1; min-width:0;">
+      </div>
+    </div>
+    <div id="classicParamsPetersen" class="field-row" style="display:none;">
+      <p style="margin:0; font-size:12px; color:var(--ink-soft);">The Petersen graph is one specific graph — 10 vertices, no parameters to set.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="text-btn" id="classicCancel">Cancel</button>
+      <button class="text-btn primary" id="classicConfirm">Add to canvas</button>
     </div>
   </div>
 </div>
@@ -921,6 +983,7 @@ function addEdge(fromId, toId){
     curved: state.curvedDefault,
     color: 'edge',
     style: 'solid',
+    width: 1.8, // px at zoom=1; matches the tool's original fixed edge width exactly
   };
   state.edges.push(e);
   commitHistory();
@@ -1281,10 +1344,11 @@ function drawEdge(e, isSelected){
   if (!a || !b) return;
   const pa = screenPtForNode(a), pb = screenPtForNode(b);
   const color = isSelected ? '#1c1e24' : resolveColor(e, NODE_COLORS);
+  const baseWidth = (e.width ?? 1.8) * state.camera.zoom;
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  ctx.lineWidth = isSelected ? 2.6 : 1.8;
+  ctx.lineWidth = isSelected ? baseWidth + 0.8 : baseWidth;
   if (e.style === 'dashed') ctx.setLineDash([7,5]); else ctx.setLineDash([]);
 
   // trim the line so it starts/ends at the node's circle edge, not its center —
@@ -1317,7 +1381,7 @@ function drawEdge(e, isSelected){
   ctx.stroke();
 
   if (e.directed){
-    drawArrowhead(endPoint, angleForArrow, color);
+    drawArrowhead(endPoint, angleForArrow, color, e.width ?? 1.8);
   }
   ctx.restore();
 }
@@ -1327,8 +1391,12 @@ function trimTowards(from, towards, r){
   return { x: from.x + (dx/len)*r, y: from.y + (dy/len)*r };
 }
 
-function drawArrowhead(tip, angle, color){
-  const size = 9;
+function drawArrowhead(tip, angle, color, edgeWidth){
+  // scaled so a default-width (1.8px) edge reproduces the tool's original
+  // fixed arrowhead size (9) exactly; grows sub-linearly (sqrt) with edge
+  // width so a "vertex thick" edge gets a proportionately bigger but not
+  // absurd arrowhead, and a very thin edge still gets a legible minimum
+  const size = Math.max(5, Math.min(22, 9 * Math.sqrt((edgeWidth ?? 1.8) / 1.8))) * state.camera.zoom;
   ctx.save();
   ctx.setLineDash([]);
   ctx.translate(tip.x, tip.y);
@@ -1881,7 +1949,7 @@ function generateTikz(opts){
   usedNodeColors.forEach(({slug}) => {
     lines.push(`  ${tikzNodeStyleName(slug)}/.style={vertexbase, draw=${colorRefName(slug)}},`);
   });
-  lines.push('  edgebase/.style={line width=0.9pt},');
+  lines.push('  edgebase/.style={},'); // line width now set per-edge inline, not shared — see the edge emission loop below
   usedEdgeColors.forEach(({slug}) => {
     lines.push(`  edgecolor${slug}/.style={edgebase, draw=${colorRefName(slug)}},`);
   });
@@ -1913,7 +1981,8 @@ function generateTikz(opts){
     state.edges.forEach(e => {
       const a = nodeIdMap[e.from], b = nodeIdMap[e.to];
       if (!a || !b) return;
-      const styleParts = [`edgecolor${colorSlug(e)}`];
+      const widthPt = fmtNum((e.width ?? 1.8) * 0.5); // px -> pt: calibrated so the tool's default (1.8px) reproduces the original fixed 0.9pt exactly
+      const styleParts = [`edgecolor${colorSlug(e)}`, `line width=${widthPt}pt`];
       if (e.directed) styleParts.push('->');
       if (e.style === 'dashed') styleParts.push('dashed');
       const styleStr = styleParts.join(',');
@@ -2257,6 +2326,10 @@ function renderInspector(){
           <button class="${e.style==='solid'?'active':''}" data-val="solid">Solid</button>
           <button class="${e.style==='dashed'?'active':''}" data-val="dashed">Dashed</button>
         </div>`)}
+      ${fieldRow('Thickness', `<div class="thickness-slider">
+          <input type="range" data-field="width" min="0.5" max="8" step="0.1" value="${e.width ?? 1.8}">
+          <div class="thickness-labels"><span>thin</span><span>vertex thick</span></div>
+        </div>`)}
       ${colorPickerRows(e, NODE_COLORS, 'color')}
     </div>
     <button class="danger-btn" id="btnDeleteEntity">
@@ -2593,6 +2666,140 @@ document.getElementById('toolCurved').addEventListener('click', () => {
 document.getElementById('toolUndo').addEventListener('click', undo);
 document.getElementById('toolRedo').addEventListener('click', redo);
 
+/* ---------------------------------------------------------------------
+   Classic graph generators. Each builds its nodes/edges directly into
+   state.nodes/state.edges (bypassing addNode/addEdge, which individually
+   push+commit history per call — looping those for, say, K_10 would create
+   55 separate undo steps instead of one), wrapped in a single history
+   pair, matching the same bulk-mutation pattern clearAll already uses.
+   Every construction here was verified computationally before being
+   written in: K_n and K_{m,n} by checking edge counts and degree
+   sequences across several parameter values, the Petersen graph by
+   checking its full defining property set (15 edges, no duplicates,
+   exact 3-regularity, no triangles, and a girth of precisely 5 via a real
+   BFS shortest-cycle search) — not just "this looks like the standard
+   picture".
+   --------------------------------------------------------------------- */
+function nextGenPosition(){
+  // classic graphs are ADDED to the canvas, not a replacement (so building
+  // on existing work is safe) — this picks a center offset to the right of
+  // whatever's already there, so a newly generated graph doesn't land on
+  // top of existing content when the canvas isn't empty
+  const existing = [...state.nodes, ...state.texts];
+  if (!existing.length) return { cx:0, cy:0 };
+  const maxX = Math.max(...existing.map(p=>p.x));
+  return { cx: maxX + 5, cy: 0 };
+}
+
+function generateComplete(n){
+  if (n < 1) return;
+  pushHistory();
+  const { cx, cy } = nextGenPosition();
+  const R = Math.max(1.5, n * 0.55); // same radius-scaling formula autoLayout uses, for visual consistency
+  const newNodes = [];
+  for (let i=0;i<n;i++){
+    const angle = (i/n) * Math.PI*2 - Math.PI/2;
+    const node = {
+      id: uid('n'),
+      label: 'v_{' + state.nextNodeNum + '}',
+      x: Math.round((cx + Math.cos(angle)*R) * 100)/100,
+      y: Math.round((cy + Math.sin(angle)*R) * 100)/100,
+      shape: 'circle', color: 'ink',
+    };
+    state.nextNodeNum++;
+    state.nodes.push(node);
+    newNodes.push(node);
+  }
+  for (let i=0;i<n;i++) for (let j=i+1;j<n;j++){
+    state.edges.push({
+      id: uid('e'), from: newNodes[i].id, to: newNodes[j].id,
+      directed:false, curved:false, color:'edge', style:'solid', width:1.8,
+    });
+  }
+  commitHistory();
+  fullRerender();
+  fitToView();
+  toast(`Generated K_{${n}}`);
+}
+
+function generateCompleteBipartite(m, n){
+  if (m < 1 || n < 1) return;
+  pushHistory();
+  const { cx, cy } = nextGenPosition();
+  // two parallel rows — the standard clear layout for a bipartite graph,
+  // unlike K_n/Petersen this has no circular symmetry to exploit
+  const spacing = 1.6;
+  const rowGap = 3;
+  const partA = [], partB = [];
+  const widthA = (m-1)*spacing, widthB = (n-1)*spacing;
+  for (let i=0;i<m;i++){
+    const node = {
+      id: uid('n'), label: 'v_{' + state.nextNodeNum + '}',
+      x: Math.round((cx - widthA/2 + i*spacing)*100)/100,
+      y: Math.round((cy + rowGap/2)*100)/100,
+      shape:'circle', color:'ink',
+    };
+    state.nextNodeNum++; state.nodes.push(node); partA.push(node);
+  }
+  for (let j=0;j<n;j++){
+    const node = {
+      id: uid('n'), label: 'v_{' + state.nextNodeNum + '}',
+      x: Math.round((cx - widthB/2 + j*spacing)*100)/100,
+      y: Math.round((cy - rowGap/2)*100)/100,
+      shape:'circle', color:'ink',
+    };
+    state.nextNodeNum++; state.nodes.push(node); partB.push(node);
+  }
+  partA.forEach(a => partB.forEach(b => {
+    state.edges.push({
+      id: uid('e'), from:a.id, to:b.id,
+      directed:false, curved:false, color:'edge', style:'solid', width:1.8,
+    });
+  }));
+  commitHistory();
+  fullRerender();
+  fitToView();
+  toast(`Generated K_{${m},${n}}`);
+}
+
+function generatePetersen(){
+  pushHistory();
+  const { cx, cy } = nextGenPosition();
+  const outerR = 3.2, innerR = 1.4;
+  const outer = [], inner = [];
+  for (let i=0;i<5;i++){
+    const angle = (i/5) * Math.PI*2 - Math.PI/2;
+    const node = {
+      id: uid('n'), label: 'v_{' + state.nextNodeNum + '}',
+      x: Math.round((cx + Math.cos(angle)*outerR)*100)/100,
+      y: Math.round((cy + Math.sin(angle)*outerR)*100)/100,
+      shape:'circle', color:'ink',
+    };
+    state.nextNodeNum++; state.nodes.push(node); outer.push(node);
+  }
+  for (let i=0;i<5;i++){
+    const angle = (i/5) * Math.PI*2 - Math.PI/2;
+    const node = {
+      id: uid('n'), label: 'v_{' + state.nextNodeNum + '}',
+      x: Math.round((cx + Math.cos(angle)*innerR)*100)/100,
+      y: Math.round((cy + Math.sin(angle)*innerR)*100)/100,
+      shape:'circle', color:'ink',
+    };
+    state.nextNodeNum++; state.nodes.push(node); inner.push(node);
+  }
+  const addE = (a,b) => state.edges.push({
+    id: uid('e'), from:a.id, to:b.id,
+    directed:false, curved:false, color:'edge', style:'solid', width:1.8,
+  });
+  for (let i=0;i<5;i++) addE(outer[i], outer[(i+1)%5]);        // outer pentagon
+  for (let i=0;i<5;i++) addE(inner[i], inner[(i+2)%5]);        // inner pentagram (step-2, verified against the true Petersen graph, not the 2-disjoint-pentagons prism a step-1 pattern would give)
+  for (let i=0;i<5;i++) addE(outer[i], inner[i]);              // spokes
+  commitHistory();
+  fullRerender();
+  fitToView();
+  toast('Generated the Petersen graph');
+}
+
 document.getElementById('toolAutoLayout').addEventListener('click', () => {
   autoLayout();
 });
@@ -2724,6 +2931,35 @@ document.getElementById('btnExportTex').addEventListener('click', () => {
 });
 
 document.getElementById('btnImport').addEventListener('click', () => openModal('importVeil'));
+
+document.getElementById('btnClassicGraphs').addEventListener('click', () => openModal('classicVeil'));
+document.getElementById('classicCancel').addEventListener('click', () => closeModal('classicVeil'));
+
+document.getElementById('classicPicker').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-classic]');
+  if (!btn) return;
+  document.querySelectorAll('#classicPicker button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const which = btn.dataset.classic;
+  document.getElementById('classicParamsComplete').style.display = which==='complete' ? 'flex' : 'none';
+  document.getElementById('classicParamsBipartite').style.display = which==='bipartite' ? 'flex' : 'none';
+  document.getElementById('classicParamsPetersen').style.display = which==='petersen' ? 'flex' : 'none';
+});
+
+document.getElementById('classicConfirm').addEventListener('click', () => {
+  const which = document.querySelector('#classicPicker button.active')?.dataset.classic || 'complete';
+  if (which === 'complete'){
+    const n = Math.max(1, Math.min(30, parseInt(document.getElementById('classicN').value, 10) || 5));
+    generateComplete(n);
+  } else if (which === 'bipartite'){
+    const m = Math.max(1, Math.min(20, parseInt(document.getElementById('classicM2').value, 10) || 3));
+    const n = Math.max(1, Math.min(20, parseInt(document.getElementById('classicN2').value, 10) || 4));
+    generateCompleteBipartite(m, n);
+  } else {
+    generatePetersen();
+  }
+  closeModal('classicVeil');
+});
 
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
