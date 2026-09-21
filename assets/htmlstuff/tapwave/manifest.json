@@ -1,0 +1,18 @@
+{
+  "name": "TapWave",
+  "short_name": "TapWave",
+  "start_url": "./",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "icons/tapwave_icon-1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/tapwave_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
