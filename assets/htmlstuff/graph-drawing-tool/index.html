@@ -547,6 +547,9 @@
       <button class="tool" id="toolShape" data-tip="Draw free shape — S">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 10c0-3 2-6 7-6s7 4 6 8-4 6-8 6-5-4-5-8z"/></svg>
       </button>
+      <button class="tool" id="toolLine" data-tip="Draw free line — L">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 18c2.5-4 4.5-6 6.5-3.5S13 17 15 12s3.5-7 6-7"/></svg>
+      </button>
     </div>
 
     <div class="tool-group">
@@ -607,7 +610,7 @@
     </div>
 
     <div class="canvas-hint" id="canvasHint">
-      <span><b>N</b> vertex · <b>E</b> edge · <b>H</b> hyperedge lasso · <b>T</b> text · <kbd>Del</kbd> remove selection</span>
+      <span><b>N</b> vertex · <b>E</b> edge · <b>H</b> hyperedge lasso · <b>T</b> text · <b>L</b> free line · <kbd>Del</kbd> remove selection</span>
     </div>
 
     <div class="zoom-controls">
@@ -890,6 +893,7 @@ function snapshot(){
     hyperedges: state.hyperedges,
     texts: state.texts,
     shapes: state.shapes,
+    lines: state.lines,
     nextNodeNum: state.nextNodeNum,
     nextEdgeNum: state.nextEdgeNum,
     nextHyperNum: state.nextHyperNum,
@@ -904,6 +908,7 @@ function restoreSnapshot(json){
   state.hyperedges = s.hyperedges;
   state.texts = s.texts ?? [];
   state.shapes = s.shapes ?? [];
+  state.lines = s.lines ?? [];
   state.nextNodeNum = s.nextNodeNum;
   state.nextEdgeNum = s.nextEdgeNum;
   state.nextHyperNum = s.nextHyperNum;
@@ -1001,6 +1006,47 @@ function addFreeShape(points){
   return s;
 }
 
+// A freehand line: an open stroke the user drags out with the pointer. The
+// raw pointer trail is thinned with Ramer–Douglas–Peucker first (a drag
+// produces hundreds of nearly-collinear samples, which would bloat the TikZ
+// output for no visual gain), then — when smooth — drawn as the same
+// open Catmull-Rom spline path-style hyperedges use, so canvas and TikZ
+// render the identical curve through the identical kept points.
+function simplifyPolyline(pts, eps){
+  if (pts.length < 3) return pts.map(p => ({x:p.x, y:p.y}));
+  const keep = new Array(pts.length).fill(false);
+  keep[0] = keep[pts.length-1] = true;
+  const stack = [[0, pts.length-1]];
+  while (stack.length){
+    const [a, b] = stack.pop();
+    let maxD = 0, idx = -1;
+    for (let i=a+1;i<b;i++){
+      const d = distToSegment(pts[i], pts[a], pts[b]);
+      if (d > maxD){ maxD = d; idx = i; }
+    }
+    if (idx > 0 && maxD > eps){ keep[idx] = true; stack.push([a, idx], [idx, b]); }
+  }
+  return pts.filter((_, i) => keep[i]).map(p => ({x:p.x, y:p.y}));
+}
+
+function addFreeLine(points){
+  if (points.length < 2) return null;
+  pushHistory();
+  const l = {
+    id: uid('l'),
+    points: points.map(p => ({x:p.x, y:p.y})),
+    kind: 'freehand',
+    smooth: true,       // true: Catmull-Rom spline through the kept points; false: straight polyline
+    color: 'ink',
+    width: 1.8,         // px at zoom=1, same scale (and same px->pt export factor) as edges
+    directed: false,    // arrowhead at the end of the stroke
+    style: 'solid',
+  };
+  state.lines.push(l);
+  commitHistory();
+  return l;
+}
+
 function addEdge(fromId, toId){
   if (fromId === toId) return null; // no self-loops via drag (kept out of v1 scope deliberately)
   // prevent exact duplicate parallel edges in the same direction-pair, but allow
@@ -1081,6 +1127,12 @@ function deleteFreeShape(id){
   if (state.selection.id === id) state.selection = { type:null, id:null };
   commitHistory();
 }
+function deleteFreeLine(id){
+  pushHistory();
+  state.lines = state.lines.filter(l => l.id !== id);
+  if (state.selection.id === id) state.selection = { type:null, id:null };
+  commitHistory();
+}
 function deleteSelection(){
   const { type, id } = state.selection;
   if (!type) return;
@@ -1089,6 +1141,7 @@ function deleteSelection(){
   else if (type === 'hyper') deleteHyperedge(id);
   else if (type === 'text') deleteTextLabel(id);
   else if (type === 'shape') deleteFreeShape(id);
+  else if (type === 'line') deleteFreeLine(id);
   fullRerender();
 }
 function clearAll(){
@@ -1264,6 +1317,54 @@ function drawFreeShape(s, isSelected, isPreview){
   freeShapePath(ctx, screenPts);
   ctx.fill();
   ctx.stroke();
+  ctx.restore();
+}
+
+// Trace a free line's path into the current canvas path (no stroke) —
+// shared by drawing and by nothing else needing the exact curve.
+function freeLinePath(ctx, screenPts, smooth){
+  if (screenPts.length < 2) return;
+  if (smooth && screenPts.length >= 3){
+    tracePathTubeSpline(ctx, screenPts);
+  } else {
+    ctx.moveTo(screenPts[0].x, screenPts[0].y);
+    screenPts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  }
+}
+
+function drawFreeLine(l, isSelected){
+  if (!l.points || l.points.length < 2) return;
+  const color = resolveColor(l, NODE_COLORS);
+  const screenPts = l.points.map(p => worldToScreen(p.x, p.y));
+  const w = (parseFloat(l.width) || 1.8) * state.camera.zoom;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (isSelected){
+    ctx.beginPath();
+    freeLinePath(ctx, screenPts, l.smooth !== false);
+    ctx.strokeStyle = 'rgba(43,76,158,0.22)';
+    ctx.lineWidth = w + 10;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  freeLinePath(ctx, screenPts, l.smooth !== false);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  if (l.style === 'dashed') ctx.setLineDash([7,5]);
+  ctx.stroke();
+  if (l.directed){
+    const tip = screenPts[screenPts.length-1];
+    let from;
+    if (l.smooth !== false && screenPts.length >= 3){
+      const segs = catmullRomSegments(screenPts);
+      from = segs[segs.length-1].p2;               // end tangent of the last Bezier piece
+    } else {
+      from = screenPts[screenPts.length-2];
+    }
+    if (dist(from, tip) < 0.01) from = screenPts[screenPts.length-2];
+    drawArrowhead(tip, Math.atan2(tip.y-from.y, tip.x-from.x), color, parseFloat(l.width) || 1.8);
+  }
   ctx.restore();
 }
 
@@ -1687,6 +1788,12 @@ function render(){
 
   state.edges.forEach(e => drawEdge(e, state.selection.type==='edge' && state.selection.id===e.id));
 
+  state.lines.forEach(l => drawFreeLine(l, state.selection.type==='line' && state.selection.id===l.id));
+  if (state.drag && state.drag.kind === 'draw-line' && state.drag.points.length >= 2){
+    // live preview: the raw pointer trail, before simplification/smoothing
+    drawFreeLine({ points: state.drag.points, smooth:false, color:'ink', width:1.8, style:'solid' }, false);
+  }
+
   state.nodes.forEach(n => drawNode(
     n,
     state.selection.type==='node' && state.selection.id===n.id,
@@ -1715,7 +1822,7 @@ function render(){
     }
   }
 
-  document.getElementById('emptyState').style.display = (state.nodes.length || state.texts.length || state.shapes.length) ? 'none' : 'flex';
+  document.getElementById('emptyState').style.display = (state.nodes.length || state.texts.length || state.shapes.length || state.lines.length || (state.drag && state.drag.kind==='draw-line')) ? 'none' : 'flex';
   document.getElementById('zoomVal').textContent = Math.round(state.camera.zoom*100) + '%';
 }
 
@@ -1826,6 +1933,20 @@ function shapeAtScreen(sx, sy){
   }
   return null;
 }
+function lineAtScreen(sx, sy){
+  const p = {x:sx, y:sy};
+  for (let i = state.lines.length-1; i>=0; i--){
+    const l = state.lines[i];
+    if (!l.points || l.points.length < 2) continue;
+    const screenPts = l.points.map(q => worldToScreen(q.x, q.y));
+    const poly = (l.smooth !== false && screenPts.length >= 3) ? sampleCatmullRom(screenPts, 10) : screenPts;
+    const thresh = Math.max(6, (parseFloat(l.width) || 1.8) * state.camera.zoom / 2 + 4);
+    for (let k=0;k<poly.length-1;k++){
+      if (distToSegment(p, poly[k], poly[k+1]) <= thresh) return l;
+    }
+  }
+  return null;
+}
 function pointInPolygon(p, poly){
   let inside = false;
   for (let i=0,j=poly.length-1; i<poly.length; j=i++){
@@ -1891,6 +2012,12 @@ function onPointerDown(evt){
     return;
   }
 
+  if (state.tool === 'line'){
+    const w = screenToWorld(pos.x, pos.y);
+    state.drag = { kind:'draw-line', points:[{x:w.x, y:w.y}], lastSx:pos.x, lastSy:pos.y };
+    return;
+  }
+
   if (state.tool === 'edge'){
     const hit = nodeAtScreen(pos.x, pos.y);
     if (hit){
@@ -1932,6 +2059,15 @@ function onPointerDown(evt){
     fullRerender();
     return;
   }
+  const hitLine = lineAtScreen(pos.x, pos.y);
+  if (hitLine){
+    selectEntity('line', hitLine.id);
+    const w0 = screenToWorld(pos.x, pos.y);
+    state.drag = { kind:'move-line', id:hitLine.id, startWx:w0.x, startWy:w0.y, origPoints: hitLine.points.map(p=>({x:p.x,y:p.y})), moved:false };
+    pushHistory();
+    fullRerender();
+    return;
+  }
   const hitShape = shapeAtScreen(pos.x, pos.y);
   if (hitShape){
     selectEntity('shape', hitShape.id);
@@ -1962,7 +2098,7 @@ function onPointerMove(evt){
     const newHover = h ? h.id : null;
     if (newHover !== state.hoverNodeId){
       state.hoverNodeId = newHover;
-      const crosshairTools = ['node','edge','hyper','text'];
+      const crosshairTools = ['node','edge','hyper','text','shape','line'];
       canvas.style.cursor = h ? 'pointer' : (crosshairTools.includes(state.tool) ? 'crosshair' : 'default');
       render();
     }
@@ -2000,6 +2136,24 @@ function onPointerMove(evt){
       state.drag.moved = true;
       render();
     }
+  } else if (state.drag.kind === 'move-line'){
+    const w = screenToWorld(pos.x, pos.y);
+    const dx = w.x - state.drag.startWx, dy = w.y - state.drag.startWy;
+    const l = lineById(state.drag.id);
+    if (l){
+      l.points = state.drag.origPoints.map(p => ({ x: p.x+dx, y: p.y+dy }));
+      state.drag.moved = true;
+      render();
+    }
+  } else if (state.drag.kind === 'draw-line'){
+    // only record a sample once the pointer has moved a couple of screen px,
+    // so a slow, shaky hand doesn't pile up near-duplicate points
+    if (Math.hypot(pos.x - state.drag.lastSx, pos.y - state.drag.lastSy) >= 2){
+      const w = screenToWorld(pos.x, pos.y);
+      state.drag.points.push({ x:w.x, y:w.y });
+      state.drag.lastSx = pos.x; state.drag.lastSy = pos.y;
+      render();
+    }
   } else if (state.drag.kind === 'draw-edge'){
     state.drag.curX = pos.x; state.drag.curY = pos.y;
     render();
@@ -2016,7 +2170,18 @@ function onPointerUp(evt){
       const e = addEdge(state.drag.fromId, target.id);
       if (e) selectEntity('edge', e.id);
     }
-  } else if (state.drag.kind === 'move-node' || state.drag.kind === 'move-text' || state.drag.kind === 'move-shape'){
+  } else if (state.drag.kind === 'draw-line'){
+    const raw = state.drag.points;
+    // tolerance of ~1.5 screen px at the zoom the line was drawn at — below
+    // what the eye can see, but enough to drop the bulk of redundant samples
+    const eps = 1.5 / (UNIT_PX * state.camera.zoom);
+    const pts = simplifyPolyline(raw, eps);
+    const len = pts.length >= 2 ? dist(worldToScreen(pts[0].x,pts[0].y), worldToScreen(pts[pts.length-1].x,pts[pts.length-1].y)) : 0;
+    if (pts.length >= 3 || len >= 4){
+      const l = addFreeLine(pts);
+      if (l) selectEntity('line', l.id);
+    }
+  } else if (state.drag.kind === 'move-node' || state.drag.kind === 'move-text' || state.drag.kind === 'move-shape' || state.drag.kind === 'move-line'){
     if (state.drag.moved) commitHistory(); else pendingSnapshot = null;
   }
 
@@ -2080,6 +2245,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase()==='h' && state.mode==='hyper') setTool('hyper');
   if (e.key.toLowerCase()==='t') setTool('text');
   if (e.key.toLowerCase()==='s') setTool('shape');
+  if (e.key.toLowerCase()==='l') setTool('line');
   if (e.key === 'Escape'){
     state.lassoIds = [];
     state.drawPoints = [];
@@ -2129,12 +2295,13 @@ function generateTikz(opts){
   const usedHyperColors = collectUsedColorSlugs(state.hyperedges, HYPEREDGE_COLORS);
   const usedTextColors = collectUsedColorSlugs(state.texts, NODE_COLORS);
   const usedShapeColors = collectUsedColorSlugs(state.shapes, HYPEREDGE_COLORS);
+  const usedLineColors = collectUsedColorSlugs(state.lines, NODE_COLORS);
 
   // \definecolor statements must precede the style block that references them,
   // so these are collected and emitted first. Dedupes by slug across ALL
   // four entity kinds at once (mergeColorPairs), so a color shared between,
   // say, a node and a text label emits one \definecolor, not two.
-  const colorDefs = collectColorDefs(mergeColorPairs(usedNodeColors, usedEdgeColors, usedHyperColors, usedTextColors, usedShapeColors));
+  const colorDefs = collectColorDefs(mergeColorPairs(usedNodeColors, usedEdgeColors, usedHyperColors, usedTextColors, usedShapeColors, usedLineColors));
 
   const lines = [];
   if (standalone){
@@ -2207,6 +2374,15 @@ function generateTikz(opts){
       } else {
         lines.push(`\\draw[${styleStr}] (${a}) -- (${b});`);
       }
+    });
+  }
+
+  if (state.lines.length){
+    lines.push('');
+    lines.push('% free lines');
+    state.lines.forEach(l => {
+      const out = freeLineTikzLine(l);
+      if (out) lines.push(out);
     });
   }
 
@@ -2353,6 +2529,20 @@ function hyperedgeTikzLine(h, idx, nodeIdMap){
   }
   const hull = convexHull(members.map(n => ({x:n.x, y:n.y})));
   return `\\draw[${style}] ${hullBlobTikzPath(hull, pad)};`;
+}
+
+// A free line as one \draw: the open Catmull-Rom spline (same builder the
+// path-style hyperedge uses) when smooth, or a plain -- polyline when not.
+// Width uses the same px -> pt factor as edges (1.8px default -> 0.9pt).
+function freeLineTikzLine(l){
+  if (!l.points || l.points.length < 2) return '';
+  const opts = [`draw=${colorRefName(colorSlug(l))}`, `line width=${fmtNum((parseFloat(l.width) || 1.8) * 0.5)}pt`, 'line cap=round', 'line join=round'];
+  if (l.directed) opts.push('->');
+  if (l.style === 'dashed') opts.push('dashed');
+  const path = (l.smooth !== false && l.points.length >= 3)
+    ? pathTubeTikzSpline(l.points)
+    : l.points.map(p => `(${fmtNum(p.x)},${fmtNum(p.y)})`).join(' -- ');
+  return `\\draw[${opts.join(', ')}] ${path};`;
 }
 
 function shapeTikzLine(s){
@@ -2634,6 +2824,34 @@ function renderInspector(){
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
       Delete shape
     </button>`;
+  } else if (type === 'line'){
+    const l = lineById(id);
+    if (!l){ state.selection={type:null,id:null}; return renderInspector(); }
+    html += `<div class="insp-section">
+      <div class="insp-label">Free line</div>
+      <div style="font-size:11.5px; color:var(--ink-faint); margin:-2px 0 12px;">${l.points.length} points after simplification</div>
+      ${fieldRow('Curve', `<div class="seg-control" data-field="smooth">
+          <button class="${l.smooth!==false?'active':''}" data-val="true">Smooth</button>
+          <button class="${l.smooth===false?'active':''}" data-val="false">Polyline</button>
+        </div>`)}
+      ${fieldRow('Arrow', `<div class="seg-control" data-field="directed">
+          <button class="${!l.directed?'active':''}" data-val="false">None</button>
+          <button class="${l.directed?'active':''}" data-val="true">At end</button>
+        </div>`)}
+      ${fieldRow('Style', `<div class="seg-control" data-field="style">
+          <button class="${l.style!=='dashed'?'active':''}" data-val="solid">Solid</button>
+          <button class="${l.style==='dashed'?'active':''}" data-val="dashed">Dashed</button>
+        </div>`)}
+      ${fieldRow('Thickness', `<div class="thickness-slider">
+          <input type="range" data-field="width" min="0.5" max="8" step="0.1" value="${l.width ?? 1.8}">
+          <div class="thickness-labels"><span>thin</span><span>vertex thick</span></div>
+        </div>`)}
+      ${colorPickerRows(l, NODE_COLORS, 'color')}
+    </div>
+    <button class="danger-btn" id="btnDeleteEntity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
+      Delete line
+    </button>`;
   }
 
   // structure summary — always shown below whatever's selected (or alone if nothing selected)
@@ -2723,11 +2941,24 @@ function renderStructureSummary(){
     html += `</div></div>`;
   }
 
-  if (!state.nodes.length && !state.texts.length && !state.shapes.length){
+  if (state.lines.length){
+    html += `<div class="insp-section"><div class="insp-label">Lines</div><div class="entity-list">`;
+    state.lines.forEach((l, i) => {
+      html += `<div class="entity-row ${state.selection.type==='line'&&state.selection.id===l.id?'selected':''}" data-entity-type="line" data-entity-id="${l.id}">
+        <div class="entity-swatch" style="background:${resolveColor(l,NODE_COLORS)}; border-radius:2px; height:3px; border:none;"></div>
+        <div class="entity-label">Line ${i+1}${l.directed?' →':''}</div>
+        <div class="entity-meta">${l.points.length} pts</div>
+        <button class="entity-del" data-del-type="line" data-del-id="${l.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (!state.nodes.length && !state.texts.length && !state.shapes.length && !state.lines.length){
     html += `<div class="insp-empty">Nothing on the canvas yet. Pick the vertex tool and click to start.</div>`;
   }
 
-  if (state.nodes.length || state.texts.length || state.shapes.length){
+  if (state.nodes.length || state.texts.length || state.shapes.length || state.lines.length){
     html += `<button class="danger-btn" id="btnClearAll" style="margin-top:4px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>
       Clear canvas
@@ -2751,7 +2982,7 @@ function avgHyperDegree(){
   return (total/state.hyperedges.length).toFixed(1);
 }
 function updateStructCount(){
-  const n = state.nodes.length + state.edges.length + (state.mode==='hyper'?state.hyperedges.length:0) + state.texts.length + state.shapes.length;
+  const n = state.nodes.length + state.edges.length + (state.mode==='hyper'?state.hyperedges.length:0) + state.texts.length + state.shapes.length + state.lines.length;
   document.getElementById('structCount').textContent = n;
 }
 
@@ -2822,6 +3053,7 @@ function bindInspectorEvents(){
       else if (t==='hyper') deleteHyperedge(id);
       else if (t==='text') deleteTextLabel(id);
       else if (t==='shape') deleteFreeShape(id);
+      else if (t==='line') deleteFreeLine(id);
       fullRerender();
     });
   });
@@ -2837,7 +3069,7 @@ let fieldEditPushed = false;
 function onFieldChange(field, value){
   if (!fieldEditPushed){ pushHistory(); fieldEditPushed = true; }
   let v = value;
-  if (field==='x' || field==='y' || field==='padding'){
+  if (field==='x' || field==='y' || field==='padding' || field==='width'){
     v = parseFloat(value);
     if (Number.isNaN(v)) return;
   }
@@ -2856,6 +3088,7 @@ function applyFieldToSelection(field, value){
   else if (type==='hyper'){ const h=hyperById(id); if(h) h[field]=value; }
   else if (type==='text'){ const t=textById(id); if(t) t[field]=value; }
   else if (type==='shape'){ const s=shapeById(id); if(s) s[field]=value; }
+  else if (type==='line'){ const l=lineById(id); if(l) l[field]=value; }
 }
 
 /* ---------------------------------------------------------------------
@@ -2875,8 +3108,8 @@ function setTool(tool){
   state.tool = tool;
   if (tool !== 'hyper') state.lassoIds = [];
   if (tool !== 'shape') state.drawPoints = [];
-  document.querySelectorAll('#toolSelect,#toolNode,#toolEdge,#toolHyper,#toolText,#toolShape').forEach(b=>b.classList.remove('active'));
-  const map = { select:'toolSelect', node:'toolNode', edge:'toolEdge', hyper:'toolHyper', text:'toolText', shape:'toolShape' };
+  document.querySelectorAll('#toolSelect,#toolNode,#toolEdge,#toolHyper,#toolText,#toolShape,#toolLine').forEach(b=>b.classList.remove('active'));
+  const map = { select:'toolSelect', node:'toolNode', edge:'toolEdge', hyper:'toolHyper', text:'toolText', shape:'toolShape', line:'toolLine' };
   const btn = document.getElementById(map[tool]);
   if (btn) btn.classList.add('active');
   canvas.style.cursor = (tool==='select') ? 'default' : 'crosshair';
@@ -2890,8 +3123,8 @@ function setMode(mode){
   if (mode !== 'hyper' && state.tool==='hyper'){ setTool('select'); }
   const hint = document.getElementById('canvasHint');
   hint.innerHTML = mode==='hyper'
-    ? `<span><b>N</b> vertex · <b>H</b> lasso (click nodes, <kbd>Enter</kbd> to close) · <b>T</b> text · <kbd>Del</kbd> remove selection</span>`
-    : `<span><b>N</b> vertex · <b>E</b> edge · <b>T</b> text · <kbd>Del</kbd> remove selection</span>`;
+    ? `<span><b>N</b> vertex · <b>H</b> lasso (click nodes, <kbd>Enter</kbd> to close) · <b>T</b> text · <b>L</b> free line · <kbd>Del</kbd> remove selection</span>`
+    : `<span><b>N</b> vertex · <b>E</b> edge · <b>T</b> text · <b>L</b> free line · <kbd>Del</kbd> remove selection</span>`;
   updateEmptyStateText();
   fullRerender();
 }
@@ -2926,6 +3159,7 @@ document.getElementById('toolEdge').addEventListener('click', ()=>setTool('edge'
 document.getElementById('toolHyper').addEventListener('click', ()=>setTool('hyper'));
 document.getElementById('toolText').addEventListener('click', ()=>setTool('text'));
 document.getElementById('toolShape').addEventListener('click', ()=>setTool('shape'));
+document.getElementById('toolLine').addEventListener('click', ()=>setTool('line'));
 
 document.getElementById('toolDirected').addEventListener('click', () => {
   state.directed = !state.directed;
@@ -3120,7 +3354,8 @@ function fitToView(){
   const wrap = document.getElementById('canvas-wrap');
   const w = wrap.clientWidth, h = wrap.clientHeight;
   const shapePoints = state.shapes.flatMap(s => s.points);
-  const points = [...state.nodes, ...state.texts, ...shapePoints];
+  const linePoints = state.lines.flatMap(l => l.points);
+  const points = [...state.nodes, ...state.texts, ...shapePoints, ...linePoints];
   if (!points.length){
     state.camera = { x:w/2, y:h/2, zoom:1 };
     render();
@@ -3182,6 +3417,7 @@ function serializeGraph(){
     hyperedges: state.hyperedges,
     texts: state.texts,
     shapes: state.shapes,
+    lines: state.lines,
     nextNodeNum: state.nextNodeNum,
     nextEdgeNum: state.nextEdgeNum,
     nextHyperNum: state.nextHyperNum,
@@ -3258,6 +3494,7 @@ document.getElementById('importConfirm').addEventListener('click', () => {
     state.hyperedges = Array.isArray(data.hyperedges) ? data.hyperedges : [];
     state.texts = Array.isArray(data.texts) ? data.texts : [];
     state.shapes = Array.isArray(data.shapes) ? data.shapes : [];
+    state.lines = Array.isArray(data.lines) ? data.lines : [];
     state.nextNodeNum = data.nextNodeNum || (state.nodes.length+1);
     state.nextEdgeNum = data.nextEdgeNum || (state.edges.length+1);
     state.nextHyperNum = data.nextHyperNum || (state.hyperedges.length+1);
