@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1b1430">
+<title>Tower Tap</title>
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<meta name="apple-mobile-web-app-title" content="Tower Tap">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #fff8ec;
+    --ink-soft: rgba(255, 248, 236, 0.72);
+    --night: #1b1430;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --night: #1b1430; } }
+  :root[data-theme="dark"] { --night: #1b1430; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--night);
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud {
+    position: fixed; left: 0; right: 0;
+    top: calc(env(safe-area-inset-top, 0px) + 28px);
+    text-align: center; pointer-events: none; color: var(--ink);
+    font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #score {
+    font-family: "Bagel Fat One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    font-size: clamp(56px, 18vw, 96px); line-height: 1;
+    text-shadow: 0 4px 0 rgba(0,0,0,0.18);
+    transition: transform 0.12s ease-out;
+  }
+  #score.pop { transform: scale(1.18); }
+  #combo {
+    margin-top: 6px; font-weight: 800; font-size: 18px;
+    opacity: 0; transition: opacity 0.25s;
+  }
+  #combo.show { opacity: 1; }
+  .panel {
+    position: fixed; left: 50%;
+    top: calc(env(safe-area-inset-top, 0px) + 68px);
+    transform: translateX(-50%);
+    width: min(88vw, 380px); box-sizing: border-box;
+    padding: 20px 20px 18px; border-radius: 26px;
+    background: rgba(18, 12, 38, 0.72);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,248,236,0.08);
+    text-align: center; color: var(--ink);
+    font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .panel.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(10px); }
+  .panel h1 {
+    font-family: "Bagel Fat One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    font-weight: 400; font-size: clamp(40px, 12vw, 64px); margin: 0 0 10px; line-height: 1;
+  }
+  .panel p { margin: 6px auto; max-width: 30ch; font-weight: 600; font-size: 17px; line-height: 1.4; color: var(--ink-soft); }
+  .panel .tap {
+    margin-top: 18px; font-weight: 800; font-size: 18px; color: var(--ink);
+    animation: breathe 1.4s ease-in-out infinite;
+  }
+  @keyframes breathe { 50% { opacity: 0.45; } }
+  .share { display: none; margin-top: 14px; }
+  .hud { transition: opacity 0.3s; }
+  body.is-over .hud { opacity: 0; }
+  .panel.over .share { display: block; }
+  .share-main {
+    display: block; width: 100%; padding: 14px; border: 0; border-radius: 16px;
+    background: #ffd166; color: #2a1a00; font: 800 18px "Nunito", system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .share-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .share-row a, .share-row button {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 46px; padding: 6px 4px; border-radius: 14px; border: 0;
+    background: rgba(255,248,236,0.12); color: var(--ink); text-decoration: none;
+    font: 800 13px "Nunito", system-ui, sans-serif; cursor: pointer;
+  }
+  .share-row .wa { background: #1f9d55; }
+  .share-row .tg { background: #2a8bd6; }
+  .share-row .sms { background: #3fb950; color: #06210d; }
+  .share-main:focus-visible, .share-row a:focus-visible, .share-row button:focus-visible, .icon-btn:focus-visible {
+    outline: 3px solid #fff8ec; outline-offset: 2px;
+  }
+  .again {
+    margin-top: 14px; width: 100%; padding: 13px; border-radius: 16px;
+    border: 2px solid rgba(255,248,236,0.5); background: transparent; color: var(--ink);
+    font: 800 17px "Nunito", system-ui, sans-serif; cursor: pointer;
+  }
+  .icon-btn {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px;
+    width: 44px; height: 44px; border-radius: 50%; border: 0;
+    background: rgba(255,248,236,0.14); color: var(--ink); font-size: 20px; cursor: pointer;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+    transform: translateX(-50%); padding: 10px 18px; border-radius: 999px;
+    background: #fff8ec; color: #1b1430; font: 800 15px "Nunito", system-ui, sans-serif;
+    opacity: 0; transition: opacity 0.25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .panel .tap { animation: none; } #score { transition: none; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud"><div id="score"></div><div id="combo"></div></div>
+<div class="panel" id="panel">
+  <h1 id="ptitle">Tower Tap</h1>
+  <p id="pline1">Tap to drop each block. Whatever hangs over the edge falls off.</p>
+  <p id="pline2">Land it perfectly to keep your tower wide.</p>
+  <div class="tap" id="ptap">Tap to start</div>
+  <div class="share">
+    <button class="share-main" id="shareNative" type="button">Share my score</button>
+    <div class="share-row">
+      <a class="wa" id="shWa" target="_blank" rel="noopener">WhatsApp</a>
+      <a class="tg" id="shTg" target="_blank" rel="noopener">Telegram</a>
+      <a class="sms" id="shSms">Messages</a>
+      <button id="shCopy" type="button">Copy</button>
+    </div>
+    <button class="again" id="again" type="button">Play again</button>
+  </div>
+</div>
+<button class="icon-btn" id="mute" type="button" aria-label="Mute sound">🔊</button>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(() => {
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const comboEl = document.getElementById('combo');
+  const panel = document.getElementById('panel');
+  const ptitle = document.getElementById('ptitle');
+  const pline1 = document.getElementById('pline1');
+  const pline2 = document.getElementById('pline2');
+  const ptap = document.getElementById('ptap');
+
+  let W, H, BH, dpr;
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    BH = Math.max(22, Math.min(W, H) * 0.075);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let best = 0;
+  try { best = parseInt(localStorage.getItem('towertap-best') || '0', 10) || 0; } catch (e) {}
+
+  // state
+  let state = 'menu'; // menu | play | over
+  let stack, cur, debris, rings, score, combo, baseHue, cam, camTarget, overAt, speed;
+
+  // ---------- sound ----------
+  let ac = null, master = null, muted = false;
+  try { muted = localStorage.getItem('towertap-muted') === '1'; } catch (e) {}
+  function initAudio() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master = ac.createGain();
+      master.gain.value = muted ? 0 : 0.55;
+      const comp = ac.createDynamicsCompressor();
+      master.connect(comp); comp.connect(ac.destination);
+    } catch (e) { ac = null; }
+  }
+  const RATIOS = [1, 9/8, 5/4, 3/2, 5/3];
+  const note = n => 261.63 * Math.pow(2, Math.floor(n / 5)) * RATIOS[((n % 5) + 5) % 5];
+  function tone(freq, { type = 'sine', dur = 0.25, vol = 0.3, at = 0, slide = 0, attack = 0.005 } = {}) {
+    if (!ac || muted) return;
+    const t = ac.currentTime + at;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  let noiseBuf = null;
+  function noise({ dur = 0.12, vol = 0.25, freq = 1800, q = 0.8, at = 0 } = {}) {
+    if (!ac || muted) return;
+    if (!noiseBuf) {
+      noiseBuf = ac.createBuffer(1, ac.sampleRate * 0.5, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const t = ac.currentTime + at;
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = noiseBuf;
+    f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start(t); src.stop(t + dur + 0.02);
+  }
+  const sfx = {
+    start() { tone(note(5), { type: 'triangle', dur: 0.15, vol: 0.25 }); tone(note(9), { type: 'triangle', dur: 0.25, vol: 0.25, at: 0.09 }); },
+    place(n) {
+      tone(120, { type: 'sine', dur: 0.12, vol: 0.45, slide: 0.5 });
+      tone(note(5 + (n % 8)), { type: 'triangle', dur: 0.18, vol: 0.18 });
+    },
+    slice() { noise({ dur: 0.14, vol: 0.35, freq: 2400, q: 1.2 }); tone(90, { type: 'sine', dur: 0.1, vol: 0.3, slide: 0.6 }); },
+    perfect(c) {
+      const n = 7 + Math.min(c, 10);
+      tone(note(n), { type: 'sine', dur: 0.6, vol: 0.32 });
+      tone(note(n) * 2.005, { type: 'sine', dur: 0.4, vol: 0.08 });
+      tone(note(n + 2), { type: 'sine', dur: 0.5, vol: 0.18, at: 0.07 });
+      if (c >= 3) tone(note(n + 5), { type: 'sine', dur: 0.6, vol: 0.16, at: 0.14 });
+    },
+    over() {
+      tone(330, { type: 'sawtooth', dur: 0.7, vol: 0.12, slide: 0.35 });
+      tone(220, { type: 'triangle', dur: 0.8, vol: 0.2, slide: 0.4, at: 0.05 });
+      noise({ dur: 0.35, vol: 0.3, freq: 300, q: 0.6, at: 0.45 });
+      tone(70, { type: 'sine', dur: 0.3, vol: 0.5, slide: 0.5, at: 0.45 });
+    },
+    best() { [0, 2, 4, 7].forEach((k, j) => tone(note(10 + k), { type: 'triangle', dur: 0.35, vol: 0.2, at: 0.9 + j * 0.09 })); },
+    click() { tone(note(12), { type: 'sine', dur: 0.08, vol: 0.15 }); }
+  };
+  const muteBtn = document.getElementById('mute');
+  function syncMute() {
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+    muteBtn.setAttribute('aria-label', muted ? 'Turn sound on' : 'Mute sound');
+    if (master) master.gain.value = muted ? 0 : 0.55;
+  }
+  syncMute();
+  muteBtn.addEventListener('click', () => {
+    muted = !muted; initAudio(); syncMute();
+    try { localStorage.setItem('towertap-muted', muted ? '1' : '0'); } catch (e) {}
+    sfx.click();
+  });
+
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+  function reset() {
+    baseHue = Math.floor(Math.random() * 360);
+    const w = Math.min(W * 0.62, 320);
+    stack = [];
+    for (let i = 0; i < 4; i++) stack.push({ x: (W - w) / 2, w, i });
+    debris = []; rings = [];
+    score = 0; combo = 0;
+    cam = 0; camTarget = 0;
+    spawn();
+    updateScore(false);
+  }
+
+  function spawn() {
+    const top = stack[stack.length - 1];
+    const fromLeft = stack.length % 2 === 0;
+    speed = Math.min(2.4 + score * 0.07, 7.5) * Math.max(W, 320) / 400;
+    cur = { x: fromLeft ? -top.w * 0.6 : W - top.w * 0.4, w: top.w, dir: fromLeft ? 1 : -1, i: stack.length };
+  }
+
+  const hue = i => (baseHue + i * 7) % 360;
+  const groundY = () => H - Math.max(70, H * 0.12);
+  const screenY = i => groundY() - (i + 1) * BH + cam;
+
+  function updateScore(pop = true) {
+    scoreEl.textContent = state === 'menu' ? '' : score;
+    if (pop) {
+      scoreEl.classList.add('pop');
+      setTimeout(() => scoreEl.classList.remove('pop'), 120);
+    }
+  }
+
+  let comboTimer;
+  function showCombo(text) {
+    comboEl.textContent = text;
+    comboEl.classList.add('show');
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => comboEl.classList.remove('show'), 700);
+  }
+
+  function drop() {
+    const top = stack[stack.length - 1];
+    const left = Math.max(cur.x, top.x);
+    const right = Math.min(cur.x + cur.w, top.x + top.w);
+    const overlap = right - left;
+
+    if (overlap <= 0) {
+      debris.push(mkDebris(cur.x, cur.w, cur.i, cur.dir * 1.5));
+      sfx.over();
+      gameOver();
+      return;
+    }
+
+    const tol = Math.max(3, W * 0.012);
+    if (Math.abs(cur.x - top.x) <= tol) {
+      combo++;
+      let nw = top.w, nx = top.x;
+      if (combo >= 3) {
+        const grow = Math.min(BH * 0.5, Math.min(W * 0.62, 320) - nw);
+        if (grow > 0) { nw += grow; nx -= grow / 2; }
+      }
+      stack.push({ x: nx, w: nw, i: cur.i });
+      rings.push({ x: nx, w: nw, i: cur.i, t: 0 });
+      showCombo(combo >= 3 ? `Perfect ×${combo}` : 'Perfect');
+      buzz(combo >= 3 ? [12, 30, 12] : 12);
+      sfx.place(score); sfx.perfect(combo);
+    } else {
+      combo = 0;
+      if (cur.x < top.x) debris.push(mkDebris(cur.x, top.x - cur.x, cur.i, -1));
+      if (cur.x + cur.w > top.x + top.w) debris.push(mkDebris(top.x + top.w, cur.x + cur.w - (top.x + top.w), cur.i, 1));
+      stack.push({ x: left, w: overlap, i: cur.i });
+      buzz(8);
+      sfx.place(score); sfx.slice();
+    }
+    score++;
+    updateScore();
+    camTarget = Math.max(0, (stack.length + 1) * BH - (groundY() - H * 0.45));
+    spawn();
+  }
+
+  function mkDebris(x, w, i, dir) {
+    return { x, w, y: screenY(i) - cam, i, vx: dir * (0.6 + Math.random()), vy: 0, rot: 0, vr: dir * (0.02 + Math.random() * 0.03) };
+  }
+
+  function gameOver() {
+    state = 'over';
+    overAt = performance.now();
+    cur = null;
+    buzz([30, 40, 60]);
+    const isBest = score > best;
+    if (isBest) { best = score; try { localStorage.setItem('towertap-best', String(best)); } catch (e) {} }
+    ptitle.textContent = isBest && score > 0 ? 'New best!' : `${score} blocks`;
+    pline1.textContent = isBest && score > 0 ? `You stacked ${score} blocks.` : `Your best is ${best}.`;
+    pline2.textContent = score < 10 ? 'Tip: tap a little early. The block keeps moving.' : (score < 30 ? 'Three perfects in a row make the block grow back.' : 'That is a serious tower.');
+    if (isBest && score > 0) sfx.best();
+    ptap.style.display = 'none';
+    panel.classList.add('over');
+    document.body.classList.add('is-over');
+    setShareLinks();
+    setTimeout(() => panel.classList.remove('hidden'), 650);
+    fitTowerBelowPanel();
+  }
+
+  window.addEventListener('resize', () => { if (state === 'over') fitTowerBelowPanel(); });
+
+  // shrink the view so the whole tower sits below the text card
+  function fitTowerBelowPanel() {
+    const rect = panel.getBoundingClientRect();
+    const room = Math.max(BH * 2, groundY() - (rect.bottom - 10) - 16);
+    const towerH = (stack.length + 1) * BH;
+    zoomOut = Math.max(0.08, Math.min(1, room / towerH));
+  }
+
+  let zoomOut = 1, zoom = 1;
+
+  function start() {
+    state = 'play';
+    zoomOut = 1; zoom = 1;
+    panel.classList.add('hidden');
+    panel.classList.remove('over');
+    document.body.classList.remove('is-over');
+    reset();
+    sfx.start();
+  }
+  function onTap(e) {
+    initAudio();
+    const t = e.target;
+    if (t.closest && (t.closest('.icon-btn') || t.closest('.share'))) return; // let buttons work
+    e.preventDefault();
+    if (state === 'play') { drop(); return; }
+    if (state === 'over') return; // use the Play again button so a stray tap doesn't skip sharing
+    start();
+  }
+  window.addEventListener('pointerdown', onTap, { passive: false });
+  window.addEventListener('keydown', e => {
+    if (e.code !== 'Space' && e.code !== 'Enter') return;
+    if (state === 'over' && document.activeElement && document.activeElement.closest('.share')) return;
+    initAudio(); e.preventDefault();
+    if (state === 'play') drop(); else if (state === 'menu' || performance.now() - overAt > 600) start();
+  });
+  document.getElementById('again').addEventListener('click', () => { if (performance.now() - overAt > 400) start(); });
+
+  // ---------- sharing ----------
+  const toastEl = document.getElementById('toast');
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
+  }
+  function shareText() {
+    const word = score === 1 ? 'block' : 'blocks';
+    const brag = score >= 40 ? 'Good luck beating that.' : score >= 20 ? 'Think you can beat me?' : 'Bet you can do better!';
+    return `🧱 I stacked ${score} ${word} in Tower Tap! My best is ${best}. ${brag}`;
+  }
+  function setShareLinks() {
+    const txt = encodeURIComponent(shareText());
+    document.getElementById('shWa').href = `https://wa.me/?text=${txt}`;
+    document.getElementById('shTg').href = `https://t.me/share/url?url=${encodeURIComponent('Tower Tap')}&text=${txt}`;
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    document.getElementById('shSms').href = iOS ? `sms:&body=${txt}` : `sms:?body=${txt}`;
+  }
+  async function copyText() {
+    const t = shareText();
+    try { await navigator.clipboard.writeText(t); toast('Score copied'); return; } catch (e) {}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      toast('Score copied');
+    } catch (e) { toast('Copy did not work on this browser'); }
+  }
+  const nativeBtn = document.getElementById('shareNative');
+  nativeBtn.addEventListener('click', async () => {
+    sfx.click();
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Tower Tap', text: shareText() }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    copyText();
+  });
+  document.getElementById('shCopy').addEventListener('click', () => { sfx.click(); copyText(); });
+  ['shWa', 'shTg', 'shSms'].forEach(id => document.getElementById(id).addEventListener('click', () => sfx.click()));
+
+  function drawBlock(x, y, w, h, i, alpha = 1) {
+    const hh = hue(i);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `hsl(${hh},70%,62%)`;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = `hsl(${hh},80%,74%)`;
+    ctx.fillRect(x, y, w, Math.max(3, h * 0.18));
+    ctx.fillStyle = `hsl(${hh},60%,46%)`;
+    ctx.fillRect(x, y + h - Math.max(2, h * 0.12), w, Math.max(2, h * 0.12));
+    ctx.globalAlpha = 1;
+  }
+
+  // menu demo stack
+  reset();
+  state = 'menu';
+  updateScore(false);
+  let demoT = 0;
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(2.5, (now - last) / 16.667);
+    last = now;
+
+    // move current block
+    if (state === 'play' && cur) {
+      cur.x += cur.dir * speed * dt;
+      const top = stack[stack.length - 1];
+      const minX = top.x - top.w * 1.1, maxX = top.x + top.w * 1.1;
+      if (cur.x > Math.max(maxX, W - cur.w * 0.4)) { cur.x = Math.max(maxX, W - cur.w * 0.4); cur.dir = -1; }
+      if (cur.x < Math.min(minX, -cur.w * 0.6)) { cur.x = Math.min(minX, -cur.w * 0.6); cur.dir = 1; }
+    }
+    if (state === 'menu') {
+      demoT += 0.02 * dt;
+      cur.x = (W - cur.w) / 2 + Math.sin(demoT) * W * 0.3;
+    }
+
+    cam += (camTarget - cam) * 0.12 * dt;
+    zoom += (zoomOut - zoom) * 0.06 * dt;
+
+    // background: sky shifts as you climb
+    const h0 = (baseHue + (stack.length * 3)) % 360;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `hsl(${(h0 + 200) % 360},45%,16%)`);
+    g.addColorStop(1, `hsl(${(h0 + 240) % 360},40%,30%)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    // zoom around ground center when game ends
+    const gy = groundY();
+    ctx.translate(W / 2, gy);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-W / 2, -gy);
+
+    // stack
+    const effCam = zoomOut < 1 ? cam * ((zoom - zoomOut) / (1 - zoomOut)) : cam;
+
+    // ground
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(-W * 2, gy + effCam, W * 5, H * 4);
+    for (const b of stack) {
+      const y = gy - (b.i + 1) * BH + effCam;
+      if (y > H / Math.max(zoom, 0.1) + BH || y < -H * 3) continue;
+      drawBlock(b.x, y, b.w, BH, b.i);
+    }
+
+    // perfect rings
+    for (let k = rings.length - 1; k >= 0; k--) {
+      const r = rings[k];
+      r.t += 0.045 * dt;
+      if (r.t >= 1) { rings.splice(k, 1); continue; }
+      const pad = r.t * BH * 0.9;
+      const y = gy - (r.i + 1) * BH + effCam;
+      ctx.strokeStyle = `rgba(255,248,236,${1 - r.t})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(r.x - pad, y - pad, r.w + pad * 2, BH + pad * 2);
+    }
+
+    // current block
+    if (cur) drawBlock(cur.x, gy - (cur.i + 1) * BH + effCam, cur.w, BH, cur.i);
+
+    // debris (in world coords relative to ground, shifted by cam)
+    for (let k = debris.length - 1; k >= 0; k--) {
+      const d = debris[k];
+      d.vy += 0.5 * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.rot += d.vr * dt;
+      const sy = d.y + effCam;
+      if (sy > H * 2 / Math.max(zoom, 0.1)) { debris.splice(k, 1); continue; }
+      ctx.save();
+      ctx.translate(d.x + d.w / 2, sy + BH / 2);
+      ctx.rotate(d.rot);
+      drawBlock(-d.w / 2, -BH / 2, d.w, BH, d.i, 0.95);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
