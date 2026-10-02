@@ -75,33 +75,61 @@
     animation: breathe 1.4s ease-in-out infinite;
   }
   @keyframes breathe { 50% { opacity: 0.45; } }
-  .share { display: none; margin-top: 14px; }
+  .share { display: none; margin-top: 4px; text-align: left; }
   .hud { transition: opacity 0.3s; }
   body.is-over .hud { opacity: 0; }
   .panel.over .share { display: block; }
-  .share-main {
-    display: block; width: 100%; padding: 14px; border: 0; border-radius: 16px;
-    background: #ffd166; color: #2a1a00; font: 800 18px "Nunito", system-ui, sans-serif;
-    cursor: pointer;
-  }
-  .share-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
-  .share-row a, .share-row button {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 46px; padding: 6px 4px; border-radius: 14px; border: 0;
-    background: rgba(255,248,236,0.12); color: var(--ink); text-decoration: none;
+  .panel.over #pline2 { display: none; }
+  .panel.over { max-height: calc(100% - 90px); overflow-y: auto; }
+  .preview-label { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin: 14px 2px 6px; }
+  .preview-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .shuffle {
+    display: inline-flex; align-items: center; gap: 6px; margin: 0 0 6px; padding: 7px 11px;
+    border: 0; border-radius: 999px; background: rgba(255,248,236,0.12); color: var(--ink);
     font: 800 13px "Nunito", system-ui, sans-serif; cursor: pointer;
   }
-  .share-row .wa { background: #1f9d55; }
-  .share-row .tg { background: #2a8bd6; }
-  .share-row .sms { background: #3fb950; color: #06210d; }
-  .share-main:focus-visible, .share-row a:focus-visible, .share-row button:focus-visible, .icon-btn:focus-visible {
+  .shuffle:active { transform: scale(0.95); }
+  .shuffle:focus-visible { outline: 3px solid #fff8ec; outline-offset: 2px; }
+  .bubble { transition: opacity 0.15s;
+    position: relative; padding: 12px 14px; border-radius: 18px 18px 18px 6px;
+    background: rgba(255,248,236,0.1); color: var(--ink);
+    font-weight: 700; font-size: 15px; line-height: 1.4;
+  }
+  .share-main {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px;
+    background: #ffd166; color: #2a1a00; font: 800 18px "Nunito", system-ui, sans-serif;
+    cursor: pointer; box-shadow: 0 4px 0 #c99a2e;
+  }
+  .share-main:active { transform: translateY(3px); box-shadow: 0 1px 0 #c99a2e; }
+  .share-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .share-row a, .share-row button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-height: 72px; padding: 8px 2px; border-radius: 16px; border: 0;
+    background: rgba(255,248,236,0.08); color: var(--ink); text-decoration: none;
+    font: 800 12px "Nunito", system-ui, sans-serif; cursor: pointer;
+  }
+  .share-row a:active, .share-row button:active { transform: scale(0.95); }
+  .share-row .ic {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; color: #fff;
+  }
+  .share-row svg { width: 22px; height: 22px; display: block; }
+  .ic.wa { background: linear-gradient(160deg, #3ad46f, #1c9a4f); border-radius: 50%; }
+  .ic.wa svg { width: 25px; height: 25px; }
+  .ic.tg { background: #2a93d8; }
+  .ic.sms { background: #34c759; }
+  .ic.cp { background: #6c5fc7; }
+  .share-main:focus-visible, .share-row a:focus-visible, .share-row button:focus-visible, .icon-btn:focus-visible, .again:focus-visible {
     outline: 3px solid #fff8ec; outline-offset: 2px;
   }
+  .end-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 14px; }
   .again {
-    margin-top: 14px; width: 100%; padding: 13px; border-radius: 16px;
+    padding: 13px 8px; border-radius: 16px; cursor: pointer;
     border: 2px solid rgba(255,248,236,0.5); background: transparent; color: var(--ink);
-    font: 800 17px "Nunito", system-ui, sans-serif; cursor: pointer;
+    font: 800 16px "Nunito", system-ui, sans-serif;
   }
+  .again.go { background: #fff8ec; color: #1b1430; border-color: #fff8ec; }
   .icon-btn {
     z-index: 6; position: fixed; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px;
     width: 44px; height: 44px; border-radius: 50%; border: 0;
@@ -181,14 +209,22 @@
   <p id="pline2">Land it perfectly to keep your tower wide.</p>
   <div class="tap" id="ptap">Tap to start</div>
   <div class="share">
-    <button class="share-main" id="shareNative" type="button">Share my score</button>
-    <div class="share-row">
-      <a class="wa" id="shWa" target="_blank" rel="noopener">WhatsApp</a>
-      <a class="tg" id="shTg" target="_blank" rel="noopener">Telegram</a>
-      <a class="sms" id="shSms">Messages</a>
-      <button id="shCopy" type="button">Copy</button>
+    <div class="preview-head">
+      <div class="preview-label">Your message</div>
+      <button class="shuffle" id="shuffle" type="button" aria-label="Try a different message"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Another one</button>
     </div>
-    <button class="again" id="again" type="button">Play again</button>
+    <div class="bubble" id="preview"></div>
+    <button class="share-main" id="shareNative" type="button"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg><span>Share my score</span></button>
+    <div class="share-row">
+      <a id="shWa" target="_blank" rel="noopener"><span class="ic wa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8a9.2 9.2 0 0 0-7.9 13.9L2.9 21.2l4.6-1.2A9.2 9.2 0 1 0 12 2.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M6.8 12.4l2 2 3.6-4.2M11.2 14.4l.4.4 3.6-4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>WhatsApp</a>
+      <a id="shTg" target="_blank" rel="noopener"><span class="ic tg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3.5 2.8 10.6c-.8.3-.8 1.4 0 1.7l4.6 1.7 1.8 5.6c.2.7 1.1.9 1.6.4l2.6-2.5 4.7 3.5c.6.4 1.4.1 1.6-.6L21.9 4.6c.2-.8-.5-1.4-.9-1.1z"/><path d="m7.4 14 11-7.5-8.4 9.2"/></svg></span>Telegram</a>
+      <a id="shSms"><span class="ic sms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><circle cx="8" cy="11" r=".6" fill="currentColor"/><circle cx="12" cy="11" r=".6" fill="currentColor"/><circle cx="16" cy="11" r=".6" fill="currentColor"/></svg></span>Messages</a>
+      <button id="shCopy" type="button"><span class="ic cp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span>Copy</button>
+    </div>
+    <div class="end-row">
+      <button class="again" id="toBoard" type="button">Scores</button>
+      <button class="again go" id="again" type="button">Play again</button>
+    </div>
   </div>
 </div>
 <div class="board" id="board" aria-live="polite">
@@ -289,7 +325,7 @@
     },
     slice() { noise({ dur: 0.14, vol: 0.35, freq: 2400, q: 1.2 }); tone(90, { type: 'sine', dur: 0.1, vol: 0.3, slide: 0.6 }); },
     perfect(c) {
-      const n = c <= 4 ? 7 + c : 11 - ((c - 4) % 2); // climbs for 4 perfects, then alternates one note down, one up
+      const n = 7 + Math.min(c, 3); // climbs for 3 perfects, then always rings the same bright C-major bell (C6, E6, C7)
       tone(note(n), { type: 'sine', dur: 0.6, vol: 0.32 });
       tone(note(n) * 2.005, { type: 'sine', dur: 0.4, vol: 0.08 });
       tone(note(n + 2), { type: 'sine', dur: 0.5, vol: 0.18, at: 0.07 });
@@ -412,13 +448,16 @@
     buzz([30, 40, 60]);
     const isBest = score > best;
     if (isBest) { best = score; try { localStorage.setItem('towertap-best', String(best)); } catch (e) {} }
-    ptitle.textContent = isBest && score > 0 ? 'New best!' : `${score} blocks`;
-    pline1.textContent = isBest && score > 0 ? `You stacked ${score} blocks.` : `Your best is ${best}.`;
+    const bw = score === 1 ? 'block' : 'blocks';
+    ptitle.textContent = isBest && score > 0 ? 'New best!' : `${score} ${bw}`;
+    pline1.textContent = isBest && score > 0 ? `You stacked ${score} ${bw}.` : `Your best is ${best}.`;
     pline2.textContent = score < 10 ? 'Tip: tap a little early. The block keeps moving.' : (score < 30 ? 'Three perfects in a row make the block grow back.' : 'That is a serious tower.');
     if (isBest && score > 0) sfx.best();
     ptap.style.display = 'none';
     panel.classList.add('over');
     document.body.classList.add('is-over');
+    lastWasBest = isBest;
+    pickMessage();
     setShareLinks();
     fitTowerBelowPanel();
     setTimeout(() => { if (state === 'over') openBoard(); }, 900);
@@ -589,6 +628,10 @@
   }
   document.getElementById('bOk').addEventListener('click', submitName);
   document.getElementById('bAgain').addEventListener('click', () => start());
+  document.getElementById('toBoard').addEventListener('click', () => {
+    sfx.click(); panel.classList.add('hidden');
+    renderRows(); boardOpen = true; boardEl.classList.add('open');
+  });
   document.getElementById('bShare').addEventListener('click', () => {
     sfx.click(); closeBoard();
     panel.classList.remove('hidden');
@@ -601,12 +644,52 @@
     toastEl.textContent = msg; toastEl.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
   }
+  const MESSAGES = {
+    low: [
+      '🧱 I stacked {n} {b} in Tower Tap. Architects, please don\'t call me.',
+      '🧱 {n} {b} in Tower Tap. My tower has the structural integrity of a wet sandwich. Your turn.',
+      '🧱 Built a {n}-block tower in Tower Tap. It\'s not small, it\'s minimalist.',
+      '🧱 {n} {b} in Tower Tap. I was just warming up. Obviously.',
+      '🧱 My Tower Tap tower is {n} {b} tall. Even a pigeon wouldn\'t land on it. Beat that (please).',
+      '🧱 Scored {n} in Tower Tap. The blocks had other plans.',
+      '🧱 {n} {b}. Not a tower, more of a modest shed. Can you do better?',
+      '🧱 Tower Tap: {n}. I blame the wind. There is no wind. Your turn.'
+    ],
+    mid: [
+      '🧱 {n} blocks stacked in Tower Tap! I\'m basically a crane now.',
+      '🧱 Just built a {n}-block tower. Local pigeons are applying for apartments. Can you beat it?',
+      '🧱 {n} in Tower Tap. My hands were shaking, my tower was not. Your move.',
+      '🧱 I stacked {n} blocks! Gravity tried. Gravity failed. Beat me.',
+      '🧱 {n} blocks high in Tower Tap. Somebody notify the city planning office.',
+      '🧱 Tower Tap score: {n}. I\'d sign autographs, but I\'m busy stacking.',
+      '🧱 {n} blocks! My tower now has its own weather. Think you can top it?'
+    ],
+    high: [
+      '🧱 {n} blocks in Tower Tap. Planes are rerouting around my tower. Good luck.',
+      '🧱 I stacked {n}! The view from up here is great. You wouldn\'t know.',
+      '🧱 {n} blocks. I didn\'t build a tower, I built a lifestyle. Try to beat it.',
+      '🧱 Tower Tap score: {n}. Engineers are studying my technique.',
+      '🧱 {n} blocks high. NASA called, they want their rocket back. Your turn.',
+      '🧱 {n} in Tower Tap. I\'ve peaked. Literally. Come and get me.'
+    ]
+  };
+  let msgIdx = -1, msgTier = '', lastWasBest = false;
+  function pickMessage(forceNew) {
+    const tier = score >= 30 ? 'high' : score >= 10 ? 'mid' : 'low';
+    const list = MESSAGES[tier];
+    let i = Math.floor(Math.random() * list.length);
+    if (forceNew && tier === msgTier && list.length > 1 && i === msgIdx) i = (i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
+    msgTier = tier; msgIdx = i;
+  }
   function shareText() {
-    const word = score === 1 ? 'block' : 'blocks';
-    const brag = score >= 40 ? 'Good luck beating that.' : score >= 20 ? 'Think you can beat me?' : 'Bet you can do better!';
-    return `🧱 I stacked ${score} ${word} in Tower Tap! My best is ${best}. ${brag}`;
+    if (msgIdx < 0) pickMessage();
+    const b = score === 1 ? 'block' : 'blocks';
+    let t = MESSAGES[msgTier][msgIdx].replace(/\{n\}/g, score).replace(/\{b\}/g, b);
+    if (score > 0 && lastWasBest) t += ' 🏆 New personal best!';
+    return t;
   }
   function setShareLinks() {
+    document.getElementById('preview').textContent = shareText();
     const txt = encodeURIComponent(shareText());
     document.getElementById('shWa').href = `https://wa.me/?text=${txt}`;
     document.getElementById('shTg').href = `https://t.me/share/url?url=${encodeURIComponent('Tower Tap')}&text=${txt}`;
@@ -631,6 +714,12 @@
       catch (e) { if (e && e.name === 'AbortError') return; }
     }
     copyText();
+  });
+  const previewEl = document.getElementById('preview');
+  document.getElementById('shuffle').addEventListener('click', () => {
+    sfx.click();
+    previewEl.style.opacity = '0';
+    setTimeout(() => { pickMessage(true); setShareLinks(); previewEl.style.opacity = '1'; }, 150);
   });
   document.getElementById('shCopy').addEventListener('click', () => { sfx.click(); copyText(); });
   ['shWa', 'shTg', 'shSms'].forEach(id => document.getElementById(id).addEventListener('click', () => sfx.click()));
