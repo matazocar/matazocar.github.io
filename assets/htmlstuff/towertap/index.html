@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Press+Start+2P&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #fff8ec;
@@ -103,10 +103,65 @@
     font: 800 17px "Nunito", system-ui, sans-serif; cursor: pointer;
   }
   .icon-btn {
-    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px;
+    z-index: 6; position: fixed; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px;
     width: 44px; height: 44px; border-radius: 50%; border: 0;
     background: rgba(255,248,236,0.14); color: var(--ink); font-size: 20px; cursor: pointer;
   }
+  /* ---------- retro leaderboard ---------- */
+  .board {
+    --px: "Press Start 2P", "Courier New", ui-monospace, monospace;
+    position: fixed; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; justify-content: safe center;
+    padding: calc(env(safe-area-inset-top, 0px) + 68px) 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    box-sizing: border-box; overflow-y: auto;
+    background: #05030c; color: #fff; font-family: var(--px);
+    image-rendering: pixelated;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .board::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0 2px, transparent 2px 4px);
+  }
+  .board.open { opacity: 1; pointer-events: auto; }
+  .board h2 {
+    margin: 0 0 6px; font: 400 clamp(18px, 5.6vw, 26px)/1.3 var(--px);
+    color: #ffd166; text-shadow: 3px 3px 0 #c2185b; letter-spacing: 1px; text-align: center;
+  }
+  .board .sub { font-size: 10px; color: #7ee8fa; margin: 0 0 18px; text-align: center; line-height: 1.6; }
+  .blink { animation: blink 0.9s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .entry { display: none; flex-direction: column; align-items: center; }
+  .board.entering .entry { display: flex; }
+  .board.entering .table, .board.entering .bbtns { display: none; }
+  .slots { display: flex; gap: 14px; margin: 4px 0 20px; }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .slot button {
+    width: 58px; height: 44px; border: 0; background: #1d1840; color: #7ee8fa;
+    font: 400 14px var(--px); cursor: pointer; box-shadow: inset -3px -3px 0 #0c0a22;
+  }
+  .slot button:active { transform: translateY(2px); box-shadow: none; }
+  .slot .ch {
+    width: 58px; height: 64px; display: flex; align-items: center; justify-content: center;
+    font: 400 30px var(--px); color: #fff; border-bottom: 4px solid #3a3470; cursor: pointer;
+  }
+  .slot.sel .ch { color: #ffd166; border-color: #ffd166; }
+  .slot.sel .ch span { animation: blink 0.8s steps(1) infinite; }
+  .rbtn {
+    border: 0; padding: 14px 18px; cursor: pointer; font: 400 13px var(--px);
+    background: #ffd166; color: #1b1430; box-shadow: inset -4px -4px 0 #c99a2e;
+  }
+  .rbtn:active { transform: translateY(2px); box-shadow: none; }
+  .rbtn.alt { background: #2a2456; color: #fff; box-shadow: inset -4px -4px 0 #15112f; }
+  .rbtn:focus-visible, .slot button:focus-visible { outline: 3px solid #7ee8fa; outline-offset: 3px; }
+  .table { width: min(100%, 360px); border-collapse: collapse; font-size: clamp(11px, 3.6vw, 14px); }
+  .table td { padding: 7px 4px; white-space: nowrap; }
+  .table td:nth-child(1) { text-align: left; width: 4.5em; }
+  .table td:nth-child(2) { text-align: center; letter-spacing: 3px; }
+  .table td:nth-child(3) { text-align: right; }
+  .table tr.mine td { animation: blink 0.7s steps(1) infinite; }
+  .bbtns { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
+  @media (prefers-reduced-motion: reduce) { .blink, .slot.sel .ch span, .table tr.mine td { animation: none; } .table tr.mine td { text-decoration: underline; } }
   .toast {
     position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
     transform: translateX(-50%); padding: 10px 18px; border-radius: 999px;
@@ -134,6 +189,19 @@
       <button id="shCopy" type="button">Copy</button>
     </div>
     <button class="again" id="again" type="button">Play again</button>
+  </div>
+</div>
+<div class="board" id="board" aria-live="polite">
+  <h2 id="bTitle">HIGH SCORES</h2>
+  <p class="sub" id="bSub"></p>
+  <div class="entry">
+    <div class="slots" id="slots"></div>
+    <button class="rbtn" id="bOk" type="button">ENTER</button>
+  </div>
+  <table class="table"><tbody id="bRows"></tbody></table>
+  <div class="bbtns">
+    <button class="rbtn" id="bAgain" type="button">PLAY AGAIN</button>
+    <button class="rbtn alt" id="bShare" type="button">SHARE</button>
   </div>
 </div>
 <button class="icon-btn" id="mute" type="button" aria-label="Mute sound">🔊</button>
@@ -221,7 +289,7 @@
     },
     slice() { noise({ dur: 0.14, vol: 0.35, freq: 2400, q: 1.2 }); tone(90, { type: 'sine', dur: 0.1, vol: 0.3, slide: 0.6 }); },
     perfect(c) {
-      const n = 7 + Math.min(c, 10);
+      const n = c <= 4 ? 7 + c : 11 - ((c - 4) % 2); // climbs for 4 perfects, then alternates one note down, one up
       tone(note(n), { type: 'sine', dur: 0.6, vol: 0.32 });
       tone(note(n) * 2.005, { type: 'sine', dur: 0.4, vol: 0.08 });
       tone(note(n + 2), { type: 'sine', dur: 0.5, vol: 0.18, at: 0.07 });
@@ -234,7 +302,10 @@
       tone(70, { type: 'sine', dur: 0.3, vol: 0.5, slide: 0.5, at: 0.45 });
     },
     best() { [0, 2, 4, 7].forEach((k, j) => tone(note(10 + k), { type: 'triangle', dur: 0.35, vol: 0.2, at: 0.9 + j * 0.09 })); },
-    click() { tone(note(12), { type: 'sine', dur: 0.08, vol: 0.15 }); }
+    click() { tone(note(12), { type: 'sine', dur: 0.08, vol: 0.15 }); },
+    blip(up) { tone(up ? 880 : 660, { type: 'square', dur: 0.06, vol: 0.08 }); },
+    confirm() { [523, 659, 784, 1047].forEach((f, j) => tone(f, { type: 'square', dur: 0.1, vol: 0.08, at: j * 0.07 })); },
+    fanfare() { [392, 523, 659, 784, 659, 784].forEach((f, j) => tone(f, { type: 'square', dur: 0.12, vol: 0.07, at: 0.15 + j * 0.1 })); }
   };
   const muteBtn = document.getElementById('mute');
   function syncMute() {
@@ -349,8 +420,8 @@
     panel.classList.add('over');
     document.body.classList.add('is-over');
     setShareLinks();
-    setTimeout(() => panel.classList.remove('hidden'), 650);
     fitTowerBelowPanel();
+    setTimeout(() => { if (state === 'over') openBoard(); }, 900);
   }
 
   window.addEventListener('resize', () => { if (state === 'over') fitTowerBelowPanel(); });
@@ -371,13 +442,14 @@
     panel.classList.add('hidden');
     panel.classList.remove('over');
     document.body.classList.remove('is-over');
+    closeBoard();
     reset();
     sfx.start();
   }
   function onTap(e) {
     initAudio();
     const t = e.target;
-    if (t.closest && (t.closest('.icon-btn') || t.closest('.share'))) return; // let buttons work
+    if (t.closest && (t.closest('.icon-btn') || t.closest('.share') || t.closest('.board'))) return; // let buttons work
     e.preventDefault();
     if (state === 'play') { drop(); return; }
     if (state === 'over') return; // use the Play again button so a stray tap doesn't skip sharing
@@ -385,12 +457,142 @@
   }
   window.addEventListener('pointerdown', onTap, { passive: false });
   window.addEventListener('keydown', e => {
+    if (boardOpen) { boardKey(e); return; }
     if (e.code !== 'Space' && e.code !== 'Enter') return;
     if (state === 'over' && document.activeElement && document.activeElement.closest('.share')) return;
     initAudio(); e.preventDefault();
     if (state === 'play') drop(); else if (state === 'menu' || performance.now() - overAt > 600) start();
   });
   document.getElementById('again').addEventListener('click', () => { if (performance.now() - overAt > 400) start(); });
+
+  // ---------- retro leaderboard ----------
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?*.-';
+  const SEED = [['TAP',30],['ACE',25],['ZAP',20],['MAX',16],['JOY',12],['KAI',10],['EVE',8],['LOU',6],['SAM',4],['BOB',2]];
+  const RANK_COLORS = ['#ffd166','#ff8c42','#ff5e7e','#e86bf0','#9b7bff','#7ee8fa','#5ef2a6','#c6f26b','#ffffff','#b8b3d9'];
+  const boardEl = document.getElementById('board');
+  const bTitle = document.getElementById('bTitle'), bSub = document.getElementById('bSub');
+  const bRows = document.getElementById('bRows'), slotsEl = document.getElementById('slots');
+  let boardOpen = false, entering = false, initials = [0, 0, 0], selSlot = 0, mineIdx = -1;
+
+  function loadBoard() {
+    try {
+      const b = JSON.parse(localStorage.getItem('towertap-board') || 'null');
+      if (Array.isArray(b) && b.length) return b.slice(0, 10);
+    } catch (e) {}
+    return SEED.map(([n, s]) => ({ n, s }));
+  }
+  function saveBoard(b) { try { localStorage.setItem('towertap-board', JSON.stringify(b)); } catch (e) {} }
+  let board = loadBoard();
+  try {
+    const last = localStorage.getItem('towertap-initials');
+    if (last && last.length === 3) initials = [...last].map(c => Math.max(0, CHARS.indexOf(c)));
+  } catch (e) {}
+
+  const ord = n => n + (n === 1 ? 'ST' : n === 2 ? 'ND' : n === 3 ? 'RD' : 'TH');
+  function renderRows() {
+    bRows.innerHTML = '';
+    for (let i = 0; i < 10; i++) {
+      const r = board[i];
+      const tr = document.createElement('tr');
+      if (i === mineIdx) tr.className = 'mine';
+      tr.style.color = RANK_COLORS[i];
+      const cells = [ord(i + 1), r ? r.n : '---', r ? String(r.s) : '0'];
+      cells.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+      bRows.appendChild(tr);
+    }
+  }
+  function renderSlots() {
+    slotsEl.innerHTML = '';
+    initials.forEach((ci, k) => {
+      const slot = document.createElement('div');
+      slot.className = 'slot' + (k === selSlot ? ' sel' : '');
+      const up = document.createElement('button');
+      up.type = 'button'; up.textContent = '▲'; up.setAttribute('aria-label', `Letter ${k + 1} up`);
+      up.onclick = () => { selSlot = k; cycle(1); };
+      const ch = document.createElement('div');
+      ch.className = 'ch'; ch.innerHTML = '<span></span>'; ch.firstChild.textContent = CHARS[ci];
+      ch.onclick = () => { selSlot = k; sfx.blip(true); renderSlots(); };
+      const dn = document.createElement('button');
+      dn.type = 'button'; dn.textContent = '▼'; dn.setAttribute('aria-label', `Letter ${k + 1} down`);
+      dn.onclick = () => { selSlot = k; cycle(-1); };
+      slot.append(up, ch, dn);
+      slotsEl.appendChild(slot);
+    });
+  }
+  function cycle(d) {
+    initials[selSlot] = (initials[selSlot] + d + CHARS.length) % CHARS.length;
+    sfx.blip(d > 0); renderSlots();
+  }
+  const qualifies = sc => sc > 0 && (board.length < 10 || sc > board[board.length - 1].s);
+
+  function openBoard() {
+    mineIdx = -1;
+    entering = qualifies(score);
+    boardEl.classList.toggle('entering', entering);
+    if (entering) {
+      const rank = board.filter(r => r.s >= score).length + 1;
+      bTitle.textContent = 'NEW HIGH SCORE!';
+      bSub.innerHTML = `${ord(rank)} PLACE · ${score} ${score === 1 ? 'BLOCK' : 'BLOCKS'}<br><span class="blink">ENTER YOUR NAME</span>`;
+      selSlot = 0; renderSlots();
+      sfx.fanfare();
+    } else {
+      bTitle.textContent = 'HIGH SCORES';
+      bSub.textContent = `YOU STACKED ${score} · BEST ${best}`;
+      renderRows();
+    }
+    boardOpen = true;
+    boardEl.classList.add('open');
+  }
+  function submitName() {
+    const name = initials.map(i => CHARS[i]).join('');
+    try { localStorage.setItem('towertap-initials', name); } catch (e) {}
+    const entry = { n: name, s: score };
+    board.push(entry);
+    board.sort((a, b) => b.s - a.s);
+    board = board.slice(0, 10);
+    mineIdx = board.indexOf(entry);
+    saveBoard(board);
+    entering = false;
+    boardEl.classList.remove('entering');
+    bTitle.textContent = 'HIGH SCORES';
+    bSub.textContent = `WELL DONE, ${name}!`;
+    renderRows();
+    sfx.confirm();
+    document.getElementById('bAgain').focus({ preventScroll: true });
+  }
+  function closeBoard() {
+    boardOpen = false; entering = false;
+    boardEl.classList.remove('open', 'entering');
+  }
+  function boardKey(e) {
+    if (!entering) {
+      if (e.code === 'Enter' || e.code === 'Space') {
+        if (document.activeElement && document.activeElement.closest('.board')) return;
+        e.preventDefault(); start();
+      }
+      return;
+    }
+    const k = e.key;
+    if (k === 'ArrowUp') { e.preventDefault(); cycle(1); }
+    else if (k === 'ArrowDown') { e.preventDefault(); cycle(-1); }
+    else if (k === 'ArrowLeft') { e.preventDefault(); selSlot = Math.max(0, selSlot - 1); sfx.blip(false); renderSlots(); }
+    else if (k === 'ArrowRight') { e.preventDefault(); selSlot = Math.min(2, selSlot + 1); sfx.blip(true); renderSlots(); }
+    else if (k === 'Backspace') { e.preventDefault(); selSlot = Math.max(0, selSlot - 1); renderSlots(); }
+    else if (k === 'Enter') { e.preventDefault(); submitName(); }
+    else if (k.length === 1 && CHARS.includes(k.toUpperCase())) {
+      e.preventDefault();
+      initials[selSlot] = CHARS.indexOf(k.toUpperCase());
+      sfx.blip(true);
+      if (selSlot < 2) selSlot++;
+      renderSlots();
+    }
+  }
+  document.getElementById('bOk').addEventListener('click', submitName);
+  document.getElementById('bAgain').addEventListener('click', () => start());
+  document.getElementById('bShare').addEventListener('click', () => {
+    sfx.click(); closeBoard();
+    panel.classList.remove('hidden');
+  });
 
   // ---------- sharing ----------
   const toastEl = document.getElementById('toast');
