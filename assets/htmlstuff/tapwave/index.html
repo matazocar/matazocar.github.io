@@ -6,7 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>TapWave</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#08080f">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
 :root{
@@ -141,6 +144,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 }
 
 .judge-text{position:absolute;z-index:40;font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;pointer-events:none;animation:judgeAnim .55s ease-out forwards}
+.judge-text.super{font-size:17px;font-weight:900;letter-spacing:1.5px;white-space:nowrap;
+  background:linear-gradient(90deg,#fff,#ffe566,#f72585,#4cc9f0,#7bed9f,#fff);background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 6px rgba(255,255,255,.7));
+  animation:superAnim .7s ease-out forwards,superShine .7s linear}
+@keyframes superAnim{0%{opacity:1;transform:translateY(6px) scale(1.45)}25%{transform:translateY(-6px) scale(1.05)}75%{opacity:1;transform:translateY(-30px) scale(1)}100%{opacity:0;transform:translateY(-46px) scale(.92)}}
+@keyframes superShine{from{background-position:0% 0}to{background-position:200% 0}}
+.super-ring{position:absolute;width:60px;height:60px;border-radius:50%;border:3px solid #fff;z-index:36;pointer-events:none;box-shadow:0 0 16px #fff,inset 0 0 10px #ffe566;animation:ringOut .5s ease-out forwards}
+@keyframes ringOut{from{opacity:1;transform:scale(.4)}to{opacity:0;transform:scale(2.2)}}
+.combo-pop{position:absolute;left:0;right:0;top:34%;z-index:70;pointer-events:none;display:flex;flex-direction:column;align-items:center;animation:comboPop 1.25s ease-out forwards}
+.combo-pop .cp-num{font-family:monospace;font-size:64px;font-weight:900;line-height:1;background:linear-gradient(135deg,#ffe566,#f72585 45%,#4cc9f0);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 14px rgba(247,37,133,.6))}
+.combo-pop .cp-word{font-size:20px;font-weight:900;letter-spacing:6px;color:#fff;text-shadow:0 0 12px #4cc9f0}
+@keyframes comboPop{0%{opacity:0;transform:scale(.4)}15%{opacity:1;transform:scale(1.15)}30%{transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-30px) scale(1.05)}}
 @keyframes judgeAnim{0%{opacity:1;transform:translateY(0) scale(1.15)}70%{opacity:1;transform:translateY(-28px) scale(1)}100%{opacity:0;transform:translateY(-48px) scale(.9)}}
 .particle{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;z-index:35;animation:particleAnim .5s ease-out forwards}
 @keyframes particleAnim{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:var(--pdir) scale(0)}}
@@ -158,6 +174,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .pause-btn:active .pb-pill,.pause-btn.pressed .pb-pill{transform:scale(.9);background:rgba(255,255,255,.18)}
 .pause-btn .pb-pill span{width:4px;height:16px;background:var(--text);opacity:.75;border-radius:2px;display:block}
 .countdown{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(8,8,15,.6);pointer-events:none;font-size:80px;font-weight:900;animation:countpop .4s ease-out}
+.countdown.resume{background:rgba(8,8,15,.22);font-size:96px;text-shadow:0 0 24px currentColor,0 2px 8px rgba(0,0,0,.8)}
+.resume-label{position:absolute;left:0;right:0;top:calc(50% + 62px);text-align:center;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--text);opacity:.7;pointer-events:none;z-index:91}
 @keyframes countpop{0%{transform:scale(1.5);opacity:0}60%{opacity:1}100%{transform:scale(1);opacity:1}}
 
 /* ── RESULT ── */
@@ -170,6 +188,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
 .stat-label{font-size:13px;color:var(--muted)}
 .stat-val{font-family:monospace;font-size:20px;font-weight:700}
+.stat-val.superp{background:linear-gradient(90deg,#fff,#ffe566,#f72585,#4cc9f0,#7bed9f);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat-val.perfect{color:var(--perfect)}.stat-val.great{color:var(--great)}.stat-val.good{color:var(--good)}.stat-val.miss{color:var(--miss)}
 .result-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .rbtn{padding:13px 24px;border-radius:50px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;border:none}
@@ -211,7 +230,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .lib-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);padding:40px 20px;text-align:center}
 .lib-empty svg{width:44px;height:44px;stroke:var(--muted2);opacity:.7}
 .lib-empty p{font-size:15px}.lib-empty span{font-size:12px;opacity:.6}
-.lib-list{width:100%;flex:1;overflow-y:auto;padding:0 16px 20px}
+.lib-list{width:100%;flex:1;overflow-y:auto;padding:0 16px 20px;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .lib-song{background:var(--muted2);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:background .15s}
 .lib-song:active{background:#3a3a58}
 .lib-song-name{font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -222,6 +241,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .lib-diff-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;opacity:.7}
 .lib-diff-score{font-family:monospace;font-size:12px;font-weight:700}
 .lib-song-date{font-size:11px;color:var(--muted);margin-top:6px}
+.lib-song.loading{opacity:.55;pointer-events:none}
+.lib-song.missing{opacity:.7}
+.lib-song-top{display:flex;align-items:flex-start;gap:10px}
+.lib-song-top .lib-song-name{flex:1;min-width:0}
+.lib-del{flex-shrink:0;border:1px solid var(--muted);background:transparent;color:var(--muted);border-radius:50px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation;transition:all .15s}
+.lib-del.armed{background:var(--miss);border-color:var(--miss);color:#fff}
+.lib-status{font-size:11px;margin-top:8px}
+.lib-status.saved{color:var(--l4)}
+.lib-status.missing{color:var(--l3)}
+.lib-noplay{font-size:12px;color:var(--muted)}
+.lib-tools{display:flex;gap:8px;padding:0 16px 12px;width:100%;flex-shrink:0}
+.lib-tool{flex:1;padding:9px 10px;border-radius:12px;font-size:12px;font-weight:600;border:1.5px solid var(--muted2);background:transparent;color:var(--muted);cursor:pointer;touch-action:manipulation}
+.lib-tool:active{opacity:.7}
+.lib-storage{font-size:11px;color:var(--muted);text-align:center;padding:4px 20px calc(env(safe-area-inset-bottom,0px) + 14px);flex-shrink:0}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);transform:translateX(-50%);background:#1c1c32;border:1px solid var(--muted2);color:var(--text);padding:11px 16px;border-radius:12px;font-size:13px;z-index:500;max-width:88%;text-align:center;animation:hintIn .25s ease-out;pointer-events:none}
 .lib-list::-webkit-scrollbar{width:3px}
 .lib-list::-webkit-scrollbar-track{background:transparent}
 .lib-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px}
@@ -337,6 +371,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="result-stats">
     <div class="stat-row"><span class="stat-label">Score</span><span class="stat-val" id="rScore"></span></div>
     <div class="stat-row"><span class="stat-label">Max combo</span><span class="stat-val" id="rCombo"></span></div>
+    <div class="stat-row"><span class="stat-label">Super perfect</span><span class="stat-val superp" id="rSuper"></span></div>
     <div class="stat-row"><span class="stat-label">Perfect</span><span class="stat-val perfect" id="rPerfect"></span></div>
     <div class="stat-row"><span class="stat-label">Great</span><span class="stat-val great" id="rGreat"></span></div>
     <div class="stat-row"><span class="stat-label">Good</span><span class="stat-val good" id="rGood"></span></div>
@@ -356,14 +391,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <div class="lib-title">Library</div>
     <button class="lib-back" id="libBackBtn">Back</button>
   </div>
+  <div class="lib-tools">
+    <button class="lib-tool" id="libExportBtn">Back up scores</button>
+    <button class="lib-tool" id="libImportBtn">Restore scores</button>
+    <input type="file" id="libImportInput" accept="application/json,.json" style="display:none">
+  </div>
   <div class="lib-empty hidden" id="libEmpty">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
       <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
     </svg>
     <p>No songs yet</p>
-    <span>Import an MP3 to get started</span>
+    <span>Songs you import are saved here so you can replay them anytime</span>
   </div>
   <div class="lib-list" id="libList"></div>
+  <div class="lib-storage" id="libStorage"></div>
 </div>
 
 <script>
@@ -399,6 +440,7 @@ const SLIDER_DIRS=[
 // We use standard screen coords: right=0°, down=90°, left=180°, up=-90°
 const SLIDER_ANGLES=[180,135,90,45,0,-45,-90,-135]; // matching SLIDER_DIRS
 
+const SUPER_WINDOW=18; // ms — tighter than any Perfect
 let difficulty='normal';
 let noSliders=false;
 
@@ -406,7 +448,7 @@ let state={
   screen:'home',songName:'',audioBuffer:null,
   audioCtx:null,sourceNode:null,startTime:0,pauseTime:0,paused:false,
   notes:[],score:0,combo:0,maxCombo:0,hp:100,
-  counts:{perfect:0,great:0,good:0,miss:0},
+  counts:{superPerfect:0,perfect:0,great:0,good:0,miss:0},
   gameRunning:false,rafId:null,totalNotes:0,
   judgeY:0,gameH:0,isDemo:false,
   lastNoteTime:0,endTimerScheduled:false,endTimerId:null,
@@ -564,47 +606,199 @@ function libRecord(songName,diff,score,grade,acc,isDemo){
   if(isNew){data[key].diffs[diff]={score:Math.round(score),grade,acc,date:Date.now()};libSave(data);}
   return isNew;
 }
-function libRender(){
-  const data=libLoad(),keys=Object.keys(data);
+// ═══════════════════════════════════════════
+// SONG STORAGE — songs live in IndexedDB on the device
+// ═══════════════════════════════════════════
+let _dbP=null;
+function dbOpen(){
+  if(_dbP) return _dbP;
+  _dbP=new Promise((res,rej)=>{
+    if(!window.indexedDB){rej(new Error('IndexedDB unavailable'));return;}
+    const r=indexedDB.open('tapwave',1);
+    r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('songs'))db.createObjectStore('songs',{keyPath:'key'});};
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+  _dbP.catch(()=>{_dbP=null;});
+  return _dbP;
+}
+function dbReq(mode,fn){
+  return dbOpen().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction('songs',mode);
+    const req=fn(tx.objectStore('songs'));
+    let out;if(req)req.onsuccess=()=>{out=req.result;};
+    tx.oncomplete=()=>res(out);
+    tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error);
+  }));
+}
+const songKey=n=>n.trim().toLowerCase();
+const songPut=rec=>dbReq('readwrite',s=>s.put(rec));
+const songGet=key=>dbReq('readonly',s=>s.get(key));
+const songDel=key=>dbReq('readwrite',s=>s.delete(key));
+function songMetaAll(){
+  return dbReq('readonly',s=>s.getAll())
+    .then(all=>(all||[]).map(r=>({key:r.key,name:r.name,size:r.size||0,added:r.added||0})))
+    .catch(()=>[]);
+}
+async function requestPersist(){
+  try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))await navigator.storage.persist();}catch(e){}
+}
+function toast(msg,ms=2600){
+  document.querySelectorAll('.toast').forEach(e=>e.remove());
+  const el=document.createElement('div');el.className='toast';el.textContent=msg;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),ms);
+}
+function fmtSize(b){return b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';}
+
+// Last few decoded songs stay in memory: instant replays, cached analysis
+const decodedCache=new Map();
+function rememberDecoded(key,entry){
+  decodedCache.delete(key);decodedCache.set(key,entry);
+  while(decodedCache.size>3)decodedCache.delete(decodedCache.keys().next().value);
+}
+function openSetup(buffer,name){
+  state.audioBuffer=buffer;state.songName=name;state.isDemo=false;
+  document.getElementById('setupSongName').textContent=name;
+  showScreen('songsetup');
+}
+async function playStoredSong(key,cardEl){
+  if(decodedCache.has(key)){const c=decodedCache.get(key);rememberDecoded(key,c);openSetup(c.buffer,c.name);return;}
+  cardEl&&cardEl.classList.add('loading');
+  try{
+    const rec=await songGet(key);
+    if(!rec){toast('This song isn\'t saved on this device. Import it again to play.');return;}
+    const ab=await rec.blob.arrayBuffer();
+    const buffer=await getCtx().decodeAudioData(ab);
+    rememberDecoded(key,{buffer,name:rec.name});
+    openSetup(buffer,rec.name);
+  }catch(e){toast('Could not open this song.');}
+  finally{cardEl&&cardEl.classList.remove('loading');}
+}
+
+// A deliberate tap: ignored if the finger moved (scrolling) or was held long
+function onTap(el,fn){
+  let sx=0,sy=0,st=0,pid=null;
+  el.addEventListener('pointerdown',e=>{pid=e.pointerId;sx=e.clientX;sy=e.clientY;st=Date.now();});
+  el.addEventListener('pointermove',e=>{if(pid===e.pointerId&&Math.hypot(e.clientX-sx,e.clientY-sy)>10)pid=null;});
+  el.addEventListener('pointercancel',()=>{pid=null;});
+  el.addEventListener('pointerup',e=>{if(pid!==e.pointerId)return;pid=null;if(Date.now()-st<700)fn(e);});
+}
+
+let libRenderSeq=0;
+async function libRender(){
+  const seq=++libRenderSeq;
+  const data=libLoad();
+  const stored=await songMetaAll();
+  if(seq!==libRenderSeq) return;
+  const storedMap=new Map(stored.map(s=>[s.key,s]));
+  const keys=[...new Set([...Object.keys(data),...storedMap.keys()])];
   const empty=document.getElementById('libEmpty'),list=document.getElementById('libList');
   list.innerHTML='';
+  renderStorageInfo();
   if(!keys.length){empty.classList.remove('hidden');return;}
   empty.classList.add('hidden');
+
+  const lastPlayed=k=>{const e=data[k];return Math.max(0,...(e?Object.values(e.diffs).map(d=>d.date||0):[]));};
+  const recency=k=>Math.max(lastPlayed(k),storedMap.get(k)?.added||0);
+  keys.sort((a,b)=>recency(b)-recency(a));
   const diffOrder=['easy','normal','advanced','expert'];
-  keys.sort((a,b)=>{
-    const la=Math.max(...Object.values(data[a].diffs).map(d=>d.date||0));
-    const lb=Math.max(...Object.values(data[b].diffs).map(d=>d.date||0));
-    return lb-la;
-  });
+
   for(const key of keys){
-    const entry=data[key];
-    const card=document.createElement('div');card.className='lib-song';
-    const name=document.createElement('div');name.className='lib-song-name';name.textContent=entry.name;card.appendChild(name);
+    const entry=data[key],meta=storedMap.get(key);
+    const card=document.createElement('div');
+    card.className='lib-song'+(meta?'':' missing');
+
+    const top=document.createElement('div');top.className='lib-song-top';
+    const name=document.createElement('div');name.className='lib-song-name';
+    name.textContent=entry?.name||meta?.name||key;
+    const del=document.createElement('button');del.className='lib-del';del.textContent='Remove';
+    top.appendChild(name);top.appendChild(del);card.appendChild(top);
+
     const chips=document.createElement('div');chips.className='lib-diffs';
+    let any=false;
     for(const d of diffOrder){
-      const rec=entry.diffs[d];if(!rec) continue;
+      const rec=entry?.diffs?.[d];if(!rec)continue;any=true;
       const cfg=DIFF_CFG[d];
       const chip=document.createElement('div');chip.className='lib-diff-chip';
       chip.style.background=cfg.chipBg;chip.style.border=`1px solid ${cfg.color}33`;
-      const gEl=document.createElement('div');gEl.className='lib-diff-grade';gEl.style.color=cfg.color;gEl.textContent=rec.grade;
+      const g=document.createElement('div');g.className='lib-diff-grade';g.style.color=cfg.color;g.textContent=rec.grade;
       const info=document.createElement('div');info.className='lib-diff-info';
       const lbl=document.createElement('div');lbl.className='lib-diff-label';lbl.style.color=cfg.color;lbl.textContent=cfg.label;
       const sc=document.createElement('div');sc.className='lib-diff-score';sc.style.color='var(--text)';sc.textContent=String(rec.score).padStart(6,'0');
-      const accEl=document.createElement('div');accEl.style.cssText='font-size:10px;color:var(--muted)';accEl.textContent=rec.acc+'%';
-      info.appendChild(lbl);info.appendChild(sc);info.appendChild(accEl);
-      chip.appendChild(gEl);chip.appendChild(info);chips.appendChild(chip);
+      const ac=document.createElement('div');ac.style.cssText='font-size:10px;color:var(--muted)';ac.textContent=rec.acc+'%';
+      info.append(lbl,sc,ac);chip.append(g,info);chips.appendChild(chip);
     }
+    if(!any){const np=document.createElement('div');np.className='lib-noplay';np.textContent='Not played yet';chips.appendChild(np);}
     card.appendChild(chips);
-    const lp=Math.max(...Object.values(entry.diffs).map(d=>d.date||0));
+
+    const status=document.createElement('div');
+    status.className='lib-status '+(meta?'saved':'missing');
+    status.textContent=meta?`♪ Saved on device · ${fmtSize(meta.size)} · tap to play`:'Not saved on this device · import it again to replay';
+    card.appendChild(status);
+
+    const lp=lastPlayed(key);
     const dateEl=document.createElement('div');dateEl.className='lib-song-date';
-    dateEl.textContent='Last played '+new Date(lp).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    const dt=lp||meta?.added;
+    if(dt)dateEl.textContent=(lp?'Last played ':'Added ')+new Date(dt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
     card.appendChild(dateEl);
-    card.addEventListener('click',()=>{
-      if(state.audioBuffer&&state.songName.trim().toLowerCase()===key){showScreen('home');setTimeout(()=>analyzeAndStart(state.audioBuffer,state.songName,false),100);}
-      else showScreen('home');
+
+    onTap(card,e=>{
+      if(e.target.closest('.lib-del'))return;
+      if(meta)playStoredSong(key,card);
+      else toast('Import this song again from the home screen to replay it.');
+    });
+    onTap(del,()=>{
+      if(!del.classList.contains('armed')){
+        del.classList.add('armed');del.textContent='Delete?';
+        clearTimeout(del._t);del._t=setTimeout(()=>{del.classList.remove('armed');del.textContent='Remove';},3000);
+        return;
+      }
+      removeSong(key);
     });
     list.appendChild(card);
   }
+}
+async function removeSong(key){
+  try{await songDel(key);}catch(e){}
+  const d=libLoad();delete d[key];libSave(d);
+  decodedCache.delete(key);
+  toast('Removed from library');
+  libRender();
+}
+async function renderStorageInfo(){
+  const el=document.getElementById('libStorage');
+  try{
+    const est=await navigator.storage.estimate();
+    const prot=navigator.storage.persisted?await navigator.storage.persisted():false;
+    el.textContent=`Using ${fmtSize(est.usage||0)} on this device`+(prot?' · protected from automatic cleanup':'');
+  }catch(e){el.textContent='';}
+}
+function exportScores(){
+  const blob=new Blob([JSON.stringify({app:'tapwave',version:1,exported:Date.now(),library:libLoad()})],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='tapwave-scores-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+  toast('Score backup saved to your downloads');
+}
+async function importScores(file){
+  try{
+    const j=JSON.parse(await file.text());
+    const inc=j.library||j,cur=libLoad();let n=0;
+    for(const[k,e] of Object.entries(inc)){
+      if(!e||!e.diffs)continue;
+      if(!cur[k])cur[k]={name:e.name||k,diffs:{},added:e.added||Date.now()};
+      for(const[d,r] of Object.entries(e.diffs)){
+        if(!r||typeof r.score!=='number'||!DIFF_CFG[d])continue;
+        const prev=cur[k].diffs[d];
+        if(!prev||r.score>prev.score){cur[k].diffs[d]=r;n++;}
+      }
+    }
+    libSave(cur);
+    toast(n?`Restored ${n} score${n>1?'s':''}`:'No new scores in that backup');
+    libRender();
+  }catch(e){toast('That file isn\'t a TapWave backup');}
 }
 
 // ═══════════════════════════════════════════
@@ -653,12 +847,14 @@ async function analyzeAndStart(buffer,name,isDemo){
 
 // ═══════════════════════════════════════════
 // BEAT DETECTION ENGINE
-// 1. Mono mix + downsample to ~22 kHz
-// 2. Real FFT (512, hop 256) -> log-magnitude spectral flux in 4 bands
-// 3. Adaptive peak picking -> onsets
+// 1. Mono mix + downsample to ~22 kHz, loudness-normalised
+// 2. Real FFT (512, hop 256) -> 48-band log filterbank -> SuperFlux in 4 bands
+// 3. Adaptive peak picking (with an absolute floor) -> onsets
 // 4. Tempo via weighted autocorrelation of the onset envelope
 // 5. Dynamic-programming beat tracking (follows tempo drift)
-// 6. 16th-note grid built between real beats, onsets snapped to it
+// 6. Downbeats, section intensity and per-bar fingerprints
+// 7. 16th-note grid built between real beats, onsets snapped to it
+// Charts: on-beat hits preferred, quiet parts lighter, repeated bars reuse lanes
 // Analysis is cached per song, so switching difficulty is instant.
 // ═══════════════════════════════════════════
 const analysisCache=new WeakMap();
@@ -667,16 +863,79 @@ function fftInPlace(re,im,rev,cosT,sinT){
   const n=re.length;
   for(let i=0;i<n;i++){const j=rev[i];if(j>i){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}}
   for(let size=2;size<=n;size<<=1){
-    const half=size>>1,step=n/size;
-    for(let i=0;i<n;i+=size){
-      for(let j=0,k=0;j<half;j++,k+=step){
-        const a=i+j,b=a+half;
-        const tr=re[b]*cosT[k]+im[b]*sinT[k];
-        const ti=im[b]*cosT[k]-re[b]*sinT[k];
-        re[b]=re[a]-tr;im[b]=im[a]-ti;re[a]+=tr;im[a]+=ti;
+    const half=size>>1,step=(n/size)|0;
+    for(let j=0;j<half;j++){
+      const c=cosT[j*step],sn=sinT[j*step];
+      for(let a=j;a<n;a+=size){
+        const b=a+half,xr=re[b],xi=im[b];
+        const tr=xr*c+xi*sn,ti=xi*c-xr*sn,ar=re[a],ai=im[a];
+        re[b]=ar-tr;im[b]=ai-ti;re[a]=ar+tr;im[a]=ai+ti;
       }
     }
   }
+}
+
+// Mono mix, downsample to ~22 kHz, peak-normalise (kept separate so it optimises)
+function mixDown(buffer){
+  const srcSr=buffer.sampleRate,ds=Math.max(1,Math.round(srcSr/22050));
+  const nCh=buffer.numberOfChannels,chans=[];
+  for(let c=0;c<nCh;c++)chans.push(buffer.getChannelData(c));
+  const len=Math.floor(buffer.length/ds),x=new Float32Array(len),inv=1/(nCh*ds);
+  for(let c=0;c<nCh;c++){
+    const d=chans[c];
+    for(let i=0,o=0;i<len;i++,o+=ds){let s=0;for(let k=0;k<ds;k++)s+=d[o+k];x[i]+=s*inv;}
+  }
+  let pk=0;for(let i=0;i<len;i++){const a=x[i]<0?-x[i]:x[i];if(a>pk)pk=a;}
+  if(pk>1e-4){const g=0.9/pk;for(let i=0;i<len;i++)x[i]*=g;}
+  return{x,sr:srcSr/ds,len};
+}
+
+// One block of STFT frames -> band flux, centroid, loudness, fingerprints
+function stftBlock(S,f0,f1){
+  const{x,HOP,M,win,rev,cosM,sinM,cosT,sinT,re,im,mag,nb,fbE,NFB,fbGroup,grpCount,flux,cent,loud,feats,NF,featOf,featCnt,binHz,NB}=S;
+  let p2=S.p2,p1=S.p1,cur=S.cur;
+  const acc4=new Float64Array(4),N=2*M;
+  for(let f=f0;f<f1;f++){
+    const o=f*HOP;let en=0;
+    for(let i=0;i<M;i++){
+      const a=x[o+2*i],b=x[o+2*i+1];en+=a*a+b*b;
+      re[i]=a*win[2*i];im[i]=b*win[2*i+1];
+    }
+    loud[f]=Math.max(-80,10*Math.log10(en/N+1e-12));
+    fftInPlace(re,im,rev,cosM,sinM);
+    let cw=0,cs=0;
+    const k0=fbE[0];
+    for(let k=0;k<nb;k++){
+      const mk=k===0?0:M-k;
+      const ar=re[k],ai=im[k],br=re[mk],bi=-im[mk];
+      const er=(ar+br)*0.5,ei=(ai+bi)*0.5,orr=(ai-bi)*0.5,oi=(br-ar)*0.5;
+      const c=cosT[k],sn=sinT[k];
+      const xr=er+c*orr+sn*oi,xi=ei+c*oi-sn*orr;
+      const m=Math.sqrt(xr*xr+xi*xi);mag[k]=m;
+      if(k>=k0){cw+=m*k;cs+=m;}
+    }
+    cent[f]=cs>1e-6?(cw/cs)*binHz:0;
+    for(let j=0;j<NFB;j++){
+      let sum=0;const a=fbE[j],b=fbE[j+1];
+      for(let k=a;k<b;k++)sum+=mag[k];
+      cur[j]=Math.log1p(5*sum/(b-a));
+    }
+    const fo=f*NF;
+    for(let j=0;j<NFB;j++)feats[fo+featOf[j]]+=cur[j];
+    for(let i=0;i<NF;i++)feats[fo+i]/=featCnt[i]||1;
+    if(f>1){
+      acc4[0]=acc4[1]=acc4[2]=acc4[3]=0;
+      for(let j=0;j<NFB;j++){
+        let ref=p2[j];
+        if(j>0&&p2[j-1]>ref)ref=p2[j-1];
+        if(j<NFB-1&&p2[j+1]>ref)ref=p2[j+1];
+        const d=cur[j]-ref;if(d>0)acc4[fbGroup[j]]+=d;
+      }
+      for(let b=0;b<NB;b++)flux[b][f]=acc4[b]/(grpCount[b]||1);
+    }
+    const t=p2;p2=p1;p1=cur;cur=t;
+  }
+  S.p2=p2;S.p1=p1;S.cur=cur;
 }
 
 async function analyzeAudio(buffer,progress){
@@ -684,68 +943,70 @@ async function analyzeAudio(buffer,progress){
   const yieldUI=()=>new Promise(r=>setTimeout(r,0));
 
   // ── 1. mono + downsample ──
-  const srcSr=buffer.sampleRate;
-  const ds=Math.max(1,Math.round(srcSr/22050));
-  const sr=srcSr/ds;
-  const nCh=buffer.numberOfChannels;
-  const chans=[];for(let c=0;c<nCh;c++)chans.push(buffer.getChannelData(c));
-  const len=Math.floor(buffer.length/ds);
-  const x=new Float32Array(len);
-  for(let i=0;i<len;i++){
-    let s=0;const o=i*ds;
-    for(let c=0;c<nCh;c++){const d=chans[c];for(let k=0;k<ds;k++)s+=d[o+k];}
-    x[i]=s/(nCh*ds);
-  }
+  const{x,sr,len}=mixDown(buffer);
 
   // ── 2. STFT + band flux ──
   const N=512,HOP=256,fps=sr/HOP;
   const nFrames=Math.max(0,Math.floor((len-N)/HOP)+1);
-  const frameTime=f=>(f*HOP+N/4)/sr+0.006; // +6ms measured bias correction
+  const frameTime=f=>(f*HOP+N/4)/sr+0.002; // measured bias correction
   const win=new Float32Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
-  const bits=Math.log2(N),rev=new Uint32Array(N);
-  for(let i=0;i<N;i++){let r=0;for(let b=0;b<bits;b++)r|=((i>>b)&1)<<(bits-1-b);rev[i]=r;}
-  const cosT=new Float32Array(N/2),sinT=new Float32Array(N/2);
-  for(let k=0;k<N/2;k++){cosT[k]=Math.cos(2*Math.PI*k/N);sinT[k]=Math.sin(2*Math.PI*k/N);}
+  // Real-input FFT via a half-size complex FFT (2x faster)
+  const M=N/2,bits=Math.log2(M),rev=new Uint32Array(M);
+  for(let i=0;i<M;i++){let r=0;for(let b=0;b<bits;b++)r|=((i>>b)&1)<<(bits-1-b);rev[i]=r;}
+  const cosM=new Float64Array(M/2),sinM=new Float64Array(M/2);
+  for(let k=0;k<M/2;k++){cosM[k]=Math.cos(2*Math.PI*k/M);sinM[k]=Math.sin(2*Math.PI*k/M);}
+  const cosT=new Float64Array(M),sinT=new Float64Array(M);
+  for(let k=0;k<M;k++){cosT[k]=Math.cos(2*Math.PI*k/N);sinT[k]=Math.sin(2*Math.PI*k/N);}
   const nb=N/2,binHz=sr/N,NB=4;
-  // bands: kick/sub, bass/low-mid, mids (vocals, snare body), highs (hats, cymbals)
-  const edges=[40,180,500,2500,Math.min(11000,sr/2-1)].map(h=>Math.max(1,Math.min(nb,Math.round(h/binHz))));
+  // Log-spaced filterbank (≈48 bands, 40 Hz–11 kHz). Measuring change on smooth
+  // bands instead of single FFT bins stops vibrato and spectral leakage from
+  // registering as fake hits.
+  const fbE=[Math.max(1,Math.round(40/binHz))];
+  const fbHi=Math.min(11000,sr/2-1);
+  for(let i=1;i<=48;i++){
+    const e=Math.max(fbE[fbE.length-1]+1,Math.round(40*Math.pow(fbHi/40,i/48)/binHz));
+    if(e>nb)break;fbE.push(e);
+  }
+  const NFB=fbE.length-1;
+  // which gameplay band each filter feeds: kick/sub, bass, mids, highs
+  const fbGroup=new Uint8Array(NFB),grpCount=[0,0,0,0];
+  for(let j=0;j<NFB;j++){
+    const hz=(fbE[j]+fbE[j+1])/2*binHz;
+    fbGroup[j]=hz<180?0:hz<500?1:hz<2500?2:3;grpCount[fbGroup[j]]++;
+  }
   const flux=Array.from({length:NB},()=>new Float32Array(nFrames));
   const cent=new Float32Array(nFrames);
-  const re=new Float32Array(N),im=new Float32Array(N);
-  let prev=new Float32Array(nb),cur=new Float32Array(nb);
+  const loud=new Float32Array(nFrames);
+  // 24-value spectral fingerprint per frame, used to spot repeated sections
+  const NF=24,feats=new Float32Array(nFrames*NF),featOf=new Uint8Array(NFB);
+  for(let j=0;j<NFB;j++)featOf[j]=Math.min(NF-1,Math.floor(j*NF/NFB));
+  const featCnt=new Float32Array(NF);for(let j=0;j<NFB;j++)featCnt[featOf[j]]++;
+  const re=new Float64Array(M),im=new Float64Array(M),mag=new Float64Array(nb);
+  // SuperFlux: compare with the frame 2 hops back, max-filtered across bands
+  const S={x,HOP,M,win,rev,cosM,sinM,cosT,sinT,re,im,mag,nb,fbE:Int32Array.from(fbE),NFB,fbGroup,grpCount,flux,cent,loud,feats,NF,featOf,featCnt,binHz,NB,
+    p2:new Float64Array(NFB),p1:new Float64Array(NFB),cur:new Float64Array(NFB)};
 
-  for(let f=0;f<nFrames;f++){
-    const o=f*HOP;
-    for(let i=0;i<N;i++){re[i]=x[o+i]*win[i];im[i]=0;}
-    fftInPlace(re,im,rev,cosT,sinT);
-    let cw=0,cs=0;
-    for(let k=0;k<nb;k++){
-      const m=Math.sqrt(re[k]*re[k]+im[k]*im[k]);
-      cur[k]=Math.log1p(10*m);
-      if(k>=edges[0]){cw+=m*k;cs+=m;}
-    }
-    cent[f]=cs>1e-6?(cw/cs)*binHz:0;
-    if(f>0){
-      for(let b=0;b<NB;b++){
-        let s=0;
-        for(let k=edges[b];k<edges[b+1];k++){const d=cur[k]-prev[k];if(d>0)s+=d;}
-        flux[b][f]=s/Math.max(1,edges[b+1]-edges[b]);
-      }
-    }
-    const t=prev;prev=cur;cur=t;
-    if(f%500===0){progress(0.6*f/Math.max(1,nFrames));await yieldUI();}
+  for(let f=0;f<nFrames;f+=600){
+    stftBlock(S,f,Math.min(nFrames,f+600));
+    progress(0.6*f/Math.max(1,nFrames));await yieldUI();
   }
 
-  const empty={slots:[],bpm:120,duration:buffer.duration};
+  const empty={slots:[],bars:[],bpm:120,duration:buffer.duration};
   if(nFrames<64){analysisCache.set(buffer,empty);return empty;}
 
-  // normalise each band so quiet hats count as much as loud kicks
-  const std=a=>{let m=0;for(const v of a)m+=v;m/=a.length;let s=0;for(const v of a)s+=(v-m)*(v-m);return Math.sqrt(s/a.length)||1;};
+  // Balance the bands so quiet hats count like loud kicks — but never blow up
+  // near-silent bands (that used to turn hiss in intros into phantom notes)
+  const std=a=>{let m=0;for(const v of a)m+=v;m/=a.length;let s=0;for(const v of a)s+=(v-m)*(v-m);return Math.sqrt(s/a.length);};
   const BW=[1.0,0.8,1.0,0.7];
-  for(let b=0;b<NB;b++){const s=std(flux[b]);for(let f=0;f<nFrames;f++)flux[b][f]/=s;}
+  const bStd=flux.map(std),bMax=Math.max(...bStd);
+  for(let b=0;b<NB;b++){
+    const div=Math.max(bStd[b],0.15*bMax,0.04);
+    for(let f=0;f<nFrames;f++)flux[b][f]/=div;
+  }
   const env=new Float32Array(nFrames);
   for(let f=0;f<nFrames;f++){let s=0;for(let b=0;b<NB;b++)s+=BW[b]*flux[b][f];env[f]=s;}
-  const es=std(env);for(let f=0;f<nFrames;f++)env[f]/=es;
+  const envRaw=env.slice(); // absolute strength, before scaling
+  const es=Math.max(std(env),0.15);for(let f=0;f<nFrames;f++)env[f]/=es;
   progress(0.65);await yieldUI();
 
   // ── 3. adaptive peak picking ──
@@ -754,7 +1015,7 @@ async function analyzeAudio(buffer,progress){
   const AVG=Math.round(0.15*fps),MAXW=2,WAIT=Math.round(0.05*fps);
   const peaks=[];
   for(let f=1;f<nFrames-1;f++){
-    const v=env[f];if(v<=0)continue;
+    const v=env[f];if(v<=0||envRaw[f]<2.0)continue; // ignore swells/wobble too weak to be a real hit
     let isMax=true;
     for(let j=Math.max(0,f-MAXW);j<=Math.min(nFrames-1,f+MAXW);j++)if(env[j]>v){isMax=false;break;}
     if(!isMax)continue;
@@ -799,11 +1060,12 @@ async function analyzeAudio(buffer,progress){
   }
   const TIGHT=100,lo=Math.max(1,Math.round(period/2)),hi=Math.round(period*2);
   const cum=new Float32Array(nFrames),back=new Int32Array(nFrames).fill(-1);
+  const pen=new Float32Array(hi+1);
+  for(let d=lo;d<=hi;d++){const r=Math.log(d/period);pen[d]=TIGHT*r*r;}
   for(let t=0;t<nFrames;t++){
     let best=-Infinity,bi=-1;
     for(let tau=Math.max(0,t-hi);tau<=t-lo;tau++){
-      const r=Math.log((t-tau)/period);
-      const s=cum[tau]-TIGHT*r*r;
+      const s=cum[tau]-pen[t-tau];
       if(s>best){best=s;bi=tau;}
     }
     if(bi>=0&&best>0){cum[t]=ls[t]+best;back[t]=bi;}
@@ -825,14 +1087,60 @@ async function analyzeAudio(buffer,progress){
   while(beats[beats.length-1]<lastOn+0.1)beats.push(beats[beats.length-1]+pSec);
   progress(0.9);await yieldUI();
 
-  // ── 6. 16th-note grid between actual beats ──
-  // level 0 = beat, 2 = eighth, 1 = sixteenth
-  const grid=[];
-  for(let i=0;i<beats.length-1;i++){
-    const d=(beats[i+1]-beats[i])/4;
-    for(let k=0;k<4;k++)grid.push({t:beats[i]+k*d,level:k===0?0:k===2?2:1});
+  // ── 6. downbeats: the beat phase where kicks/bass land hardest ──
+  const lowAt=t=>{const f=Math.max(0,Math.min(nFrames-1,Math.round((t-0.002)*sr/HOP-N/4/HOP)));
+    let m=0;for(let j=Math.max(0,f-2);j<=Math.min(nFrames-1,f+2);j++)m=Math.max(m,flux[0][j]+0.6*flux[1][j]);return m;};
+  const phaseScore=[0,0,0,0];
+  beats.forEach((t,i)=>{phaseScore[i%4]+=lowAt(t);});
+  const phase=phaseScore.indexOf(Math.max(...phaseScore));
+  const barOf=i=>Math.floor((i-phase)/4),barShift=-barOf(0);
+
+  // ── 7. section intensity (smoothed loudness, 0 quiet .. 1 loud) ──
+  const lps=new Float64Array(nFrames+1);for(let f=0;f<nFrames;f++)lps[f+1]=lps[f]+loud[f];
+  const LW=Math.round(1.5*fps),sm=new Float32Array(nFrames);
+  for(let f=0;f<nFrames;f++){const a=Math.max(0,f-LW),b=Math.min(nFrames-1,f+LW);sm[f]=(lps[b+1]-lps[a])/(b-a+1);}
+  const audible=[...sm].filter(v=>v>-60).sort((a,b)=>a-b);
+  const q=p=>audible.length?audible[Math.min(audible.length-1,Math.floor(p*audible.length))]:0;
+  const p10=q(.1),p90=q(.9),range=Math.max(1e-3,p90-p10),dyn=Math.min(1,range/10);
+  const intensityAt=t=>{
+    const f=Math.max(0,Math.min(nFrames-1,Math.round(t*fps)));
+    const rel=Math.max(0,Math.min(1,(sm[f]-p10)/range));
+    return 0.5+(rel-0.5)*dyn; // songs without dynamics stay neutral
+  };
+
+  // ── 8. bar fingerprints for spotting repeats ──
+  const fm=new Float64Array(NF),fs=new Float64Array(NF);
+  for(let f=0;f<nFrames;f++)for(let i=0;i<NF;i++)fm[i]+=feats[f*NF+i];
+  for(let i=0;i<NF;i++)fm[i]/=nFrames;
+  for(let f=0;f<nFrames;f++)for(let i=0;i<NF;i++){const d=feats[f*NF+i]-fm[i];fs[i]+=d*d;}
+  for(let i=0;i<NF;i++)fs[i]=Math.sqrt(fs[i]/nFrames)||1;
+  const bars=[];
+  for(let i=0;i<beats.length;i++){
+    const bi=barOf(i)+barShift;
+    if(!bars[bi])bars[bi]={t0:beats[i],t1:beats[i],sig:null};
+    bars[bi].t1=i+1<beats.length?beats[i+1]:beats[i]+pSec;
   }
-  grid.push({t:beats[beats.length-1],level:0});
+  for(const b of bars){
+    if(!b)continue;
+    const f0=Math.max(0,Math.floor(b.t0*fps)),f1=Math.min(nFrames,Math.ceil(b.t1*fps));
+    if(f1-f0<4)continue;
+    const v=new Float32Array(NF);
+    for(let f=f0;f<f1;f++)for(let i=0;i<NF;i++)v[i]+=(feats[f*NF+i]-fm[i])/fs[i];
+    let n2=0;for(let i=0;i<NF;i++){v[i]/=(f1-f0);n2+=v[i]*v[i];}
+    n2=Math.sqrt(n2)||1;for(let i=0;i<NF;i++)v[i]/=n2;
+    b.sig=v;
+  }
+
+  // ── 9. 16th-note grid between actual beats ──
+  // level 0 = beat, 2 = eighth, 1 = sixteenth; pos 0..15 inside the bar
+  const grid=[];
+  const posInBar=i=>(((i-phase)%4)+4)%4;
+  for(let i=0;i<beats.length;i++){
+    const d=((i+1<beats.length?beats[i+1]:beats[i]+pSec)-beats[i])/4;
+    const bar=barOf(i)+barShift,bp=posInBar(i);
+    const last=i===beats.length-1;
+    for(let k=0;k<(last?1:4);k++)grid.push({t:beats[i]+k*d,level:k===0?0:k===2?2:1,bar,pos:bp*4+k,down:bp===0&&k===0});
+  }
   const gt=grid.map(g=>g.t);
   const nearest=t=>{
     let a=0,b=gt.length-1;
@@ -841,16 +1149,16 @@ async function analyzeAudio(buffer,progress){
   };
   const slotMap=new Map();
   for(const p of peaks){
-    const gi=nearest(p.t);
+    const gi=nearest(p.t),g=grid[gi];
     const s=slotMap.get(gi);
-    if(!s)slotMap.set(gi,{t:gt[gi],level:grid[gi].level,strength:p.strength,bands:p.bands.slice(),cent:p.cent});
+    if(!s)slotMap.set(gi,{t:g.t,level:g.level,bar:g.bar,pos:g.pos,down:g.down,strength:p.strength,bands:p.bands.slice(),cent:p.cent,inten:intensityAt(g.t)});
     else{
       for(let k=0;k<NB;k++)s.bands[k]=Math.max(s.bands[k],p.bands[k]);
       if(p.strength>s.strength){s.strength=p.strength;s.cent=p.cent;}
     }
   }
   const slots=[...slotMap.values()].sort((a,b)=>a.t-b.t);
-  const result={slots,bpm,duration:buffer.duration};
+  const result={slots,bars,bpm,duration:buffer.duration};
   analysisCache.set(buffer,result);
   progress(1);
   return result;
@@ -876,27 +1184,51 @@ function buildChart(an){
     cand=cand.filter(s=>s.level!==1||s.strength>=q);
   }
 
-  // strongest first: keep the most important hits when thinning density
-  const order=cand.slice().sort((a,b)=>b.strength-a.strength);
+  // importance: onset strength x rhythmic position x section intensity
+  const posW=s=>s.down?1.35:s.level===0?1.2:s.level===2?1.0:0.8;
+  for(const s of cand)s.w=s.strength*posW(s)*(0.85+0.3*s.inten);
+  const order=cand.slice().sort((a,b)=>b.w-a.w);
   const acc=[];
   const lb=t=>{let a=0,b=acc.length;while(a<b){const m=(a+b)>>1;if(acc[m].t<t)a=m+1;else b=m;}return a;};
   for(const s of order){
     const i=lb(s.t);
     if(i>0&&s.t-acc[i-1].t<R.minGap)continue;
     if(i<acc.length&&acc[i].t-s.t<R.minGap)continue;
-    const lo=lb(s.t-0.5),hi=lb(s.t+0.5);
-    if(hi-lo>=cfg.maxDens)continue;
+    // quiet sections breathe, loud sections get busier
+    const cap=Math.max(1,Math.round(cfg.maxDens*(0.65+0.45*s.inten)));
+    if(lb(s.t+0.5)-lb(s.t-0.5)>=cap)continue;
     acc.splice(i,0,s);
   }
+
+  // rhythm mask per bar, used to recognise repeated bars
+  const barMask=new Map();
+  for(const s of acc){if(!barMask.has(s.bar))barMask.set(s.bar,[]);barMask.get(s.bar).push(s.pos);}
+  const cos=(u,v)=>{let d=0;for(let i=0;i<u.length;i++)d+=u[i]*v[i];return d;};
+  const records=[];
+  const findTemplate=(mask,sig)=>{
+    if(!sig)return null;
+    for(let k=records.length-1;k>=0;k--){
+      const r=records[k];
+      if(r.sig&&r.mask===mask&&cos(r.sig,sig)>=0.9)return r;
+    }
+    return null;
+  };
 
   // lanes follow the pitch contour: rank of spectral centroid in a ±6 s window
   const lc=acc.map(s=>Math.log2(Math.max(50,s.cent||50)));
   const chordQ=R.chordPct&&cfg.maxSimul>=2?pct(acc.map(s=>s.strength),1-R.chordPct):Infinity;
   const lastT=[-9,-9,-9,-9];
-  let prevLane=-1,run=0,wlo=0,whi=0;
+  let prevLane=-1,run=0,wlo=0,whi=0,curBar=null,tpl=null,rec=null;
   const notes=[];
   for(let i=0;i<acc.length;i++){
     const s=acc[i];
+    if(s.bar!==curBar){
+      curBar=s.bar;
+      const mask=barMask.get(s.bar).join(',');
+      const sig=an.bars&&an.bars[s.bar]?an.bars[s.bar].sig:null;
+      tpl=findTemplate(mask,sig);
+      rec={mask,sig,pos:new Map()};records.push(rec);
+    }
     while(acc[wlo].t<s.t-6)wlo++;
     while(whi<acc.length&&acc[whi].t<=s.t+6)whi++;
     let less=0,eq=0;
@@ -904,36 +1236,52 @@ function buildChart(an){
     const r=(less+0.5*eq)/Math.max(1,whi-wlo);
     const target=r*3;
     let lane=Math.min(3,Math.floor(r*4));
-
     const free=l=>s.t-lastT[l]>=R.jackGap;
-    if(!free(lane)||(lane===prevLane&&run>=3)){
-      const opts=[0,1,2,3].filter(l=>free(l)&&!(l===prevLane&&run>=3));
+    const okRun=l=>!(l===prevLane&&run>=3);
+
+    // repeated bar: reuse the lane pattern from last time it was heard
+    const src=tpl?tpl.pos.get(s.pos):null;
+    let tplSrc=null;
+    if(src&&free(src[0].lane)&&okRun(src[0].lane)){lane=src[0].lane;tplSrc=src[0];}
+    else if(!free(lane)||!okRun(lane)){
+      const opts=[0,1,2,3].filter(l=>free(l)&&okRun(l));
       if(opts.length)lane=opts.sort((a,b)=>Math.abs(a-target)-Math.abs(b-target))[0];
       else lane=[0,1,2,3].sort((a,b)=>lastT[a]-lastT[b])[0];
     }
     run=lane===prevLane?run+1:1;prevLane=lane;lastT[lane]=s.t;
-    const note={time:s.t,lane,strength:s.strength,isSlider:false,sliderDir:null,chord:false};
+    const note={time:s.t,lane,strength:s.strength,isSlider:false,sliderDir:null,chord:false,tplSrc};
     notes.push(note);
+    const group=[note];
 
-    if(s.level===0&&s.strength>=chordQ){
+    let l2=null;
+    if(src){ if(src[1]&&src[1].lane!==lane&&free(src[1].lane))l2=src[1].lane; }
+    else if(s.level===0&&s.strength>=chordQ){
       const pref=lane<2?[lane+2,lane+1,3]:[lane-2,lane-1,0];
-      const l2=pref.find(l=>l!==lane&&l>=0&&l<4&&free(l));
-      if(l2!=null){
-        lastT[l2]=s.t;note.chord=true;
-        notes.push({time:s.t,lane:l2,strength:s.strength,isSlider:false,sliderDir:null,chord:true});
-      }
+      l2=pref.find(l=>l!==lane&&l>=0&&l<4&&free(l));
     }
+    if(l2!=null){
+      lastT[l2]=s.t;note.chord=true;
+      const c={time:s.t,lane:l2,strength:s.strength,isSlider:false,sliderDir:null,chord:true,tplSrc:null};
+      notes.push(c);group.push(c);
+    }
+    rec.pos.set(s.pos,group);
   }
   notes.sort((a,b)=>a.time-b.time||a.lane-b.lane);
 
-  // sliders: single notes with breathing room; direction follows the next move
+  // sliders: single notes with breathing room; direction follows the next move.
+  // Repeated bars copy the slider decisions of the original bar.
   const rate=noSliders?0:cfg.sliderRate;
   if(rate>0){
     for(let i=0;i<notes.length;i++){
       const n=notes[i];
       if(n.chord)continue;
-      const next=notes.find((m,j)=>j>i&&m.time>n.time);
+      let j=i+1;while(j<notes.length&&notes[j].time<=n.time)j++;
+      const next=notes[j];
       if(next&&next.time-n.time<R.sliderGap)continue;
+      if(n.tplSrc){
+        if(n.tplSrc.isSlider){n.isSlider=true;n.sliderDir=n.tplSrc.sliderDir;}
+        continue;
+      }
       if(rng()>=rate)continue;
       const cardinal=rng()<0.6;
       let dir;
@@ -943,7 +1291,8 @@ function buildChart(an){
       n.isSlider=true;n.sliderDir=dir;
     }
   }
-  return{notes:notes.map(({chord,...n})=>n),bpm:an.bpm,duration:an.duration};
+  const reused=notes.filter(n=>n.tplSrc).length;
+  return{notes:notes.map(({chord,tplSrc,...n})=>n),bpm:an.bpm,duration:an.duration,reused};
 }
 
 async function generateChart(buffer,progress){
@@ -1024,7 +1373,7 @@ function buildDemoSongAndChart(){
 const HINTS=[
   {at:1.2, msg:'Tap the coloured zones at the bottom when notes reach the line!'},
   {at:4.0, msg:'Watch for the glowing line — that\'s your timing target.'},
-  {at:7.0, msg:'Tap precisely for PERFECT. Close gets GREAT or GOOD.'},
+  {at:7.0, msg:'Hit dead-on for SUPER PERFECT! Close gets PERFECT, GREAT or GOOD.'},
   {at:10.5,msg:'Purple arrow notes are sliders! Swipe in the arrow\'s direction.'},
   {at:15.0,msg:'Two notes can appear at once — use two fingers!'},
   {at:22.5,msg:'Final stretch — give it everything!'},
@@ -1040,7 +1389,7 @@ function startGame(chart,name){
   document.getElementById('hudDiff').textContent=cfg.label;
   document.getElementById('hpBar').style.width='100%';
   document.getElementById('hpBar').classList.remove('low');
-  Object.assign(state,{score:0,combo:0,maxCombo:0,hp:100,counts:{perfect:0,great:0,good:0,miss:0},
+  Object.assign(state,{score:0,combo:0,maxCombo:0,hp:100,counts:{superPerfect:0,perfect:0,great:0,good:0,miss:0},
     gameRunning:false,paused:false,totalNotes:chart.notes.length,
     endTimerScheduled:false,endTimerId:null,activeSliders:{}});
   state.notes=chart.notes.map(n=>({...n,el:null,hit:false,missed:false}));
@@ -1075,14 +1424,18 @@ function beginPlayback(chart){
   src.buffer=state.audioBuffer;src.connect(ctx.destination);src.start(0);
   src.onended=()=>{if(state.gameRunning&&!state.paused)scheduleEnd(0);};
   state.sourceNode=src;state.startTime=ctx.currentTime;state.pauseTime=0;state.gameRunning=true;
+  state.latency=Math.min(0.25,Math.max(0,(ctx.outputLatency||0)+(ctx.baseLatency||0)));
   if(state.isDemo) HINTS.forEach(h=>setTimeout(()=>{if(state.gameRunning&&!state.paused)showHint(h.msg);},h.at*1000));
   gameLoop();
 }
 
+// Song position as you HEAR it: the audio clock runs ahead of the speaker
+// by the device's output latency, so subtract it to keep notes in sync.
 function getCurrentTime(){
   if(!state.audioCtx) return 0;
-  if(state.paused) return state.pauseTime-state.startTime;
-  return state.audioCtx.currentTime-state.startTime;
+  const lat=state.latency||0;
+  if(state.paused) return state.pauseTime-state.startTime-lat;
+  return state.audioCtx.currentTime-state.startTime-lat;
 }
 
 function gameLoop(){
@@ -1222,7 +1575,8 @@ function handleTapOrSliderStart(lane,touchId,x,y){
   } else {
     // Normal tap
     const abs=Math.abs((best.time-now)*1000);
-    if(abs<=WP) registerHit(best,'PERFECT');
+    if(abs<=SUPER_WINDOW) registerHit(best,'SUPER');
+    else if(abs<=WP) registerHit(best,'PERFECT');
     else if(abs<=WGR) registerHit(best,'GREAT');
     else if(abs<=WGO) registerHit(best,'GOOD');
   }
@@ -1290,7 +1644,8 @@ function resolveSlider(touchId,endX,endY){
   const cfg=DIFF_CFG[difficulty];
   const[WP,WGR,WGO]=cfg.windows;
 
-  if(absDiff<=25&&timeDiff<=WP)      registerHit(note,'PERFECT');
+  if(absDiff<=15&&timeDiff<=SUPER_WINDOW) registerHit(note,'SUPER');
+  else if(absDiff<=25&&timeDiff<=WP)      registerHit(note,'PERFECT');
   else if(absDiff<=45&&timeDiff<=WGR) registerHit(note,'GREAT');
   else if(absDiff<=60&&timeDiff<=WGO) registerHit(note,'GOOD');
   else registerMiss(note);
@@ -1310,7 +1665,12 @@ function registerHit(note,j){
   const cfg=DIFF_CFG[difficulty];
   const isSlider=note.isSlider;
   const sliderColor='#c77dff';
-  if(j==='PERFECT'){
+  if(j==='SUPER'){
+    state.counts.superPerfect++;state.score+=130*(1+state.combo*.02);state.hp=Math.min(100,state.hp+cfg.goodHp*2.5);
+    showJudgment(note.lane,'SUPER PERFECT','#fff','super');
+    spawnSuperBurst(note.lane);
+    if(isSlider&&note.sliderDir!=null) spawnSliderFlash(note.lane,note.sliderDir,'PERFECT');
+  } else if(j==='PERFECT'){
     state.counts.perfect++;state.score+=100*(1+state.combo*.02);state.hp=Math.min(100,state.hp+cfg.goodHp*2);
     showJudgment(note.lane,'PERFECT','#ffe566');
     spawnParticles(note.lane,isSlider?sliderColor:'#ffe566');
@@ -1325,6 +1685,7 @@ function registerHit(note,j){
     if(isSlider&&note.sliderDir!=null) spawnSliderFlash(note.lane,note.sliderDir,'GOOD');
   }
   state.combo++;state.maxCombo=Math.max(state.maxCombo,state.combo);updateHUD();
+  if(state.combo%100===0) comboMilestone(state.combo);
 }
 
 function registerMiss(note){
@@ -1335,12 +1696,85 @@ function registerMiss(note){
   if(state.hp<=0) endGame(true);
 }
 
-function showJudgment(lane,text,color){
+function showJudgment(lane,text,color,variant){
   const zone=document.getElementById('tap'+lane),rect=zone.getBoundingClientRect();
-  const el=document.createElement('div');el.className='judge-text';el.textContent=text;el.style.color=color;
-  el.style.left=(rect.left+rect.width/2-40)+'px';el.style.top=(rect.top-60)+'px';
-  el.style.width='80px';el.style.textAlign='center';
-  document.getElementById('game').appendChild(el);setTimeout(()=>el.remove(),560);
+  document.querySelectorAll('.judge-text[data-lane="'+lane+'"]').forEach(e=>e.remove());
+  const el=document.createElement('div');el.className='judge-text'+(variant?' '+variant:'');
+  el.dataset.lane=lane;el.textContent=text;
+  if(!variant)el.style.color=color;
+  const w=variant==='super'?150:84;
+  const left=Math.max(4,Math.min(window.innerWidth-w-4,rect.left+rect.width/2-w/2));
+  el.style.left=left+'px';el.style.top=(rect.top-(variant==='super'?72:60))+'px';
+  el.style.width=w+'px';el.style.textAlign='center';
+  document.getElementById('game').appendChild(el);setTimeout(()=>el.remove(),variant==='super'?720:560);
+}
+
+// Rainbow burst + ring for Super Perfect
+function spawnSuperBurst(lane){
+  const zone=document.getElementById('tap'+lane),rect=zone.getBoundingClientRect();
+  const cx=rect.left+rect.width/2,cy=rect.top+20,game=document.getElementById('game');
+  const ring=document.createElement('div');ring.className='super-ring';
+  ring.style.left=(cx-30)+'px';ring.style.top=(cy-30)+'px';
+  game.appendChild(ring);setTimeout(()=>ring.remove(),520);
+  const cols=['#ffffff','#ffe566','#f72585','#4cc9f0','#f8961e','#7bed9f','#c77dff'];
+  for(let i=0;i<14;i++){
+    const el=document.createElement('div');el.className='particle';
+    el.style.background=cols[i%cols.length];el.style.boxShadow='0 0 6px '+cols[i%cols.length];
+    el.style.left=cx+'px';el.style.top=cy+'px';
+    const ang=(i/14)*Math.PI*2+Math.random()*.3,dist=50+Math.random()*60;
+    el.style.setProperty('--pdir',`translate(${Math.cos(ang)*dist}px,${Math.sin(ang)*dist-40}px)`);
+    game.appendChild(el);setTimeout(()=>el.remove(),510);
+  }
+}
+
+// ── 100-combo celebration: synthesized "com-bo!" voice + chime, and a pop-up ──
+function comboMilestone(n){
+  const game=document.getElementById('game');
+  game.querySelectorAll('.combo-pop').forEach(e=>e.remove());
+  const el=document.createElement('div');el.className='combo-pop';
+  el.innerHTML='<span class="cp-num">'+n+'</span><span class="cp-word">COMBO!</span>';
+  game.appendChild(el);setTimeout(()=>el.remove(),1300);
+  try{playComboSound();}catch(e){}
+}
+function playComboSound(){
+  const ctx=getCtx(),t0=ctx.currentTime+0.01;
+  const out=ctx.createGain();out.gain.value=0.5;out.connect(ctx.destination);
+  // arcade-style voice: sawtooth through vowel formant filters
+  function syllable(start,dur,f0a,f0b,formants,consonant){
+    if(consonant){
+      const len=Math.round(ctx.sampleRate*0.03),nb=ctx.createBuffer(1,len,ctx.sampleRate),d=nb.getChannelData(0);
+      for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+      const ns=ctx.createBufferSource(),nf=ctx.createBiquadFilter(),ng=ctx.createGain();
+      ns.buffer=nb;nf.type=consonant==='k'?'highpass':'lowpass';nf.frequency.value=consonant==='k'?1800:400;
+      ng.gain.value=consonant==='k'?0.5:0.8;
+      ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(start-0.02);
+    }
+    const src=ctx.createOscillator();src.type='sawtooth';
+    src.frequency.setValueAtTime(f0a,start);src.frequency.exponentialRampToValueAtTime(f0b,start+dur);
+    const vib=ctx.createOscillator(),vg=ctx.createGain();vib.frequency.value=6;vg.gain.value=4;
+    vib.connect(vg);vg.connect(src.frequency);
+    const env=ctx.createGain();
+    env.gain.setValueAtTime(0,start);env.gain.linearRampToValueAtTime(1,start+0.02);
+    env.gain.setValueAtTime(1,start+dur*0.7);env.gain.exponentialRampToValueAtTime(0.001,start+dur);
+    src.connect(env);
+    for(const[fr,q,g] of formants){
+      const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=fr;bp.Q.value=q;
+      const fg=ctx.createGain();fg.gain.value=g;
+      env.connect(bp);bp.connect(fg);fg.connect(out);
+    }
+    src.start(start);vib.start(start);src.stop(start+dur+0.05);vib.stop(start+dur+0.05);
+  }
+  const O=[[480,8,1.6],[850,9,1.0],[2500,12,0.35]]; // "o" vowel
+  syllable(t0+0.03,0.17,190,175,O,'k');   // "com"
+  syllable(t0+0.24,0.32,235,165,O,'b');   // "bo!"
+  // sparkly rising chime underneath
+  [1046.5,1318.5,1568,2093].forEach((fq,i)=>{
+    const o=ctx.createOscillator(),g=ctx.createGain(),st=t0+0.02+i*0.07;
+    o.type='triangle';o.frequency.value=fq;
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.18,st+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.5);
+    o.connect(g);g.connect(out);o.start(st);o.stop(st+0.55);
+  });
 }
 
 function spawnParticles(lane,color){
@@ -1399,6 +1833,44 @@ function updateHUD(){
 }
 
 // ── Pause ──
+// Resume: hide the menu, show the frozen game with a 3-2-1, then continue
+function resumeWithCountdown(){
+  if(!state.paused||state.resuming)return;
+  state.resuming=true;
+  document.getElementById('pause-overlay').classList.remove('visible');
+  bgmStop();
+  const game=document.getElementById('game');
+  const label=document.createElement('div');
+  label.className='resume-label';label.id='resumeLabel';label.textContent='Get ready';
+  game.appendChild(label);
+  let n=3;
+  const tick=()=>{
+    if(!state.resuming)return;
+    game.querySelectorAll('.countdown.resume').forEach(e=>e.remove());
+    if(n<=0){
+      state.resuming=false;
+      document.getElementById('resumeLabel')?.remove();
+      setPause(false);
+      return;
+    }
+    const el=document.createElement('div');
+    el.className='countdown resume';el.textContent=n;
+    el.style.color=LANE_COLORS[(n-1)%4];
+    game.appendChild(el);
+    n--;
+    state.resumeTimer=setTimeout(tick,1000);
+  };
+  tick();
+}
+// Pressing pause during the countdown goes back to the pause menu
+function cancelResume(){
+  clearTimeout(state.resumeTimer);state.resumeTimer=null;
+  state.resuming=false;
+  document.querySelectorAll('.countdown.resume,.resume-label').forEach(e=>e.remove());
+  document.getElementById('pause-overlay').classList.add('visible');
+  bgmStart();
+}
+
 function setPause(p){
   state.paused=p;
   document.getElementById('pause-overlay').classList.toggle('visible',p);
@@ -1427,8 +1899,8 @@ function endGame(failed){
   try{state.sourceNode&&state.sourceNode.stop();}catch(e){}
   state.sourceNode=null;state.audioCtx=null; // release references but keep sharedCtx alive
   document.querySelectorAll('.hint-bubble,.end-banner').forEach(e=>e.remove());
-  const tot=state.counts.perfect+state.counts.great+state.counts.good+state.counts.miss;
-  const pct=tot>0?(state.counts.perfect*100+state.counts.great*80+state.counts.good*60)/(tot*100)*100:0;
+  const C=state.counts,tot=C.superPerfect+C.perfect+C.great+C.good+C.miss;
+  const pct=tot>0?((C.superPerfect+C.perfect)*100+C.great*80+C.good*60)/(tot*100)*100:0;
   const acc=isNaN(pct)?0:Math.round(pct*10)/10;
   let grade='D';
   if(acc>=98&&state.counts.miss===0)grade='S';
@@ -1443,6 +1915,7 @@ function endGame(failed){
   badge.textContent=cfg.label;badge.style.background=cfg.color;badge.style.color=cfg.dark;
   document.getElementById('rScore').textContent=String(Math.round(state.score)).padStart(6,'0');
   document.getElementById('rCombo').textContent=state.maxCombo+'x';
+  document.getElementById('rSuper').textContent=state.counts.superPerfect;
   document.getElementById('rPerfect').textContent=state.counts.perfect;
   document.getElementById('rGreat').textContent=state.counts.great;
   document.getElementById('rGood').textContent=state.counts.good;
@@ -1452,12 +1925,14 @@ function endGame(failed){
 }
 
 function cleanupGame(){
+  clearTimeout(state.resumeTimer);state.resumeTimer=null;state.resuming=false;
+  document.querySelectorAll('.resume-label').forEach(e=>e.remove());
   clearTimeout(state.endTimerId);state.endTimerId=null;
   cancelAnimationFrame(state.rafId);
   try{state.sourceNode&&state.sourceNode.stop();}catch(e){}
   state.audioCtx=null;state.sourceNode=null;state.activeSliders={};
   for(let i=0;i<4;i++) document.getElementById('lane'+i).innerHTML='';
-  document.querySelectorAll('.judge-text,.particle,.countdown,.hint-bubble,.end-banner,.slider-hint,.slider-flash').forEach(e=>e.remove());
+  document.querySelectorAll('.judge-text,.particle,.countdown,.hint-bubble,.end-banner,.slider-hint,.slider-flash,.super-ring,.combo-pop').forEach(e=>e.remove());
   document.getElementById('pause-overlay').classList.remove('visible');
 }
 
@@ -1466,17 +1941,23 @@ function cleanupGame(){
 // ═══════════════════════════════════════════
 async function loadFile(file){
   const name=file.name.replace(/\.[^.]+$/,'');
-  const ab=await file.arrayBuffer();
-  const ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const key=songKey(name);
+  let buffer;
   try{
-    const buffer=await ctx.decodeAudioData(ab);
-    ctx.close();
-    // Store buffer and show setup screen
-    state.audioBuffer=buffer;
-    state.songName=name;
-    document.getElementById('setupSongName').textContent=name;
-    showScreen('songsetup');
-  }catch(e){ctx.close();alert('Could not decode this audio file. Try an MP3 or WAV.');}
+    const ab=await file.arrayBuffer();
+    buffer=await getCtx().decodeAudioData(ab);
+  }catch(e){toast('Could not read this audio file. Try an MP3 or WAV.');return;}
+  rememberDecoded(key,{buffer,name});
+  openSetup(buffer,name);
+  // Keep the song on the device so it can be replayed from the library
+  try{
+    await songPut({key,name,blob:file,size:file.size,type:file.type||'audio/mpeg',added:Date.now()});
+    requestPersist();
+  }catch(e){
+    toast(e&&e.name==='QuotaExceededError'
+      ?'Not enough space to keep this song. It will play, but won\'t be saved.'
+      :'This song will play, but couldn\'t be saved to the library.');
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1487,7 +1968,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 
   const dz=document.getElementById('dropZone'),fi=document.getElementById('fileInput');
   dz.addEventListener('click',()=>fi.click());
-  fi.addEventListener('change',()=>{if(fi.files[0])loadFile(fi.files[0]);});
+  fi.addEventListener('change',()=>{const f=fi.files[0];fi.value='';if(f)loadFile(f);});
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
   dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
   dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
@@ -1524,6 +2005,16 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('bgmBtn').addEventListener('click',bgmToggleMute);
   document.getElementById('libBtn').addEventListener('click',()=>showScreen('library'));
   document.getElementById('libBackBtn').addEventListener('click',()=>showScreen('home'));
+  document.getElementById('libExportBtn').addEventListener('click',exportScores);
+  const libIn=document.getElementById('libImportInput');
+  document.getElementById('libImportBtn').addEventListener('click',()=>libIn.click());
+  libIn.addEventListener('change',()=>{const f=libIn.files[0];libIn.value='';if(f)importScores(f);});
+
+  // Installable app: offline support when served over http(s)
+  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+  requestPersist();
   document.getElementById('resultLibBtn').addEventListener('click',()=>showScreen('library'));
 
   const onPress=(id,fn)=>{
@@ -1532,8 +2023,11 @@ window.addEventListener('DOMContentLoaded',()=>{
     el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(fired)return;fired=true;setTimeout(()=>fired=false,350);fn();});
     el.addEventListener('click',e=>{e.stopPropagation();if(fired)return;fired=true;setTimeout(()=>fired=false,350);fn();});
   };
-  onPress('pauseBtn',()=>{if(state.gameRunning&&!state.paused)setPause(true);});
-  onPress('resumeBtn',()=>{if(state.paused)setPause(false);});
+  onPress('pauseBtn',()=>{
+    if(state.resuming){cancelResume();return;}
+    if(state.gameRunning&&!state.paused)setPause(true);
+  });
+  onPress('resumeBtn',()=>resumeWithCountdown());
   onPress('quitBtn',()=>{
     state.gameRunning=false;cancelAnimationFrame(state.rafId);
     try{state.sourceNode&&state.sourceNode.stop();}catch(e){}
