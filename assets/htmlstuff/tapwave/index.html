@@ -6,7 +6,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>TapWave</title>
-<link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
 :root{
@@ -64,7 +63,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 
 /* ── GAME ── */
 #game{padding:0;overflow:hidden;background:var(--bg)}
-.hud{position:absolute;top:0;left:0;right:0;z-index:20;padding:env(safe-area-inset-top,10px) 16px 0;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none}
+.hud{position:absolute;top:0;left:0;right:0;z-index:20;padding:env(safe-area-inset-top,10px) 72px 0 16px;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none}
 .hud-score{font-family:monospace;font-size:28px;font-weight:700;letter-spacing:1px;color:var(--text)}
 .hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .hud-combo{font-family:monospace;font-size:22px;font-weight:700;color:var(--l2)}
@@ -153,8 +152,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .pbtn:active{opacity:.7}
 .pbtn-resume{background:var(--l2);color:#000}
 .pbtn-quit{background:transparent;border:1.5px solid var(--muted);color:var(--muted)}
-.pause-btn{position:absolute;top:env(safe-area-inset-top,10px);right:16px;z-index:50;width:36px;height:36px;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;margin-top:2px}
-.pause-btn span{width:20px;height:2.5px;background:var(--muted);border-radius:2px;display:block}
+.pause-btn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 6px);right:6px;z-index:60;width:60px;height:60px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;touch-action:manipulation}
+.pause-btn .pb-pill{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.14);display:flex;gap:5px;align-items:center;justify-content:center;transition:transform .08s,background .08s}
+.pause-btn:active .pb-pill,.pause-btn.pressed .pb-pill{transform:scale(.9);background:rgba(255,255,255,.18)}
+.pause-btn .pb-pill span{width:4px;height:16px;background:var(--text);opacity:.75;border-radius:2px;display:block}
 .countdown{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(8,8,15,.6);pointer-events:none;font-size:80px;font-weight:900;animation:countpop .4s ease-out}
 @keyframes countpop{0%{transform:scale(1.5);opacity:0}60%{opacity:1}100%{transform:scale(1);opacity:1}}
 
@@ -303,7 +304,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
       <div class="hud-combo" id="comboDisplay"><span id="comboNum">0</span><span style="font-size:11px;letter-spacing:2px;color:var(--muted)"> COMBO</span></div>
     </div>
   </div>
-  <button class="pause-btn" id="pauseBtn" aria-label="Pause"><span></span><span></span></button>
+  <button class="pause-btn" id="pauseBtn" aria-label="Pause"><span class="pb-pill"><span></span><span></span></span></button>
   <div class="song-bar"><div class="song-title" id="songTitle"></div></div>
   <div class="hp-bar-wrap"><div class="hp-bar" id="hpBar"></div></div>
   <div id="highway">
@@ -649,79 +650,306 @@ async function analyzeAndStart(buffer,name,isDemo){
   }
 }
 
-async function generateChart(buffer,progress){
-  const cfg=DIFF_CFG[difficulty];
-  const sr=buffer.sampleRate,ch=buffer.getChannelData(0);
-  const frameSize=Math.round(sr*.02),hopSize=Math.round(sr*.01);
-  const numFrames=Math.floor((ch.length-frameSize)/hopSize);
-  const aF=Math.min(frameSize,512);
-  const hann=new Float32Array(aF);
-  for(let i=0;i<aF;i++) hann[i]=.5*(1-Math.cos(2*Math.PI*i/(aF-1)));
-  const bHz=sr/aF;
-  const bands=[[0,Math.round(150/bHz)],[Math.round(150/bHz),Math.round(500/bHz)],[Math.round(500/bHz),Math.round(2000/bHz)],[Math.round(2000/bHz),Math.min(Math.round(8000/bHz),aF/2)]];
-  const energy=Array.from({length:4},()=>new Float32Array(numFrames));
-  const chunk=200;
-  for(let f=0;f<numFrames;f+=chunk){
-    const end=Math.min(f+chunk,numFrames);
-    for(let fi=f;fi<end;fi++){
-      const off=fi*hopSize;
-      for(let b=0;b<4;b++){
-        const[bs,be]=bands[b],bc=(bs+be)/2;
-        let re=0,im=0,step=Math.max(1,Math.round(aF/(be-bs+1)*.5));
-        for(let i=0;i<aF;i+=step){const s=(ch[off+i]||0)*hann[i],a=2*Math.PI*bc*i/aF;re+=s*Math.cos(a);im+=s*Math.sin(a);}
-        energy[b][fi]=Math.sqrt(re*re+im*im);
-      }
-    }
-    progress(f/numFrames*.5);
-    if(f+chunk<numFrames) await new Promise(r=>setTimeout(r,0));
-  }
-  const W=30,MIF=difficulty==='expert'?6:difficulty==='advanced'?7:difficulty==='easy'?12:8;
-  const onsets=[],last=[0,0,0,0];
-  for(let b=0;b<4;b++){
-    const e=energy[b];
-    for(let f=W;f<numFrames;f++){
-      let avg=0;for(let w=1;w<=W;w++) avg+=e[f-w];avg/=W;
-      if(e[f]-e[f-1]>0&&e[f]>avg*cfg.threshold&&e[f]>0.001&&f-last[b]>=MIF){
-        onsets.push({time:f*hopSize/sr,lane:b,strength:e[f]-e[f-1]});last[b]=f;
+// ═══════════════════════════════════════════
+// BEAT DETECTION ENGINE
+// 1. Mono mix + downsample to ~22 kHz
+// 2. Real FFT (512, hop 256) -> log-magnitude spectral flux in 4 bands
+// 3. Adaptive peak picking -> onsets
+// 4. Tempo via weighted autocorrelation of the onset envelope
+// 5. Dynamic-programming beat tracking (follows tempo drift)
+// 6. 16th-note grid built between real beats, onsets snapped to it
+// Analysis is cached per song, so switching difficulty is instant.
+// ═══════════════════════════════════════════
+const analysisCache=new WeakMap();
+
+function fftInPlace(re,im,rev,cosT,sinT){
+  const n=re.length;
+  for(let i=0;i<n;i++){const j=rev[i];if(j>i){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}}
+  for(let size=2;size<=n;size<<=1){
+    const half=size>>1,step=n/size;
+    for(let i=0;i<n;i+=size){
+      for(let j=0,k=0;j<half;j++,k+=step){
+        const a=i+j,b=a+half;
+        const tr=re[b]*cosT[k]+im[b]*sinT[k];
+        const ti=im[b]*cosT[k]-re[b]*sinT[k];
+        re[b]=re[a]-tr;im[b]=im[a]-ti;re[a]+=tr;im[a]+=ti;
       }
     }
   }
-  progress(0.6);await new Promise(r=>setTimeout(r,0));
-  const allT=[...new Set(onsets.map(o=>Math.round(o.time*100)/100))].sort((a,b)=>a-b);
-  let bpm=120;
-  if(allT.length>8){
-    const hist={};
-    for(let i=1;i<allT.length;i++){const ioi=allT[i]-allT[i-1];if(ioi<.1||ioi>2)continue;const bk=Math.round(ioi*20)/20;hist[bk]=(hist[bk]||0)+1;}
-    const top=Object.entries(hist).sort((a,b)=>b[1]-a[1]);
-    if(top.length){let b2=Math.round(60/parseFloat(top[0][0]));while(b2<70)b2*=2;while(b2>200)b2/=2;bpm=b2;}
+}
+
+async function analyzeAudio(buffer,progress){
+  if(analysisCache.has(buffer)){progress(1);return analysisCache.get(buffer);}
+  const yieldUI=()=>new Promise(r=>setTimeout(r,0));
+
+  // ── 1. mono + downsample ──
+  const srcSr=buffer.sampleRate;
+  const ds=Math.max(1,Math.round(srcSr/22050));
+  const sr=srcSr/ds;
+  const nCh=buffer.numberOfChannels;
+  const chans=[];for(let c=0;c<nCh;c++)chans.push(buffer.getChannelData(c));
+  const len=Math.floor(buffer.length/ds);
+  const x=new Float32Array(len);
+  for(let i=0;i<len;i++){
+    let s=0;const o=i*ds;
+    for(let c=0;c<nCh;c++){const d=chans[c];for(let k=0;k<ds;k++)s+=d[o+k];}
+    x[i]=s/(nCh*ds);
   }
-  progress(0.7);
-  const beat=60/bpm,sub=difficulty==='easy'?2:difficulty==='expert'?6:4,grid=beat/sub;
-  const snapped=onsets.map(o=>({...o,time:Math.round(o.time/grid)*grid}));
-  const gm=new Map();
-  for(const n of snapped){const k=`${n.time.toFixed(4)}_${n.lane}`;if(!gm.has(k)||n.strength>gm.get(k).strength)gm.set(k,n);}
-  const tm=new Map();
-  for(const[,n] of gm){const tk=n.time.toFixed(4);if(!tm.has(tk))tm.set(tk,[]);tm.get(tk).push(n);}
+
+  // ── 2. STFT + band flux ──
+  const N=512,HOP=256,fps=sr/HOP;
+  const nFrames=Math.max(0,Math.floor((len-N)/HOP)+1);
+  const frameTime=f=>(f*HOP+N/4)/sr+0.006; // +6ms measured bias correction
+  const win=new Float32Array(N);for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
+  const bits=Math.log2(N),rev=new Uint32Array(N);
+  for(let i=0;i<N;i++){let r=0;for(let b=0;b<bits;b++)r|=((i>>b)&1)<<(bits-1-b);rev[i]=r;}
+  const cosT=new Float32Array(N/2),sinT=new Float32Array(N/2);
+  for(let k=0;k<N/2;k++){cosT[k]=Math.cos(2*Math.PI*k/N);sinT[k]=Math.sin(2*Math.PI*k/N);}
+  const nb=N/2,binHz=sr/N,NB=4;
+  // bands: kick/sub, bass/low-mid, mids (vocals, snare body), highs (hats, cymbals)
+  const edges=[40,180,500,2500,Math.min(11000,sr/2-1)].map(h=>Math.max(1,Math.min(nb,Math.round(h/binHz))));
+  const flux=Array.from({length:NB},()=>new Float32Array(nFrames));
+  const cent=new Float32Array(nFrames);
+  const re=new Float32Array(N),im=new Float32Array(N);
+  let prev=new Float32Array(nb),cur=new Float32Array(nb);
+
+  for(let f=0;f<nFrames;f++){
+    const o=f*HOP;
+    for(let i=0;i<N;i++){re[i]=x[o+i]*win[i];im[i]=0;}
+    fftInPlace(re,im,rev,cosT,sinT);
+    let cw=0,cs=0;
+    for(let k=0;k<nb;k++){
+      const m=Math.sqrt(re[k]*re[k]+im[k]*im[k]);
+      cur[k]=Math.log1p(10*m);
+      if(k>=edges[0]){cw+=m*k;cs+=m;}
+    }
+    cent[f]=cs>1e-6?(cw/cs)*binHz:0;
+    if(f>0){
+      for(let b=0;b<NB;b++){
+        let s=0;
+        for(let k=edges[b];k<edges[b+1];k++){const d=cur[k]-prev[k];if(d>0)s+=d;}
+        flux[b][f]=s/Math.max(1,edges[b+1]-edges[b]);
+      }
+    }
+    const t=prev;prev=cur;cur=t;
+    if(f%500===0){progress(0.6*f/Math.max(1,nFrames));await yieldUI();}
+  }
+
+  const empty={slots:[],bpm:120,duration:buffer.duration};
+  if(nFrames<64){analysisCache.set(buffer,empty);return empty;}
+
+  // normalise each band so quiet hats count as much as loud kicks
+  const std=a=>{let m=0;for(const v of a)m+=v;m/=a.length;let s=0;for(const v of a)s+=(v-m)*(v-m);return Math.sqrt(s/a.length)||1;};
+  const BW=[1.0,0.8,1.0,0.7];
+  for(let b=0;b<NB;b++){const s=std(flux[b]);for(let f=0;f<nFrames;f++)flux[b][f]/=s;}
+  const env=new Float32Array(nFrames);
+  for(let f=0;f<nFrames;f++){let s=0;for(let b=0;b<NB;b++)s+=BW[b]*flux[b][f];env[f]=s;}
+  const es=std(env);for(let f=0;f<nFrames;f++)env[f]/=es;
+  progress(0.65);await yieldUI();
+
+  // ── 3. adaptive peak picking ──
+  const ps=new Float64Array(nFrames+1);
+  for(let f=0;f<nFrames;f++)ps[f+1]=ps[f]+env[f];
+  const AVG=Math.round(0.15*fps),MAXW=2,WAIT=Math.round(0.05*fps);
+  const peaks=[];
+  for(let f=1;f<nFrames-1;f++){
+    const v=env[f];if(v<=0)continue;
+    let isMax=true;
+    for(let j=Math.max(0,f-MAXW);j<=Math.min(nFrames-1,f+MAXW);j++)if(env[j]>v){isMax=false;break;}
+    if(!isMax)continue;
+    const a=Math.max(0,f-AVG),b=Math.min(nFrames-1,f+AVG);
+    const ex=v-(ps[b+1]-ps[a])/(b-a+1);
+    if(ex<=0.1)continue;
+    const bands=[];
+    for(let k=0;k<NB;k++)bands.push(Math.max(flux[k][f-1],flux[k][f],flux[k][f+1]));
+    const pk={f,t:frameTime(f),strength:ex,bands,cent:cent[Math.min(nFrames-1,f+1)]};
+    const last=peaks[peaks.length-1];
+    if(last&&f-last.f<WAIT){if(ex>last.strength)peaks[peaks.length-1]=pk;continue;}
+    peaks.push(pk);
+  }
+  progress(0.72);await yieldUI();
+
+  // ── 4. tempo: autocorrelation with a soft preference around 120 BPM ──
+  let mean=0;for(const v of env)mean+=v;mean/=nFrames;
+  const envC=new Float32Array(nFrames);for(let f=0;f<nFrames;f++)envC[f]=env[f]-mean;
+  const minLag=Math.max(2,Math.floor(fps*60/200)),maxLag=Math.min(nFrames-2,Math.ceil(fps*60/55));
+  const acw=new Float64Array(maxLag+2);
+  for(let L=minLag;L<=maxLag;L++){
+    let s=0;for(let t=0;t+L<nFrames;t++)s+=envC[t]*envC[t+L];
+    s/=(nFrames-L);
+    const bpm=60*fps/L;
+    const w=Math.exp(-0.5*Math.pow(Math.log2(bpm/120)/0.9,2));
+    acw[L]=Math.max(0,s)*w;
+  }
+  let bestL=minLag;for(let L=minLag;L<=maxLag;L++)if(acw[L]>acw[bestL])bestL=L;
+  let period=bestL;
+  if(bestL>minLag&&bestL<maxLag){
+    const y0=acw[bestL-1],y1=acw[bestL],y2=acw[bestL+1],den=y0-2*y1+y2;
+    if(Math.abs(den)>1e-12)period=bestL+0.5*(y0-y2)/den;
+  }
+  const bpm=Math.round(600*fps/period)/10;
+  progress(0.8);await yieldUI();
+
+  // ── 5. dynamic-programming beat tracker ──
+  const ls=new Float32Array(nFrames);
+  for(let f=0;f<nFrames;f++){
+    const a=env[Math.max(0,f-1)],b=env[f],c=env[Math.min(nFrames-1,f+1)];
+    ls[f]=Math.max(0,0.25*a+0.5*b+0.25*c);
+  }
+  const TIGHT=100,lo=Math.max(1,Math.round(period/2)),hi=Math.round(period*2);
+  const cum=new Float32Array(nFrames),back=new Int32Array(nFrames).fill(-1);
+  for(let t=0;t<nFrames;t++){
+    let best=-Infinity,bi=-1;
+    for(let tau=Math.max(0,t-hi);tau<=t-lo;tau++){
+      const r=Math.log((t-tau)/period);
+      const s=cum[tau]-TIGHT*r*r;
+      if(s>best){best=s;bi=tau;}
+    }
+    if(bi>=0&&best>0){cum[t]=ls[t]+best;back[t]=bi;}
+    else cum[t]=ls[t];
+  }
+  let end=nFrames-1;
+  for(let t=Math.max(0,nFrames-Math.ceil(period*1.5));t<nFrames;t++)if(cum[t]>cum[end])end=t;
+  let beatsF=[];for(let t=end;t>=0;t=back[t])beatsF.push(t);
+  beatsF.reverse();
+
+  const firstOn=peaks.length?peaks[0].t:0,lastOn=peaks.length?peaks[peaks.length-1].t:buffer.duration;
+  const pSec=period/fps;
+  let beats=beatsF.map(frameTime).filter(t=>t>=firstOn-pSec*0.5&&t<=lastOn+pSec*0.5);
+  if(beats.length<4){
+    beats=[];for(let t=firstOn;t<=lastOn+pSec;t+=pSec)beats.push(t);
+  }
+  // extend to cover every onset
+  while(beats[0]-pSec>=firstOn-0.1)beats.unshift(beats[0]-pSec);
+  while(beats[beats.length-1]<lastOn+0.1)beats.push(beats[beats.length-1]+pSec);
+  progress(0.9);await yieldUI();
+
+  // ── 6. 16th-note grid between actual beats ──
+  // level 0 = beat, 2 = eighth, 1 = sixteenth
+  const grid=[];
+  for(let i=0;i<beats.length-1;i++){
+    const d=(beats[i+1]-beats[i])/4;
+    for(let k=0;k<4;k++)grid.push({t:beats[i]+k*d,level:k===0?0:k===2?2:1});
+  }
+  grid.push({t:beats[beats.length-1],level:0});
+  const gt=grid.map(g=>g.t);
+  const nearest=t=>{
+    let a=0,b=gt.length-1;
+    while(b-a>1){const m=(a+b)>>1;if(gt[m]<t)a=m;else b=m;}
+    return Math.abs(gt[a]-t)<=Math.abs(gt[b]-t)?a:b;
+  };
+  const slotMap=new Map();
+  for(const p of peaks){
+    const gi=nearest(p.t);
+    const s=slotMap.get(gi);
+    if(!s)slotMap.set(gi,{t:gt[gi],level:grid[gi].level,strength:p.strength,bands:p.bands.slice(),cent:p.cent});
+    else{
+      for(let k=0;k<NB;k++)s.bands[k]=Math.max(s.bands[k],p.bands[k]);
+      if(p.strength>s.strength){s.strength=p.strength;s.cent=p.cent;}
+    }
+  }
+  const slots=[...slotMap.values()].sort((a,b)=>a.t-b.t);
+  const result={slots,bpm,duration:buffer.duration};
+  analysisCache.set(buffer,result);
+  progress(1);
+  return result;
+}
+
+// Per-difficulty charting rules (tempo-based; timing windows live in DIFF_CFG)
+const CHART_RULES={
+  easy:    {levels:[0],     delta:.5, minGap:.36,jackGap:.70,chordPct:0,  sliderGap:.50,strong16:0},
+  normal:  {levels:[0,2],   delta:.4, minGap:.20,jackGap:.40,chordPct:0,  sliderGap:.40,strong16:0},
+  advanced:{levels:[0,2,1], delta:.3, minGap:.13,jackGap:.26,chordPct:.10,sliderGap:.32,strong16:.75},
+  expert:  {levels:[0,2,1], delta:.25, minGap:.09,jackGap:.18,chordPct:.18,sliderGap:.26,strong16:0},
+};
+
+function buildChart(an){
+  const cfg=DIFF_CFG[difficulty],R=CHART_RULES[difficulty];
+  const rng=mulberry32(1337);
+  const LEAD_IN=1.0; // no notes before this (they'd spawn mid-screen)
+  const pct=(arr,p)=>{if(!arr.length)return Infinity;const s=arr.slice().sort((a,b)=>a-b);return s[Math.min(s.length-1,Math.floor(p*s.length))];};
+
+  let cand=an.slots.filter(s=>s.strength>=R.delta&&R.levels.includes(s.level)&&s.t>=LEAD_IN&&s.t<an.duration-0.05);
+  if(R.strong16){
+    const q=pct(cand.map(s=>s.strength),R.strong16);
+    cand=cand.filter(s=>s.level!==1||s.strength>=q);
+  }
+
+  // strongest first: keep the most important hits when thinning density
+  const order=cand.slice().sort((a,b)=>b.strength-a.strength);
+  const acc=[];
+  const lb=t=>{let a=0,b=acc.length;while(a<b){const m=(a+b)>>1;if(acc[m].t<t)a=m+1;else b=m;}return a;};
+  for(const s of order){
+    const i=lb(s.t);
+    if(i>0&&s.t-acc[i-1].t<R.minGap)continue;
+    if(i<acc.length&&acc[i].t-s.t<R.minGap)continue;
+    const lo=lb(s.t-0.5),hi=lb(s.t+0.5);
+    if(hi-lo>=cfg.maxDens)continue;
+    acc.splice(i,0,s);
+  }
+
+  // lanes follow the pitch contour: rank of spectral centroid in a ±6 s window
+  const lc=acc.map(s=>Math.log2(Math.max(50,s.cent||50)));
+  const chordQ=R.chordPct&&cfg.maxSimul>=2?pct(acc.map(s=>s.strength),1-R.chordPct):Infinity;
+  const lastT=[-9,-9,-9,-9];
+  let prevLane=-1,run=0,wlo=0,whi=0;
   const notes=[];
-  for(const[,g] of tm) notes.push(...g.sort((a,b)=>b.strength-a.strength).slice(0,cfg.maxSimul));
-  notes.sort((a,b)=>a.time-b.time);
-  progress(0.85);
-  if(notes.length>0&&notes[0].time<1.5){const off2=1.5-notes[0].time;for(const n of notes)n.time+=off2;}
-  const final=[];
-  for(const n of notes){const rc=final.filter(x=>n.time-x.time<=1.0).length;if(rc<cfg.maxDens)final.push(n);}
+  for(let i=0;i<acc.length;i++){
+    const s=acc[i];
+    while(acc[wlo].t<s.t-6)wlo++;
+    while(whi<acc.length&&acc[whi].t<=s.t+6)whi++;
+    let less=0,eq=0;
+    for(let j=wlo;j<whi;j++){if(lc[j]<lc[i])less++;else if(lc[j]===lc[i])eq++;}
+    const r=(less+0.5*eq)/Math.max(1,whi-wlo);
+    const target=r*3;
+    let lane=Math.min(3,Math.floor(r*4));
 
-  // Assign slider type to a fraction of notes (unless noSliders is on)
-  const sliderRate=noSliders?0:cfg.sliderRate;
-  const rng=mulberry32(42);
-  for(const n of final){
-    if(rng()<sliderRate){
-      n.isSlider=true;
-      n.sliderDir=Math.floor(rng()*8); // 0-7
+    const free=l=>s.t-lastT[l]>=R.jackGap;
+    if(!free(lane)||(lane===prevLane&&run>=3)){
+      const opts=[0,1,2,3].filter(l=>free(l)&&!(l===prevLane&&run>=3));
+      if(opts.length)lane=opts.sort((a,b)=>Math.abs(a-target)-Math.abs(b-target))[0];
+      else lane=[0,1,2,3].sort((a,b)=>lastT[a]-lastT[b])[0];
+    }
+    run=lane===prevLane?run+1:1;prevLane=lane;lastT[lane]=s.t;
+    const note={time:s.t,lane,strength:s.strength,isSlider:false,sliderDir:null,chord:false};
+    notes.push(note);
+
+    if(s.level===0&&s.strength>=chordQ){
+      const pref=lane<2?[lane+2,lane+1,3]:[lane-2,lane-1,0];
+      const l2=pref.find(l=>l!==lane&&l>=0&&l<4&&free(l));
+      if(l2!=null){
+        lastT[l2]=s.t;note.chord=true;
+        notes.push({time:s.t,lane:l2,strength:s.strength,isSlider:false,sliderDir:null,chord:true});
+      }
     }
   }
+  notes.sort((a,b)=>a.time-b.time||a.lane-b.lane);
 
-  progress(1.0);
-  return{notes:final,bpm,duration:buffer.duration};
+  // sliders: single notes with breathing room; direction follows the next move
+  const rate=noSliders?0:cfg.sliderRate;
+  if(rate>0){
+    for(let i=0;i<notes.length;i++){
+      const n=notes[i];
+      if(n.chord)continue;
+      const next=notes.find((m,j)=>j>i&&m.time>n.time);
+      if(next&&next.time-n.time<R.sliderGap)continue;
+      if(rng()>=rate)continue;
+      const cardinal=rng()<0.6;
+      let dir;
+      if(next&&next.lane>n.lane)dir=cardinal?4:(rng()<.5?5:3);
+      else if(next&&next.lane<n.lane)dir=cardinal?0:(rng()<.5?7:1);
+      else dir=rng()<.5?6:2;
+      n.isSlider=true;n.sliderDir=dir;
+    }
+  }
+  return{notes:notes.map(({chord,...n})=>n),bpm:an.bpm,duration:an.duration};
+}
+
+async function generateChart(buffer,progress){
+  const an=await analyzeAudio(buffer,p=>progress(p*0.97));
+  const chart=buildChart(an);
+  progress(1);
+  return chart;
 }
 
 // Simple seedable RNG (Mulberry32)
@@ -999,7 +1227,7 @@ function handleTapOrSliderStart(lane,touchId,x,y){
   }
 }
 
-function onTouchMove(e){e.preventDefault();}
+function onTouchMove(e){if(!e.target.closest('button'))e.preventDefault();}
 
 function releaseLaneVisuals(lane){
   document.getElementById('tap'+lane).classList.remove('pressed');
@@ -1007,7 +1235,7 @@ function releaseLaneVisuals(lane){
 }
 
 function onTouchEnd(e){
-  e.preventDefault();
+  if(!e.target.closest('button'))e.preventDefault();
   for(const t of e.changedTouches){
     // Release visuals by the lane stored in the tracker (survives swipe off-zone)
     const tracker=state.activeSliders[t.identifier];
@@ -1297,9 +1525,15 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('libBackBtn').addEventListener('click',()=>showScreen('home'));
   document.getElementById('resultLibBtn').addEventListener('click',()=>showScreen('library'));
 
-  document.getElementById('pauseBtn').addEventListener('click',()=>{if(state.gameRunning)setPause(true);});
-  document.getElementById('resumeBtn').addEventListener('click',()=>setPause(false));
-  document.getElementById('quitBtn').addEventListener('click',()=>{
+  const onPress=(id,fn)=>{
+    const el=document.getElementById(id);
+    let fired=false;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(fired)return;fired=true;setTimeout(()=>fired=false,350);fn();});
+    el.addEventListener('click',e=>{e.stopPropagation();if(fired)return;fired=true;setTimeout(()=>fired=false,350);fn();});
+  };
+  onPress('pauseBtn',()=>{if(state.gameRunning&&!state.paused)setPause(true);});
+  onPress('resumeBtn',()=>{if(state.paused)setPause(false);});
+  onPress('quitBtn',()=>{
     state.gameRunning=false;cancelAnimationFrame(state.rafId);
     try{state.sourceNode&&state.sourceNode.stop();}catch(e){}
     cleanupGame();showScreen('home');
