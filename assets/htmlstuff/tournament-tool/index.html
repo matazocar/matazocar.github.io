@@ -21,6 +21,12 @@
 
 
 
+.queue-box{border-top:1px dashed var(--rule);padding:12px 14px 6px;}
+.queue-head{display:flex;flex-direction:column;gap:3px;font-size:14px;}
+.queue-head .dim{font-size:13px;line-height:1.4;}
+.queue-list{list-style:none;margin:8px 0 0;padding:0;}
+.queue-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule-soft);}
+.queue-list li:last-child{border-bottom:none;}
 </style>
 <style>
 /* ============================================================
@@ -839,6 +845,7 @@ input[type=search]::-webkit-search-cancel-button{cursor:pointer;}
         </thead>
         <tbody id="players-tbody"></tbody>
       </table>
+      <div class="queue-box" id="players-queue" hidden></div>
       <div class="empty" id="players-empty">
         <b>No players registered</b>
         Add players above. You need at least 3 to start the tournament.
@@ -1296,7 +1303,16 @@ async function addPlayer(name, deck){
 
   const currentRoundDone = latest.matches.every(m=>m.bye || m.antibye || (m.result && m.result.decided));
   if(!currentRoundDone){
-    toast("Some results for Round "+latest.number+" are already reported, so a new player can't join it. Finish reporting the round, then add them — they'll start in Round "+(latest.number+1)+".");
+    // Round already under way: put them in the join queue. They're added to the
+    // roster (with antibyes for the rounds they missed) the moment the next
+    // round is generated, and are paired in that round right away.
+    const snap = JSON.stringify(state);
+    if(!Array.isArray(state.pendingPlayers)) state.pendingPlayers = [];
+    state.pendingPlayers.push({id:uid(), name, deck:(deck||"").trim()});
+    saveState();
+    renderPlayers();
+    renderHeaderMeta();
+    offerUndo(name+" is queued and will be paired from Round "+(latest.number+1)+" (with an antibye for Round"+(latest.number===1?" 1":"s 1–"+latest.number)+").", snap);
     return;
   }
 
@@ -1529,6 +1545,21 @@ function playerRecord(id, uptoRoundIdx = state.rounds.length - 1){
 
 let rosterQuery = "";
 
+function renderPlayerQueue(){
+  const box = document.getElementById("players-queue");
+  if(!box) return;
+  const queue = pendingPlayers();
+  if(!queue.length){ box.hidden = true; box.innerHTML = ""; return; }
+  const next = state.rounds.length+1;
+  box.hidden = false;
+  box.innerHTML = `<div class="queue-head"><b>Waiting to join · Round ${next}</b>
+    <span class="dim">Added while Round ${next-1} was in progress. They're paired as soon as Round ${next} is generated, with an antibye for each earlier round.</span></div>
+    <ul class="queue-list">${queue.map(q=>`<li><span>${escapeHtml(q.name)}${q.deck?` <span class="dim">· ${escapeHtml(q.deck)}</span>`:''}</span>
+      <button class="icon-btn" title="Remove from queue" aria-label="Remove ${escapeHtml(q.name)} from the queue" data-qid="${q.id}"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></li>`).join('')}</ul>`;
+  box.querySelectorAll("[data-qid]").forEach(b=>b.addEventListener("click",()=>removePendingPlayer(b.dataset.qid)));
+  const sum = document.getElementById("roster-summary");
+  if(sum && !/queued/.test(sum.textContent)) sum.textContent += " · "+queue.length+" queued";
+}
 function renderPlayers(){
   const tbody = document.getElementById("players-tbody");
   const empty = document.getElementById("players-empty");
@@ -1587,6 +1618,7 @@ function renderPlayers(){
     ? (shown+" of "+state.players.length+" shown")
     : (state.players.length+" registered");
 
+  renderPlayerQueue();
   tbody.querySelectorAll("[data-action=edit]").forEach(b=>b.addEventListener("click",()=>editPlayer(b.dataset.id)));
   tbody.querySelectorAll("[data-action=dq]").forEach(b=>b.addEventListener("click",()=>toggleDQ(b.dataset.id)));
   tbody.querySelectorAll("[data-action=remove]").forEach(b=>b.addEventListener("click",()=>removePlayer(b.dataset.id)));
@@ -1598,6 +1630,34 @@ function escapeHtml(s){
 /* ============================================================
    ROUND GENERATION (Swiss pairing high vs high)
    ============================================================ */
+// Players waiting to join (added while a round was in progress).
+function pendingPlayers(){ return Array.isArray(state.pendingPlayers) ? state.pendingPlayers : []; }
+// Moves everyone in the queue onto the roster, crediting an antibye for every
+// round already played — the same treatment as any late registration.
+function admitPendingPlayers(){
+  const queue = pendingPlayers();
+  if(!queue.length) return [];
+  queue.forEach(q=>{
+    state.players.push({id:q.id, name:q.name, deck:q.deck||"", dq:false});
+    for(let ri=0; ri<state.rounds.length; ri++){
+      state.rounds[ri].matches.push({
+        id: uid(), table:0, p1:q.id, p2:null, antibye:true,
+        result:{decided:true, gamesP1:0, gamesP2:2, draws:false}
+      });
+    }
+  });
+  state.pendingPlayers = [];
+  return queue.map(q=>q.name);
+}
+function removePendingPlayer(id){
+  const q = pendingPlayers().find(x=>x.id===id);
+  if(!q) return;
+  const snap = JSON.stringify(state);
+  state.pendingPlayers = pendingPlayers().filter(x=>x.id!==id);
+  saveState();
+  renderPlayers();
+  offerUndo(q.name+" removed from the queue.", snap);
+}
 function activePlayers(){
   return state.players.filter(p=>!p.dq);
 }
@@ -1805,6 +1865,23 @@ document.getElementById("next-round-btn").addEventListener("click", async ()=>{
       const ok = await confirmDialog("This event is scheduled for "+total+" rounds and that count is already reached. Add an extra round anyway?");
       if(!ok) return;
     }
+  }
+  const waiting = pendingPlayers();
+  if(waiting.length){
+    const snap = JSON.stringify(state);
+    const before = state.rounds.length;
+    const joined = admitPendingPlayers();
+    saveState();
+    generatePairings();
+    if(state.rounds.length===before){
+      // Pairing failed — keep them in the queue.
+      state = JSON.parse(snap);
+      saveState();
+      renderAll();
+      return;
+    }
+    toast("Round "+state.rounds.length+" pairings generated. "+joined.join(", ")+(joined.length===1?" joins":" join")+" the event this round.");
+    return;
   }
   generatePairings();
 });
