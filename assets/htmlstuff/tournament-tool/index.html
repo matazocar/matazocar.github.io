@@ -1275,9 +1275,20 @@ async function addPlayer(name, deck){
   // round or arrived in time to play it, which would make the antibye
   // placement below incorrect either way.
   const latest = state.rounds[state.rounds.length-1];
+
+  // The latest round hasn't had any result reported yet: the new player can
+  // still take part in it. They take over the bye if there is one, otherwise
+  // they receive the bye themselves.
+  const reportable = latest.matches.filter(m=>!m.bye && !m.antibye);
+  const noneReported = reportable.length>0 && reportable.every(m=>!(m.result && m.result.decided));
+  if(noneReported){
+    await addPlayerIntoCurrentRound(name, deck, latest);
+    return;
+  }
+
   const currentRoundDone = latest.matches.every(m=>m.bye || m.antibye || (m.result && m.result.decided));
   if(!currentRoundDone){
-    toast("Finish reporting all results for Round "+latest.number+" before adding a new player — otherwise it's unclear whether they missed that round.");
+    toast("Some results for Round "+latest.number+" are already reported, so a new player can't join it. Finish reporting the round, then add them — they'll start in Round "+(latest.number+1)+".");
     return;
   }
 
@@ -1316,6 +1327,74 @@ async function addPlayer(name, deck){
   renderCustomStandings();
   renderHeaderMeta();
   toast(name+" added, with an antibye recorded for "+(missedCount===1?"Round 1":("Rounds 1–"+missedCount))+".");
+}
+
+// Adds a late player straight into the latest round (only called when no
+// result in that round has been reported yet).
+//  - If someone has the bye, the bye is cancelled and that player is paired
+//    with the newcomer at a new table.
+//  - Otherwise the newcomer receives the bye.
+// Any earlier rounds they missed are still credited as antibyes, exactly as
+// in the normal late-join flow.
+async function addPlayerIntoCurrentRound(name, deck, latest){
+  const latestIdx = state.rounds.length-1;
+  const missedCount = latestIdx; // rounds before the current one
+  const byeMatch = latest.matches.find(m=>{
+    if(!m.bye) return false;
+    const bp = state.players.find(p=>p.id===m.p1);
+    return bp && !bp.dq;
+  });
+  const byeName = byeMatch ? playerName(byeMatch.p1) : null;
+  const maxTable = latest.matches.reduce((mx,m)=>(!m.bye && !m.antibye && m.table>mx) ? m.table : mx, 0);
+
+  let msg = "No results have been reported for Round "+latest.number+" yet, so "+name+" can join it now. ";
+  msg += byeMatch
+    ? (byeName+" loses their bye and plays "+name+" at table "+(maxTable+1)+" instead.")
+    : ("Nobody has a bye this round, so "+name+" receives the bye.");
+  if(missedCount>0){
+    msg += " "+name+" is credited with an antibye for Round"+(missedCount===1?" 1":"s 1–"+missedCount)+", which "+(missedCount===1?"was":"were")+" already played.";
+  }
+  const ok = await confirmDialog(msg+" Continue?", {okLabel:"Add to Round "+latest.number, okClass:"", focusOk:true});
+  if(!ok) return;
+
+  const snap = JSON.stringify(state);
+  const newPlayer = {id:uid(), name, deck:(deck||"").trim(), dq:false};
+  state.players.push(newPlayer);
+
+  for(let ri=0; ri<latestIdx; ri++){
+    state.rounds[ri].matches.push({
+      id: uid(), table:0, p1:newPlayer.id, p2:null, antibye:true,
+      result:{decided:true, gamesP1:0, gamesP2:2, draws:false}
+    });
+  }
+
+  if(byeMatch){
+    byeMatch.bye = false;
+    byeMatch.p2 = newPlayer.id;
+    byeMatch.table = maxTable+1;
+    byeMatch.result = {decided:false, gamesP1:0, gamesP2:0, draws:false};
+    // keep the table list in order: move the new match after the other tables
+    const others = latest.matches.filter(m=>m!==byeMatch);
+    const firstSpecial = others.findIndex(m=>m.bye || m.antibye);
+    if(firstSpecial===-1) others.push(byeMatch); else others.splice(firstSpecial, 0, byeMatch);
+    latest.matches = others;
+  } else {
+    latest.matches.push({
+      id: uid(), table:0, p1:newPlayer.id, p2:null, bye:true,
+      result:{decided:true, gamesP1:2, gamesP2:0, draws:false}
+    });
+  }
+
+  saveState();
+  renderPlayers();
+  renderPairings(viewedRoundNumber || undefined);
+  renderCurrentRoundPanel();
+  renderStandings();
+  renderCustomStandings();
+  renderHeaderMeta();
+  offerUndo(byeMatch
+    ? (name+" added to Round "+latest.number+" — paired with "+byeName+" at table "+(maxTable+1)+".")
+    : (name+" added to Round "+latest.number+" with the bye."), snap);
 }
 document.getElementById("add-player-btn").addEventListener("click", async ()=>{
   await addPlayer(document.getElementById("new-player-name").value, document.getElementById("new-player-deck").value);
