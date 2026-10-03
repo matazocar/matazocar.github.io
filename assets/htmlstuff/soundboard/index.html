@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Minimal Soundboard</title>
 <link rel="manifest" href="manifest.json">
+<script>
+/* Pick the theme before first paint: your saved choice, else the system setting. */
+(function () {
+  var t = null;
+  try { t = localStorage.getItem("soundboard.theme"); } catch (e) {}
+  if (t !== "light" && t !== "dark") t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
 <style>
 :root {
   --bg:        #0f1115;
@@ -124,14 +133,58 @@ body {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;
-  cursor: grab;
   transition: border-color 0.15s, transform 0.15s, background 0.2s;
   position: relative;
   user-select: none;
 }
 .card:hover   { border-color: var(--border3); transform: translateY(-1px); }
 .card.playing { border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent); }
-.card.drag-over { opacity: 0.5; }
+.card.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.card.dragging { z-index: 10; opacity: 0.85; box-shadow: 0 12px 28px rgba(0,0,0,.35); transition: none; }
+
+.grip {
+  border: none; background: transparent; color: var(--text3);
+  cursor: grab; touch-action: none; padding: 2px; margin-left: -4px;
+  border-radius: 6px; display: flex; align-items: center; flex-shrink: 0;
+}
+.grip:hover, .grip:focus-visible { color: var(--text); background: var(--bg2); }
+.grip:active { cursor: grabbing; }
+
+.key-btn {
+  border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  border-radius: 6px; padding: 4px 7px; cursor: pointer; flex-shrink: 0;
+  min-width: 26px;
+}
+.key-btn.unset { color: var(--text3); font-family: system-ui, sans-serif; font-weight: 500; border-style: dashed; }
+.key-btn.listening { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+.sb-fade {
+  display: flex; align-items: center; gap: 6px; margin-left: auto;
+  font-size: 13px; color: var(--text2);
+}
+.sb-fade select {
+  font: inherit; color: var(--text); background: var(--bg3);
+  border: 1px solid var(--border2); border-radius: 8px; padding: 5px 8px;
+}
+.sb-hint { font-size: 12px; color: var(--text3); padding: 0 20px 20px; }
+.sb-hint kbd {
+  font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid var(--border2); border-radius: 4px; padding: 1px 5px; color: var(--text2);
+}
+body.file-over #soundboard { outline: 2px dashed var(--accent); outline-offset: -8px; border-radius: 16px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--text); color: var(--bg); font-size: 13px;
+  padding: 10px 14px; border-radius: 10px; max-width: calc(100vw - 32px);
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.sb-controls { flex-wrap: wrap; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 .card-top {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -252,6 +305,11 @@ body {
   <symbol id="ico-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <rect x="4" y="4" width="16" height="16" rx="2"/>
   </symbol>
+  <symbol id="ico-grip" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/>
+    <circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/>
+    <circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/>
+  </symbol>
   <symbol id="ico-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
   </symbol>
@@ -283,249 +341,447 @@ body {
     <svg width="15" height="15" aria-hidden="true"><use href="#ico-stop-all"/></svg>
     Stop all
   </button>
+
+  <label class="sb-fade" for="fadeSelect">
+    Fade
+    <select id="fadeSelect">
+      <option value="0">Off</option>
+      <option value="0.5">0.5 s</option>
+      <option value="1">1 s</option>
+      <option value="2">2 s</option>
+      <option value="3">3 s</option>
+      <option value="5">5 s</option>
+    </select>
+  </label>
 </div>
 
 <div id="soundboard">
   <div class="empty-state" id="emptyState">
     <svg width="32" height="32" color="#556677" aria-hidden="true"><use href="#ico-music"/></svg>
-    Add audio files to get started
+    Add audio files (or drop them here) to get started
   </div>
 </div>
+<p class="sb-hint">Your board is saved in this browser. Give a sound a key to play it from the keyboard; <kbd>Esc</kbd> stops everything.</p>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 const board = document.getElementById("soundboard");
-const stopCallbacks = [];
-let dragged = null;
+const html  = document.documentElement;
 
-/* ── theme toggle ──────────────────────────────────────── */
-const html      = document.documentElement;
+/* ── theme: follows the system until you pick one, then remembers it ── */
+const THEME_KEY = "soundboard.theme";
 const themeBtn  = document.getElementById("themeToggle");
 const themeIcon = document.getElementById("themeIcon");
-
+function applyTheme(t) {
+  html.setAttribute("data-theme", t);
+  themeIcon.innerHTML = t === "dark" ? '<use href="#ico-sun"/>' : '<use href="#ico-moon"/>';
+  themeBtn.title = t === "dark" ? "Switch to light mode" : "Switch to dark mode";
+}
+applyTheme(html.getAttribute("data-theme") || "dark");
 themeBtn.addEventListener("click", () => {
-  const isDark = html.getAttribute("data-theme") === "dark";
-  html.setAttribute("data-theme", isDark ? "light" : "dark");
-  themeIcon.innerHTML = isDark
-    ? '<use href="#ico-moon"/>'
-    : '<use href="#ico-sun"/>';
-  themeBtn.setAttribute("title", isDark ? "Switch to dark mode" : "Switch to light mode");
+  const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  applyTheme(next);
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
+  let saved = null; try { saved = localStorage.getItem(THEME_KEY); } catch (err) {}
+  if (!saved) applyTheme(e.matches ? "dark" : "light");
 });
 
 /* ── helpers ───────────────────────────────────────────── */
 function svg(id, size = 18) {
   return `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#ico-${id}"/></svg>`;
 }
-
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 function updateEmpty() {
-  const hasCards = board.querySelectorAll(".card").length > 0;
-  document.getElementById("emptyState").style.display = hasCards ? "none" : "block";
+  document.getElementById("emptyState").style.display = board.querySelector(".card") ? "none" : "block";
+}
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
+/* ── storage: the board and the audio files live in IndexedDB ── */
+const DB_NAME = "soundboard", META = "meta", BLOBS = "blobs";
+let dbPromise = null;
+function db() {
+  if (!dbPromise) dbPromise = new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore(META); r.result.createObjectStore(BLOBS); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbPromise;
+}
+async function idb(store, mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(store, mode);
+    const req = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error);
+  });
+}
+const putBlob = (id, blob) => idb(BLOBS, "readwrite", s => s.put(blob, id));
+const getBlob = id => idb(BLOBS, "readonly", s => s.get(id));
+const delBlob = id => idb(BLOBS, "readwrite", s => s.delete(id));
+
+const items = new Map();          // card element -> item state
+let settings = { fade: 1 };
+
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const list = [...board.querySelectorAll(".card")].map(card => {
+      const it = items.get(card);
+      return it.type === "note"
+        ? { id: it.id, type: "note", text: it.nameEl.value }
+        : { id: it.id, type: "sound", name: it.nameEl.value, volume: it.volume, key: it.key || null };
+    });
+    try { await idb(META, "readwrite", s => s.put({ list, settings }, "board")); }
+    catch (e) { toast("Couldn't save the board — browser storage may be full."); }
+  }, 250);
+}
+
+/* ── audio engine: Web Audio gain nodes, so volume and fades work on iOS too ── */
+let actx = null;
+function audioCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+function fadeSecs() { return Number(settings.fade) || 0; }
+
 /* ── sound card ────────────────────────────────────────── */
-function createSoundBlock(file) {
-  const url  = URL.createObjectURL(file);
+function createSoundBlock(blob, opts = {}) {
+  const it = {
+    id: opts.id || uid(), type: "sound",
+    volume: opts.volume != null ? opts.volume : 1,
+    key: opts.key || null,
+    url: URL.createObjectURL(blob),
+    audio: null, gain: null, playing: false, stopTimer: null,
+  };
   const card = document.createElement("div");
   card.className = "card";
-  card.draggable = true;
+  items.set(card, it);
 
-  let volume      = 1;
-  let loopAudio   = null;
-  let currentAudio= null;
-  let isPlaying   = false;
-
-  /* top row */
-  const top    = document.createElement("div");
+  const top = document.createElement("div");
   top.className = "card-top";
-
+  const grip = document.createElement("button");
+  grip.className = "grip"; grip.innerHTML = svg("grip", 14);
+  grip.setAttribute("aria-label", "Drag to reorder"); grip.title = "Drag to reorder";
   const name = document.createElement("input");
-  name.className   = "name-input";
-  name.value       = file.name.replace(/\.[^.]+$/, "");
-  name.addEventListener("mousedown", e => e.stopPropagation());
+  name.className = "name-input";
+  name.value = opts.name != null ? opts.name : (blob.name || "Sound").replace(/\.[^.]+$/, "");
+  name.setAttribute("aria-label", "Sound name");
+  name.addEventListener("input", save);
+  it.nameEl = name;
+
+  const keyBtn = document.createElement("button");
+  keyBtn.className = "key-btn";
+  it.keyBtn = keyBtn;
+  keyBtn.addEventListener("click", () => startKeyAssign(card));
 
   const delBtn = document.createElement("button");
-  delBtn.className = "delete-btn";
-  delBtn.innerHTML = svg("x", 15);
-  delBtn.title     = "Remove";
-  delBtn.addEventListener("click", () => {
-    stopCard();
-    const idx = stopCallbacks.indexOf(stopCard);
-    if (idx !== -1) stopCallbacks.splice(idx, 1);
-    card.remove();
-    updateEmpty();
-  });
-
-  top.appendChild(name);
-  top.appendChild(delBtn);
+  delBtn.className = "delete-btn"; delBtn.innerHTML = svg("x", 15);
+  delBtn.title = "Remove"; delBtn.setAttribute("aria-label", "Remove sound");
+  delBtn.addEventListener("click", () => removeCard(card));
+  top.append(grip, name, keyBtn, delBtn);
 
   /* volume */
-  const volRow   = document.createElement("div");
+  const volRow = document.createElement("div");
   volRow.className = "vol-row";
-
-  const volIcon  = document.createElement("span");
-  volIcon.className = "vol-icon";
-  volIcon.innerHTML = svg("volume", 16);
-
-  const slider   = document.createElement("input");
-  slider.type    = "range";
-  slider.min     = 0; slider.max = 100; slider.value = 100; slider.step = "1";
+  const volIcon = document.createElement("span");
+  volIcon.className = "vol-icon"; volIcon.innerHTML = svg("volume", 16);
+  const slider = document.createElement("input");
+  slider.type = "range"; slider.min = 0; slider.max = 100; slider.step = 1;
+  slider.value = Math.round(it.volume * 100);
   slider.setAttribute("aria-label", "Volume");
-
   const volLabel = document.createElement("span");
-  volLabel.className  = "vol-label";
-  volLabel.textContent= "100%";
-
+  volLabel.className = "vol-label"; volLabel.textContent = slider.value + "%";
   slider.addEventListener("input", () => {
-    volume = slider.value / 100;
+    it.volume = slider.value / 100;
     volLabel.textContent = slider.value + "%";
-    if (currentAudio) currentAudio.volume = volume;
-    if (loopAudio)    loopAudio.volume    = volume;
+    if (it.gain && it.playing) it.gain.gain.setTargetAtTime(it.volume, audioCtx().currentTime, 0.02);
+    save();
   });
+  volRow.append(volIcon, slider, volLabel);
 
-  volRow.appendChild(volIcon);
-  volRow.appendChild(slider);
-  volRow.appendChild(volLabel);
-
-  /* play button */
+  /* buttons */
   const playBtn = document.createElement("button");
   playBtn.className = "icon-btn";
-  playBtn.innerHTML = svg("play");
-  playBtn.setAttribute("aria-label", "Play");
-
-  function setPlayState(playing) {
-    isPlaying = playing;
-    playBtn.innerHTML = playing ? svg("pause") : svg("play");
-    playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
-    card.classList.toggle("playing", playing);
-  }
-
-  function playNew() {
-    const a  = new Audio(url);
-    a.volume = volume;
-    currentAudio = a;
-    a.onended = () => { currentAudio = null; setPlayState(false); };
-    a.play();
-  }
-
-  playBtn.onclick = () => {
-    if (currentAudio && isPlaying)  { currentAudio.pause(); setPlayState(false); return; }
-    if (currentAudio && !isPlaying) { currentAudio.play();  setPlayState(true);  return; }
-    playNew(); setPlayState(true);
-  };
-
-  /* loop button */
   const loopBtn = document.createElement("button");
-  loopBtn.className = "icon-btn";
-  loopBtn.innerHTML = svg("loop");
-  loopBtn.setAttribute("aria-label", "Loop");
-  loopBtn.title = "Loop";
-
-  loopBtn.onclick = () => {
-    if (loopAudio) {
-      loopAudio.pause(); loopAudio = null;
-      loopBtn.classList.remove("active-loop");
-      return;
-    }
-    loopAudio        = new Audio(url);
-    loopAudio.loop   = true;
-    loopAudio.volume = volume;
-    loopAudio.play();
-    loopBtn.classList.add("active-loop");
-  };
-
-  /* stop button */
+  loopBtn.className = "icon-btn"; loopBtn.innerHTML = svg("loop");
+  loopBtn.setAttribute("aria-label", "Loop"); loopBtn.title = "Loop";
+  loopBtn.setAttribute("aria-pressed", "false");
   const stopBtn = document.createElement("button");
-  stopBtn.className = "icon-btn";
-  stopBtn.innerHTML = svg("stop");
-  stopBtn.setAttribute("aria-label", "Stop");
+  stopBtn.className = "icon-btn"; stopBtn.innerHTML = svg("stop");
+  stopBtn.setAttribute("aria-label", "Stop"); stopBtn.title = "Stop";
+  it.playBtn = playBtn; it.loopBtn = loopBtn; it.card = card;
 
-  function stopCard() {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-      currentAudio = null;
-    }
-    if (loopAudio) {
-      loopAudio.pause();
-      loopAudio.currentTime = 0;
-      loopAudio = null;
-    }
-    setPlayState(false);
-    loopBtn.classList.remove("active-loop");
-  }
+  playBtn.onclick = () => togglePlay(it);
+  loopBtn.onclick = () => {
+    const on = !loopBtn.classList.contains("active-loop");
+    loopBtn.classList.toggle("active-loop", on);
+    loopBtn.setAttribute("aria-pressed", String(on));
+    ensureAudio(it).loop = on;
+    if (on && !it.playing) play(it);
+  };
+  stopBtn.onclick = () => stop(it);
 
-  stopBtn.onclick = stopCard;
-  stopCallbacks.push(stopCard);
-
-  /* assemble */
-  const row     = document.createElement("div");
+  const row = document.createElement("div");
   row.className = "icon-row";
-  row.appendChild(playBtn);
-  row.appendChild(loopBtn);
-  row.appendChild(stopBtn);
+  row.append(playBtn, loopBtn, stopBtn);
 
-  card.appendChild(top);
-  card.appendChild(volRow);
-  card.appendChild(row);
-  addDrag(card);
+  card.append(top, volRow, row);
+  addDrag(card, grip);
+  setPlayState(it, false);
+  renderKey(it);
   return card;
 }
 
-/* ── text card ─────────────────────────────────────────── */
-function addTextBlock() {
-  const card     = document.createElement("div");
-  card.className = "card text-card";
-  card.draggable = true;
+function ensureAudio(it) {
+  if (it.audio) return it.audio;
+  const a = new Audio(it.url);
+  a.preload = "auto";
+  const ctx = audioCtx();
+  const src = ctx.createMediaElementSource(a);
+  it.gain = ctx.createGain();
+  it.gain.gain.value = 0;
+  src.connect(it.gain).connect(ctx.destination);
+  a.addEventListener("ended", () => { if (!a.loop) { a.currentTime = 0; setPlayState(it, false); } });
+  it.audio = a;
+  return a;
+}
+function setPlayState(it, playing) {
+  it.playing = playing;
+  it.playBtn.innerHTML = playing ? svg("pause") : svg("play");
+  it.playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+  it.playBtn.title = playing ? "Pause" : "Play";
+  it.card.classList.toggle("playing", playing);
+}
+function ramp(it, to, secs) {
+  const g = it.gain.gain, now = audioCtx().currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(g.value, now);
+  if (secs > 0) g.linearRampToValueAtTime(to, now + secs);
+  else g.setValueAtTime(to, now);
+}
+function play(it) {
+  const a = ensureAudio(it);
+  clearTimeout(it.stopTimer);
+  ramp(it, it.volume, fadeSecs());
+  a.play().catch(() => toast("This browser couldn't play that file."));
+  setPlayState(it, true);
+}
+function fadeOutThen(it, fn) {
+  if (!it.audio) return fn();
+  clearTimeout(it.stopTimer);
+  const secs = it.playing ? fadeSecs() : 0;
+  ramp(it, 0, secs);
+  setPlayState(it, false);
+  it.stopTimer = setTimeout(fn, secs * 1000);
+}
+function pause(it) { fadeOutThen(it, () => it.audio.pause()); }
+function stop(it) {
+  fadeOutThen(it, () => { if (it.audio) { it.audio.pause(); it.audio.currentTime = 0; } });
+  it.loopBtn.classList.remove("active-loop");
+  it.loopBtn.setAttribute("aria-pressed", "false");
+  if (it.audio) it.audio.loop = false;
+}
+function togglePlay(it) { it.playing ? pause(it) : play(it); }
 
-  const top      = document.createElement("div");
-  top.className  = "card-top";
-
-  const input    = document.createElement("input");
-  input.className   = "name-input";
-  input.placeholder = "Section title / notes…";
-  input.addEventListener("mousedown", e => e.stopPropagation());
-
-  const delBtn      = document.createElement("button");
-  delBtn.className  = "delete-btn";
-  delBtn.innerHTML  = svg("x", 15);
-  delBtn.title      = "Remove";
-  delBtn.addEventListener("click", () => { card.remove(); updateEmpty(); });
-
-  top.appendChild(input);
-  top.appendChild(delBtn);
-  card.appendChild(top);
-  addDrag(card);
-  board.appendChild(card);
+function removeCard(card) {
+  const it = items.get(card);
+  if (it.type === "sound") {
+    if (it.audio) { it.audio.pause(); it.audio.src = ""; }
+    URL.revokeObjectURL(it.url);
+    delBlob(it.id).catch(() => {});
+  }
+  items.delete(card);
+  card.remove();
   updateEmpty();
-  input.focus();
+  save();
 }
 
-/* ── drag ──────────────────────────────────────────────── */
-function addDrag(el) {
-  el.addEventListener("dragstart", () => dragged = el);
-  el.addEventListener("dragover",  e => { e.preventDefault(); el.classList.add("drag-over"); });
-  el.addEventListener("dragleave", ()  => el.classList.remove("drag-over"));
-  el.addEventListener("drop", e => {
+/* ── hotkeys: click a card's key badge, then press any key ── */
+let assigning = null;
+function renderKey(it) {
+  it.keyBtn.textContent = it.key ? it.key.toUpperCase() : "+ key";
+  it.keyBtn.classList.toggle("unset", !it.key);
+  it.keyBtn.title = it.key ? `Press ${it.key.toUpperCase()} to play/pause. Click to change.` : "Assign a keyboard shortcut";
+  it.keyBtn.setAttribute("aria-label", it.keyBtn.title);
+}
+function startKeyAssign(card) {
+  if (assigning) { assigning.keyBtn.classList.remove("listening"); renderKey(assigning); }
+  assigning = items.get(card);
+  assigning.keyBtn.classList.add("listening");
+  assigning.keyBtn.textContent = "press…";
+}
+document.addEventListener("keydown", e => {
+  if (assigning) {
     e.preventDefault();
-    el.classList.remove("drag-over");
-    if (!dragged || dragged === el) return;
-    const items = [...board.children];
-    const from  = items.indexOf(dragged);
-    const to    = items.indexOf(el);
-    if (from < to) board.insertBefore(dragged, el.nextSibling);
-    else           board.insertBefore(dragged, el);
+    const it = assigning; assigning = null;
+    it.keyBtn.classList.remove("listening");
+    if (e.key === "Escape") { renderKey(it); return; }
+    if (e.key === "Backspace" || e.key === "Delete") { it.key = null; renderKey(it); save(); return; }
+    if (e.key.length !== 1 || e.key === " ") { renderKey(it); toast("Use a letter, number or symbol key."); return; }
+    const k = e.key.toLowerCase();
+    for (const other of items.values()) if (other !== it && other.key === k) { other.key = null; renderKey(other); }
+    it.key = k; renderKey(it); save();
+    return;
+  }
+  const t = e.target;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+  if (e.key === "Escape") { stopAll(); return; }
+  const k = e.key.toLowerCase();
+  for (const it of items.values()) if (it.key === k) { e.preventDefault(); togglePlay(it); return; }
+});
+
+/* ── text card ─────────────────────────────────────────── */
+function addTextBlock(opts = {}) {
+  const it = { id: opts.id || uid(), type: "note" };
+  const card = document.createElement("div");
+  card.className = "card text-card";
+  items.set(card, it);
+  const top = document.createElement("div");
+  top.className = "card-top";
+  const grip = document.createElement("button");
+  grip.className = "grip"; grip.innerHTML = svg("grip", 14);
+  grip.setAttribute("aria-label", "Drag to reorder"); grip.title = "Drag to reorder";
+  const input = document.createElement("input");
+  input.className = "name-input";
+  input.placeholder = "Section title / notes…";
+  input.setAttribute("aria-label", "Note");
+  input.value = opts.text || "";
+  input.addEventListener("input", save);
+  it.nameEl = input;
+  const delBtn = document.createElement("button");
+  delBtn.className = "delete-btn"; delBtn.innerHTML = svg("x", 15);
+  delBtn.title = "Remove"; delBtn.setAttribute("aria-label", "Remove note");
+  delBtn.addEventListener("click", () => removeCard(card));
+  top.append(grip, input, delBtn);
+  card.appendChild(top);
+  addDrag(card, grip);
+  board.appendChild(card);
+  updateEmpty();
+  if (!opts.restoring) { input.focus(); save(); }
+  return card;
+}
+
+/* ── drag to reorder: pointer events, so it works with touch, pen and mouse ── */
+function addDrag(card, handle) {
+  handle.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const startY = e.clientY, startX = e.clientX;
+    card.classList.add("dragging");
+    const move = ev => {
+      card.style.transform = `translate(${ev.clientX - startX}px, ${ev.clientY - startY}px)`;
+      card.style.pointerEvents = "none";
+      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+      card.style.pointerEvents = "";
+      const target = under && under.closest(".card");
+      board.querySelectorAll(".drag-over").forEach(c => c !== target && c.classList.remove("drag-over"));
+      if (target && target !== card) target.classList.add("drag-over");
+    };
+    const up = ev => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", up);
+      card.style.pointerEvents = "none";
+      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+      card.style.pointerEvents = "";
+      const target = under && under.closest(".card");
+      card.classList.remove("dragging");
+      card.style.transform = "";
+      board.querySelectorAll(".drag-over").forEach(c => c.classList.remove("drag-over"));
+      if (ev.type === "pointerup" && target && target !== card) {
+        const list = [...board.querySelectorAll(".card")];
+        if (list.indexOf(card) < list.indexOf(target)) target.after(card);
+        else target.before(card);
+        save();
+      }
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", up);
+  });
+  handle.addEventListener("keydown", e => {   // keyboard reordering
+    const list = [...board.querySelectorAll(".card")];
+    const i = list.indexOf(card);
+    if ((e.key === "ArrowUp" || e.key === "ArrowLeft") && i > 0) { e.preventDefault(); list[i - 1].before(card); handle.focus(); save(); }
+    if ((e.key === "ArrowDown" || e.key === "ArrowRight") && i < list.length - 1) { e.preventDefault(); list[i + 1].after(card); handle.focus(); save(); }
   });
 }
 
-/* ── file input ────────────────────────────────────────── */
-document.getElementById("fileInput").addEventListener("change", e => {
-  [...e.target.files].forEach(f => board.appendChild(createSoundBlock(f)));
+/* ── adding files ──────────────────────────────────────── */
+async function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith("audio/") && !/\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|webm)$/i.test(f.name)) continue;
+    const card = createSoundBlock(f);
+    board.appendChild(card);
+    try { await putBlob(items.get(card).id, f); }
+    catch (e) { toast(`"${f.name}" is playable now but couldn't be saved — browser storage may be full.`); }
+  }
   updateEmpty();
+  save();
+}
+document.getElementById("fileInput").addEventListener("change", e => {
+  addFiles([...e.target.files]);
   e.target.value = "";
 });
+document.addEventListener("dragover", e => { if ([...e.dataTransfer.types].includes("Files")) { e.preventDefault(); document.body.classList.add("file-over"); } });
+document.addEventListener("dragleave", e => { if (!e.relatedTarget) document.body.classList.remove("file-over"); });
+document.addEventListener("drop", e => {
+  if (!e.dataTransfer.files.length) return;
+  e.preventDefault();
+  document.body.classList.remove("file-over");
+  addFiles([...e.dataTransfer.files]);
+});
+
+/* ── fade setting ──────────────────────────────────────── */
+const fadeSel = document.getElementById("fadeSelect");
+fadeSel.addEventListener("change", () => { settings.fade = Number(fadeSel.value); save(); });
 
 /* ── stop all ──────────────────────────────────────────── */
 function stopAll() {
-  stopCallbacks.forEach(fn => fn());
+  for (const it of items.values()) if (it.type === "sound") stop(it);
+}
+
+/* ── restore the saved board ───────────────────────────── */
+(async function restore() {
+  try {
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    const saved = await idb(META, "readonly", s => s.get("board"));
+    if (saved) {
+      settings = Object.assign(settings, saved.settings || {});
+      for (const entry of saved.list || []) {
+        if (entry.type === "note") { addTextBlock({ ...entry, restoring: true }); continue; }
+        const blob = await getBlob(entry.id);
+        if (!blob) continue;
+        board.appendChild(createSoundBlock(blob, entry));
+      }
+    }
+  } catch (e) {
+    toast("Couldn't load your saved board.");
+  }
+  fadeSel.value = String(settings.fade);
+  if (![...fadeSel.options].some(o => o.value === fadeSel.value)) fadeSel.value = "1";
+  updateEmpty();
+})();
+</script>
+<script>
+/* Offline support: register the service worker that sits next to this page. */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
 }
 </script>
 </body>

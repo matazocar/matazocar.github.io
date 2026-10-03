@@ -223,6 +223,33 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 2rem;}
   .tabs{width:100%;}.tab-btn{flex:1;text-align:center;font-size:.62rem;padding:.38rem .3rem;}
   main{padding:1rem;}.form-grid{grid-template-columns:1fr 1fr;}
 }
+
+/* toast */
+.dm-toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:500;
+  max-width:min(520px,calc(100vw - 32px));background:var(--shadow);color:var(--parchment);border:1px solid var(--gold);border-radius:6px;padding:.6rem 1rem;
+  font-family:'Crimson Text',Georgia,serif;font-size:1rem;box-shadow:0 6px 24px rgba(0,0,0,.5);transition:opacity .18s,transform .18s;display:flex;gap:.8rem;align-items:center}
+.dm-toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.dm-toast button{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.06em;background:none;border:1px solid var(--gold);color:var(--gold-light);border-radius:3px;padding:3px 9px;cursor:pointer}
+/* undo / redo */
+.history-bar{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:250;display:flex;gap:6px}
+.history-bar button{width:40px;height:40px;border-radius:50%;border:1px solid var(--gold);background:var(--bg-brown);color:var(--gold-light);font-size:1.05rem;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.45)}
+.history-bar button:disabled{opacity:.35;cursor:default}
+.history-bar button:not(:disabled):hover{background:var(--bg-brown-light)}
+/* spell lookup */
+.tab-btn.spells-btn{border-style:dashed}
+.spell-search{width:100%;padding:.55rem .75rem;font-family:'Crimson Text',Georgia,serif;font-size:1.05rem;border:1px solid var(--gold);border-radius:4px;background:#fffaf0;color:var(--ink);margin-bottom:.6rem}
+.spell-filters{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
+.spell-filters select{font-family:'Crimson Text',Georgia,serif;font-size:.95rem;padding:.25rem .4rem;border:1px solid var(--border);border-radius:4px;background:#fffaf0;color:var(--ink)}
+.spell-results{display:flex;flex-direction:column;gap:.35rem}
+.spell-row{border:1px solid var(--border);border-radius:5px;background:var(--surface2)}
+.spell-row summary{cursor:pointer;padding:.45rem .65rem;display:flex;gap:.5rem;align-items:baseline;list-style:none}
+.spell-row summary::-webkit-details-marker{display:none}
+.spell-row summary b{font-family:'Cinzel',serif;font-size:.82rem;color:var(--spell-purple)}
+.spell-row summary span{font-size:.85rem;color:var(--ink-light)}
+.spell-row .spell-body{padding:.1rem .75rem .65rem;font-size:.98rem;color:var(--ink)}
+.spell-row .spell-meta{font-size:.85rem;color:var(--ink-mid);margin-bottom:.3rem}
+.spell-note{font-size:.85rem;color:var(--ink-light);margin-top:.5rem}
+@media (prefers-reduced-motion:reduce){.dm-toast{transition:none}}
 </style>
 </head>
 <body>
@@ -233,6 +260,7 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 2rem;}
     <button class="tab-btn" onclick="switchTab('enemies')">Enemies</button>
     <button class="tab-btn" onclick="switchTab('skills')">Skills</button>
     <button class="tab-btn" onclick="switchTab('combat')">Combat</button>
+    <button class="tab-btn spells-btn" onclick="openSpellLookup()" title="Look up a spell">Spells</button>
   </div>
 </header>
 <main>
@@ -332,6 +360,27 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 2rem;}
 </main>
 
 <!-- ══ EDIT MODAL ══ -->
+<div class="modal-backdrop hidden" id="spell-modal" onclick="if(event.target===this)closeSpellLookup()">
+  <div class="modal" role="dialog" aria-labelledby="spell-modal-title">
+    <h2 id="spell-modal-title">Spell Lookup</h2>
+    <input class="spell-search" id="spell-search" type="search" placeholder="Search by name, e.g. fireball" autocomplete="off" oninput="renderSpellResults()">
+    <div class="spell-filters">
+      <select id="spell-level" onchange="renderSpellResults()" aria-label="Spell level"><option value="">Any level</option></select>
+      <select id="spell-class" onchange="renderSpellResults()" aria-label="Class"><option value="">Any class</option></select>
+      <label style="display:flex;gap:.3rem;align-items:center;font-size:.95rem"><input type="checkbox" id="spell-conc" onchange="renderSpellResults()"> Concentration</label>
+    </div>
+    <div class="spell-results" id="spell-results"></div>
+    <div class="spell-note">Spell data comes from the Arcane Compendium on this site.</div>
+    <div class="modal-btns"><button class="modal-btn cancel" onclick="closeSpellLookup()">Close</button></div>
+  </div>
+</div>
+
+<div class="history-bar" aria-label="Undo and redo">
+  <button id="undo-btn" onclick="undo()" title="Undo (Ctrl/⌘+Z)" aria-label="Undo" disabled>↶</button>
+  <button id="redo-btn" onclick="redo()" title="Redo (Ctrl/⌘+Shift+Z)" aria-label="Redo" disabled>↷</button>
+</div>
+<div class="dm-toast" id="dm-toast" role="status" aria-live="polite"><span id="dm-toast-msg"></span><button id="dm-toast-action" hidden></button></div>
+
 <div class="modal-backdrop hidden" id="edit-modal">
   <div class="modal">
     <h2 id="edit-modal-title">Edit</h2>
@@ -551,7 +600,21 @@ buildClassOptions(document.getElementById('pc-class'));
 // ═══════════════════════════════════════════
 let state={characters:[],enemies:[],round:1,activeTurn:0};
 try{const s=localStorage.getItem('dnd5e_dm_v4');if(s)state=JSON.parse(s);}catch(e){}
-function save(){try{localStorage.setItem('dnd5e_dm_v4',JSON.stringify(state));}catch(e){}}
+// Every change goes through save(); it also records undo history.
+// Typing (input events) within 1.5 s merges into one step; every click is its own step.
+let undoStack=[],redoStack=[],lastSnap=null,lastPush=0,lastWasTyping=false;
+function save(){
+  const snap=JSON.stringify(state);
+  const typing=!!(window.event&&window.event.type==='input');
+  if(lastSnap!==null&&snap!==lastSnap){
+    if(!(typing&&lastWasTyping&&Date.now()-lastPush<1500)){undoStack.push(lastSnap);if(undoStack.length>80)undoStack.shift();}
+    lastWasTyping=typing;
+    redoStack=[];lastPush=Date.now();
+  }
+  lastSnap=snap;
+  try{localStorage.setItem('dnd5e_dm_v4',snap);}catch(e){toast('Could not save — browser storage may be full. Export your party to keep a copy.');}
+  updateHistoryButtons();
+}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function modNum(s){return Math.floor((s-10)/2);}
 function mod(s){const m=modNum(s);return(m>=0?'+':'')+m;}
@@ -602,7 +665,7 @@ function toggleSection(id){
 // ═══════════════════════════════════════════
 function addCharacter(){
   const name=document.getElementById('pc-name').value.trim();
-  if(!name){alert('Please enter a name.');return;}
+  if(!name){toast('Please enter a name.');return;}
   const maxhp=parseInt(document.getElementById('pc-maxhp').value)||10;
   const level=parseInt(document.getElementById('pc-level').value)||1;
   state.characters.push({
@@ -631,7 +694,7 @@ function addCharacter(){
 
 function addEnemy(){
   const name=document.getElementById('en-name').value.trim();
-  if(!name){alert('Please enter a name.');return;}
+  if(!name){toast('Please enter a name.');return;}
   const maxhp=parseInt(document.getElementById('en-maxhp').value)||10;
   const count=Math.max(1,Math.min(20,parseInt(document.getElementById('en-count').value)||1));
   for(let i=1;i<=count;i++){
@@ -924,12 +987,14 @@ function toggleEnemyNpc(id,event){
 }
 function updateNotes(id,val){const e=getEntity(id);if(e){e.notes=val;save();}}
 function removeEntity(id){
-  if(!confirm('Remove this entry?'))return;
+  const removed=getEntity(id);
+  
   state.characters=state.characters.filter(e=>e.id!==id);
   state.enemies=state.enemies.filter(e=>e.id!==id);
   save();renderCharacters();renderEnemies();
   if(document.getElementById('panel-combat').classList.contains('active'))renderCombat();
   if(document.getElementById('panel-skills').classList.contains('active'))renderSkills();
+  if(removed)toast(`Removed ${removed.name||'entry'}.`,{label:'Undo',fn:undo});
 }
 function cycleDeathSave(id,type,index){
   const e=getEntity(id);if(!e)return;
@@ -1095,20 +1160,20 @@ function exportEntities(entities,filename){
 
 function exportSelectedChars(){
   const sel=state.characters.filter(e=>document.getElementById('sel-'+e.id)?.checked);
-  if(!sel.length){alert('Check at least one character to export.');return;}
+  if(!sel.length){toast('Check at least one character to export.');return;}
   exportEntities(sel,`characters_selected_${Date.now()}.txt`);
 }
 function exportAllChars(){
-  if(!state.characters.length){alert('No characters to export.');return;}
+  if(!state.characters.length){toast('No characters to export.');return;}
   exportEntities(state.characters,`characters_all_${Date.now()}.txt`);
 }
 function exportSelectedEnemies(){
   const sel=state.enemies.filter(e=>document.getElementById('sel-'+e.id)?.checked);
-  if(!sel.length){alert('Check at least one enemy to export.');return;}
+  if(!sel.length){toast('Check at least one enemy to export.');return;}
   exportEntities(sel,`enemies_selected_${Date.now()}.txt`);
 }
 function exportAllEnemies(){
-  if(!state.enemies.length){alert('No enemies to export.');return;}
+  if(!state.enemies.length){toast('No enemies to export.');return;}
   exportEntities(state.enemies,`enemies_all_${Date.now()}.txt`);
 }
 
@@ -1139,7 +1204,7 @@ function importFiles(ev,expectedType){
       loaded++;
       if(loaded===files.length){
         save();renderCharacters();renderEnemies();
-        alert(`Imported from ${files.length} file(s).`);
+        toast(`Imported from ${files.length} file(s).`);
       }
     };
     reader.readAsText(file);
@@ -1237,9 +1302,115 @@ function renderCombat(){
   });
 }
 
+
+// ═══════════════════════════════════════════
+//  UNDO / REDO
+// ═══════════════════════════════════════════
+function renderAll(){
+  renderCharacters();renderEnemies();renderCombat();
+  if(document.getElementById('panel-skills').classList.contains('active'))renderSkills();
+}
+function applySnapshot(snap){
+  state=JSON.parse(snap);lastSnap=snap;lastPush=0;
+  try{localStorage.setItem('dnd5e_dm_v4',snap);}catch(e){}
+  renderAll();updateHistoryButtons();
+}
+function undo(){
+  if(!undoStack.length){toast('Nothing to undo.');return;}
+  redoStack.push(lastSnap);applySnapshot(undoStack.pop());toast('Undone.',{label:'Redo',fn:redo});
+}
+function redo(){
+  if(!redoStack.length){toast('Nothing to redo.');return;}
+  undoStack.push(lastSnap);applySnapshot(redoStack.pop());toast('Redone.');
+}
+function updateHistoryButtons(){
+  const u=document.getElementById('undo-btn'),r=document.getElementById('redo-btn');
+  if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length;
+}
+document.addEventListener('keydown',e=>{
+  if(!(e.ctrlKey||e.metaKey))return;
+  const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){e.preventDefault();undo();}
+  else if((k==='z'&&e.shiftKey)||k==='y'){e.preventDefault();redo();}
+});
+
+// ═══════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════
+let toastTimer=null;
+function toast(msg,action){
+  const el=document.getElementById('dm-toast'),btn=document.getElementById('dm-toast-action');
+  document.getElementById('dm-toast-msg').textContent=msg;
+  if(action){btn.hidden=false;btn.textContent=action.label;btn.onclick=()=>{el.classList.remove('show');action.fn();};}
+  else{btn.hidden=true;btn.onclick=null;}
+  el.classList.add('show');clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),action?6000:3200);
+}
+
+// ═══════════════════════════════════════════
+//  SPELL LOOKUP (data shared with the Arcane Compendium)
+// ═══════════════════════════════════════════
+const SPELL_DATA_URL='../spellbook/spells.js';
+let spellDataPromise=null;
+function loadSpellData(){
+  if(window.ARCANE_SPELLS)return Promise.resolve(window.ARCANE_SPELLS);
+  if(!spellDataPromise)spellDataPromise=new Promise((res,rej)=>{
+    const sc=document.createElement('script');sc.src=SPELL_DATA_URL;
+    sc.onload=()=>window.ARCANE_SPELLS?res(window.ARCANE_SPELLS):rej(new Error('no data'));
+    sc.onerror=()=>{spellDataPromise=null;rej(new Error('load failed'));};
+    document.head.appendChild(sc);
+  });
+  return spellDataPromise;
+}
+const LVL_NAME=l=>l===0?'Cantrip':ordinal(l)+' level';
+function escHtml(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function openSpellLookup(){
+  document.getElementById('spell-modal').classList.remove('hidden');
+  const box=document.getElementById('spell-results');
+  box.innerHTML='<div class="spell-note">Loading spells…</div>';
+  loadSpellData().then(spells=>{
+    const lv=document.getElementById('spell-level'),cl=document.getElementById('spell-class');
+    if(lv.options.length===1){
+      for(let l=0;l<=9;l++)lv.add(new Option(LVL_NAME(l),l));
+      [...new Set(spells.flatMap(s=>s.classes))].sort().forEach(c=>cl.add(new Option(c,c)));
+    }
+    renderSpellResults();
+    setTimeout(()=>document.getElementById('spell-search').focus(),30);
+  }).catch(()=>{box.innerHTML='<div class="spell-note">Couldn\'t load the spell list. It\'s read from the Arcane Compendium on this site, so open the tracker from the site (not a saved file) and check your connection.</div>';});
+}
+function closeSpellLookup(){document.getElementById('spell-modal').classList.add('hidden');}
+function renderSpellResults(){
+  const spells=window.ARCANE_SPELLS;if(!spells)return;
+  const q=document.getElementById('spell-search').value.trim().toLowerCase();
+  const lv=document.getElementById('spell-level').value,cl=document.getElementById('spell-class').value;
+  const conc=document.getElementById('spell-conc').checked;
+  let list=spells.filter(s=>(!q||s.name.toLowerCase().includes(q))&&(lv===''||s.level===+lv)&&(!cl||s.classes.includes(cl))&&(!conc||s.concentration));
+  list.sort((a,b)=>{const aq=q&&a.name.toLowerCase().startsWith(q),bq=q&&b.name.toLowerCase().startsWith(q);return(bq-aq)||a.level-b.level||a.name.localeCompare(b.name);});
+  const total=list.length;list=list.slice(0,60);
+  const box=document.getElementById('spell-results');
+  if(!total){box.innerHTML='<div class="spell-note">No spells match.</div>';return;}
+  box.innerHTML=list.map(s=>`<details class="spell-row"><summary><b>${escHtml(s.name)}</b><span>${LVL_NAME(s.level)} ${escHtml(s.school)}${s.concentration?' · Conc.':''}${s.ritual?' · Ritual':''}</span></summary>
+    <div class="spell-body"><div class="spell-meta">${escHtml(s.castTime)} · ${escHtml(s.range)} · ${escHtml(s.components)} · ${escHtml(s.duration)}</div>${s.description}
+    ${s.atHigherLevels?`<div class="spell-meta"><i>Higher levels:</i> ${escHtml(s.atHigherLevels)}</div>`:''}
+    <div class="spell-meta">${escHtml(s.classes.join(', '))} · ${escHtml(s.source)}</div></div></details>`).join('')+
+    (total>60?`<div class="spell-note">Showing 60 of ${total}. Type more of the name to narrow it down.</div>`:'');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSpellLookup();});
+
 // init
+lastSnap=JSON.stringify(state);
 renderCharacters();
 renderEnemies();
+updateHistoryButtons();
+</script>
+<script>
+/* Offline support: register the service worker that sits next to this page. */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>

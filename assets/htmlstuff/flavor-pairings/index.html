@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flavor Pairings</title>
 <link rel="manifest" href="manifest.json">
+<meta name="color-scheme" content="light dark">
+<script>
+/* Pick the theme before first paint: your saved choice, else the system setting. */
+(function () {
+  var t = null;
+  try { t = localStorage.getItem("flavorPairings.theme"); } catch (e) {}
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
 <style>
   :root {
     --ink: #2b2622;
@@ -16,6 +25,60 @@
     --border: #e4dbd0;
     --shadow: rgba(43, 38, 34, 0.08);
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #efe7dc; --paper: #1c1916; --card: #26221e; --accent: #e08a5f;
+      --accent-soft: #3a2c23; --muted: #a89c8f; --border: #3a342e; --shadow: rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #efe7dc; --paper: #1c1916; --card: #26221e; --accent: #e08a5f;
+    --accent-soft: #3a2c23; --muted: #a89c8f; --border: #3a342e; --shadow: rgba(0, 0, 0, 0.35);
+  }
+
+  header { position: relative; }
+  .theme-btn {
+    position: absolute; top: 0; right: 0;
+    width: 38px; height: 38px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .theme-btn svg { width: 18px; height: 18px; }
+
+  .mode-switch {
+    display: flex; gap: 4px; padding: 4px; margin: 0 auto 14px; width: max-content;
+    background: var(--accent-soft); border-radius: 12px;
+  }
+  .mode-switch button {
+    font: inherit; font-size: 0.9rem; border: none; background: transparent; color: var(--muted);
+    padding: 7px 14px; border-radius: 9px; cursor: pointer;
+  }
+  .mode-switch button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px var(--shadow); }
+
+  .combo-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+  .combo-row .plus { color: var(--accent); font-size: 1.4rem; font-weight: 600; }
+  .combo-row input[type="text"] { padding: 14px 16px; font-size: 1rem; }
+  @media (max-width: 520px) {
+    .combo-row { grid-template-columns: 1fr; }
+    .combo-row .plus { text-align: center; line-height: 1; }
+  }
+
+  .recent { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+  .recent-label { width: 100%; text-align: center; font-size: 0.8rem; color: var(--muted); }
+  .chip {
+    font: inherit; font-size: 0.88rem; color: var(--ink); background: var(--card);
+    border: 1px solid var(--border); border-radius: 100px; padding: 5px 12px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.clear { color: var(--muted); border-style: dashed; }
+
+  .combo-summary { color: var(--muted); font-size: 0.92rem; margin: -6px 0 14px; line-height: 1.45; }
+  .pairing-card .from { display: block; margin-top: 6px; }
+  .pairing-card .from b { color: var(--ink); font-weight: 600; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .result-panel { animation: none; } }
 
   * { box-sizing: border-box; }
 
@@ -286,14 +349,38 @@
 <div class="wrap">
   <header>
     <h1>Flavor Pairings</h1>
-    <p>Type an ingredient to see what plays well with it</p>
+    <p id="tagline">Type an ingredient to see what plays well with it</p>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch to dark mode"></button>
   </header>
 
-  <div class="search-box">
-    <input type="text" id="searchInput" placeholder="e.g. lemon, pork, dark chocolate..." autocomplete="off">
-    <div class="autocomplete-list" id="autocompleteList"></div>
+  <div class="mode-switch" role="group" aria-label="Search mode">
+    <button type="button" id="modeOne" aria-pressed="true">One ingredient</button>
+    <button type="button" id="modeTwo" aria-pressed="false">Two ingredients</button>
   </div>
-  <div class="hint" id="hint">Try: basil, salmon, mushroom, cinnamon, goat cheese...</div>
+
+  <div id="singleMode">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="e.g. lemon, pork, dark chocolate..." autocomplete="off" aria-label="Ingredient">
+      <div class="autocomplete-list" id="autocompleteList"></div>
+    </div>
+    <div class="hint" id="hint">Try: basil, salmon, mushroom, cinnamon, goat cheese...</div>
+    <div class="recent" id="recent" hidden></div>
+  </div>
+
+  <div id="comboMode" hidden>
+    <div class="combo-row">
+      <div class="search-box">
+        <input type="text" id="comboA" placeholder="First ingredient" autocomplete="off" aria-label="First ingredient">
+        <div class="autocomplete-list" id="comboAList"></div>
+      </div>
+      <span class="plus" aria-hidden="true">+</span>
+      <div class="search-box">
+        <input type="text" id="comboB" placeholder="Second ingredient" autocomplete="off" aria-label="Second ingredient">
+        <div class="autocomplete-list" id="comboBList"></div>
+      </div>
+    </div>
+    <div class="hint" id="comboHint">Find what goes with both — e.g. basil + lemon</div>
+  </div>
 
   <div id="resultsArea"></div>
 </div>
@@ -1063,6 +1150,7 @@ function showResults(key) {
     return;
   }
   startNewSearch(key);
+  rememberRecent(key);
 }
 
 searchInput.addEventListener('input', (e) => {
@@ -1071,14 +1159,18 @@ searchInput.addEventListener('input', (e) => {
     resultsArea.innerHTML = '';
     autocompleteList.classList.remove('open');
     hint.style.display = 'block';
+    renderRecent();
     return;
   }
+  recentEl.hidden = true;
   renderAutocomplete(val);
 
   // If it's an exact/alias match, show results live too
   const key = resolveKey(val);
   if (key) {
-    showResults(key);
+    startNewSearch(key);
+    clearTimeout(recentTimer);
+    recentTimer = setTimeout(() => rememberRecent(key), 1500);
   } else {
     resultsArea.innerHTML = '';
   }
@@ -1123,7 +1215,199 @@ document.addEventListener('click', (e) => {
     autocompleteList.classList.remove('open');
   }
 });
+
+
+/* ============================================================
+   RECENT SEARCHES — kept on this device only
+   ============================================================ */
+const RECENT_KEY = 'flavorPairings.recent';
+const recentEl = document.getElementById('recent');
+let recentTimer = null;
+function loadRecent() {
+  try { return (JSON.parse(localStorage.getItem(RECENT_KEY)) || []).filter(k => DB[k]); }
+  catch (e) { return []; }
+}
+function rememberRecent(key) {
+  if (!DB[key]) return;
+  const list = [key, ...loadRecent().filter(k => k !== key)].slice(0, 8);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function renderRecent() {
+  const list = loadRecent();
+  if (!list.length || searchInput.value.trim()) { recentEl.hidden = true; return; }
+  recentEl.innerHTML = '<span class="recent-label">Recent</span>' +
+    list.map(k => `<button type="button" class="chip" data-key="${k}">${k}</button>`).join('') +
+    '<button type="button" class="chip clear" id="clearRecent">Clear</button>';
+  recentEl.hidden = false;
+}
+recentEl.addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  if (chip.id === 'clearRecent') {
+    try { localStorage.removeItem(RECENT_KEY); } catch (err) {}
+    recentEl.hidden = true;
+    return;
+  }
+  searchInput.value = chip.dataset.key;
+  recentEl.hidden = true;
+  showResults(chip.dataset.key);
+});
+renderRecent();
+
+/* ============================================================
+   TWO INGREDIENTS — what pairs with both?
+   Pairings are treated as two-way: if A lists B, B also goes with A.
+   ============================================================ */
+const PARTNERS = (() => {
+  const map = {};
+  const add = (a, b, note, from) => {
+    if (a === b) return;
+    (map[a] = map[a] || new Map());
+    if (!map[a].has(b)) map[a].set(b, { note, from });
+  };
+  for (const k of allKeys) {
+    for (const p of DB[k].pairings) {
+      const t = resolveKey(p.flavor) || normalize(p.flavor);
+      add(k, t, p.note, k);
+      if (DB[t]) add(t, k, p.note, k);
+    }
+  }
+  return map;
+})();
+const titleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
+const displayName = key => DB[key] ? key.charAt(0).toUpperCase() + key.slice(1) : titleCase(key);
+
+function renderCombo(a, b) {
+  const pa = PARTNERS[a] || new Map(), pb = PARTNERS[b] || new Map();
+  const shared = [...pa.keys()].filter(k => pb.has(k) && k !== a && k !== b);
+  const direct = pa.get(b) || pb.get(a);
+  const A = displayName(a), B = displayName(b);
+
+  const cards = shared.map(k => {
+    const na = pa.get(k), nb = pb.get(k);
+    const expandable = !!DB[k];
+    return `<div class="pairing-card${expandable ? ' expandable' : ''}" ${expandable ? `data-open="${k}"` : ''}>
+      <div class="flavor-name-row"><div class="flavor-name">${displayName(k)}</div>${expandable ? chevronIconSVG() : ''}</div>
+      <div class="flavor-note"><span class="from"><b>With ${A}:</b> ${na.note}</span><span class="from"><b>With ${B}:</b> ${nb.note}</span></div>
+    </div>`;
+  }).join('');
+
+  let summary;
+  if (shared.length) summary = `${shared.length} ingredient${shared.length === 1 ? '' : 's'} pair${shared.length === 1 ? 's' : ''} well with both.`;
+  else summary = `Nothing in this collection is listed as pairing with both ${A} and ${B}.`;
+  if (direct) summary += ` ${A} and ${B} also go well together directly: ${direct.note}`;
+
+  resultsArea.innerHTML = `<div class="results"><div class="result-panel">
+    <div class="result-header"><h2>${A} + ${B}</h2></div>
+    <p class="combo-summary">${summary}</p>
+    <div class="pairing-grid">${cards}</div>
+  </div></div>`;
+
+  resultsArea.querySelectorAll('[data-open]').forEach(card => card.addEventListener('click', () => {
+    setMode('one');
+    searchInput.value = card.dataset.open;
+    showResults(card.dataset.open);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }));
+}
+
+function attachAutocomplete(input, list, onPick) {
+  let matches = [], active = -1;
+  const close = () => list.classList.remove('open');
+  function draw() {
+    const q = input.value;
+    matches = findMatches(q); active = -1;
+    if (!matches.length) { close(); list.innerHTML = ''; return; }
+    list.innerHTML = matches.map((k, i) => `<div class="ac-item" data-key="${k}"><span>${highlightMatch(k, q)}</span><span class="tag">${DB[k].category}</span></div>`).join('');
+    list.classList.add('open');
+  }
+  function pick(k) { input.value = k; close(); onPick(); }
+  input.addEventListener('input', () => { draw(); onPick(); });
+  input.addEventListener('keydown', e => {
+    const items = list.querySelectorAll('.ac-item');
+    if (e.key === 'ArrowDown' && items.length) { e.preventDefault(); active = Math.min(active + 1, items.length - 1); }
+    else if (e.key === 'ArrowUp' && items.length) { e.preventDefault(); active = Math.max(active - 1, 0); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (active >= 0 && matches[active]) pick(matches[active]); else { close(); onPick(); } return; }
+    else if (e.key === 'Escape') { close(); return; }
+    items.forEach((el, i) => el.classList.toggle('active', i === active));
+  });
+  list.addEventListener('click', e => { const it = e.target.closest('.ac-item'); if (it) pick(it.dataset.key); });
+  document.addEventListener('click', e => { if (!e.target.closest('.search-box') || !list.parentElement.contains(e.target)) close(); });
+}
+
+const comboA = document.getElementById('comboA'), comboB = document.getElementById('comboB');
+const comboHint = document.getElementById('comboHint');
+function updateCombo() {
+  const a = resolveKey(comboA.value), b = resolveKey(comboB.value);
+  if (a && b && a !== b) { comboHint.style.display = 'none'; renderCombo(a, b); }
+  else {
+    resultsArea.innerHTML = '';
+    comboHint.style.display = 'block';
+    comboHint.textContent = (a && b && a === b) ? 'Pick two different ingredients.' : 'Find what goes with both — e.g. basil + lemon';
+  }
+}
+attachAutocomplete(comboA, document.getElementById('comboAList'), updateCombo);
+attachAutocomplete(comboB, document.getElementById('comboBList'), updateCombo);
+
+const modeOne = document.getElementById('modeOne'), modeTwo = document.getElementById('modeTwo');
+const singleMode = document.getElementById('singleMode'), comboMode = document.getElementById('comboMode');
+const tagline = document.getElementById('tagline');
+function setMode(m) {
+  const two = m === 'two';
+  modeOne.setAttribute('aria-pressed', String(!two));
+  modeTwo.setAttribute('aria-pressed', String(two));
+  singleMode.hidden = two; comboMode.hidden = !two;
+  tagline.textContent = two ? 'Pick two ingredients to see what goes with both' : 'Type an ingredient to see what plays well with it';
+  resultsArea.innerHTML = '';
+  if (two) {
+    if (!comboA.value && panelStack[0] && searchInput.value.trim()) comboA.value = panelStack[0].key;
+    updateCombo();
+    (comboA.value ? comboB : comboA).focus();
+  } else {
+    const key = resolveKey(searchInput.value);
+    if (key) startNewSearch(key); else { hint.style.display = 'block'; renderRecent(); }
+  }
+}
+modeOne.addEventListener('click', () => setMode('one'));
+modeTwo.addEventListener('click', () => setMode('two'));
 </script>
 
+<script>
+/* Offline support: register the service worker that sits next to this page. */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
+
+<script>
+/* ============================================================
+   THEME — follows the system until you choose, then remembers.
+   ============================================================ */
+(function () {
+  const KEY = 'flavorPairings.theme';
+  const btn = document.getElementById('themeBtn');
+  const root = document.documentElement;
+  const sun = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
+  const moon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>';
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const current = () => root.getAttribute('data-theme') || (mq.matches ? 'dark' : 'light');
+  function paint() {
+    const dark = current() === 'dark';
+    btn.innerHTML = dark ? sun : moon;
+    const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    btn.setAttribute('aria-label', label); btn.title = label;
+  }
+  btn.addEventListener('click', () => {
+    const next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    paint();
+  });
+  mq.addEventListener('change', paint);
+  paint();
+})();
+</script>
 </body>
 </html>

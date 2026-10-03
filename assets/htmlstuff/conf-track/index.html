@@ -775,9 +775,25 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
   }
+
+  .ledger-toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, 16px); opacity: 0; pointer-events: none; z-index: 1000;
+    max-width: min(560px, calc(100vw - 32px));
+    background: var(--ink); color: var(--paper);
+    border-left: 4px solid var(--stamp);
+    padding: 10px 14px; border-radius: var(--radius);
+    font-size: 13px; line-height: 1.45;
+    box-shadow: 0 6px 20px rgba(0,0,0,.2);
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .ledger-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .ledger-toast.error { border-left-color: var(--danger); }
+  @media (prefers-reduced-motion: reduce) { .ledger-toast { transition: none; } }
 </style>
 </head>
 <body>
+<div class="ledger-toast" id="ledger-toast" role="status" aria-live="polite"></div>
 
 <div class="wrap">
   <header class="top">
@@ -902,16 +918,132 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function saveState() {
+    var filesPromise;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      filesPromise = persistAttachments();
+    } catch (e) {
+      filesPromise = Promise.reject(e);
+    }
+    filesPromise.catch(function (e) {
+      console.error("Could not save attachments:", e);
+      notify("An attached file couldn't be saved — browser storage may be full. Download a ZIP backup to be safe.", true);
+    });
+    try {
+      localStorage.setItem(STORAGE_KEY, serializeWithoutFiles());
     } catch (e) {
       console.error("Could not save ledger state:", e);
-      alert("Your changes could not be saved (storage may be full). Recent edits might be lost on refresh.");
+      notify("Your changes couldn't be saved — browser storage may be full. Recent edits might be lost on refresh.", true);
     }
   }
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  // Small in-page message instead of a blocking alert().
+  var toastTimer = null;
+  function notify(msg, isError) {
+    var el = document.getElementById("ledger-toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.toggle("error", !!isError);
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, isError ? 6000 : 3500);
+  }
+
+  /* ---------- Attachments live in IndexedDB ----------
+     localStorage holds ~5 MB in total, which a few receipt scans fill up.
+     The ledger itself stays in localStorage; each attached file is stored
+     in IndexedDB under its own id (fileRef) and loaded back on start. */
+  var MAX_FILE_BYTES = 25 * 1024 * 1024;
+  var FILES_DB = "conf_ledger_files", FILES_STORE = "files";
+  var filesDbPromise = null;
+  var storedRefs = {};          // refs known to be in IndexedDB
+  var hydrated = false;         // true once saved files have been loaded back
+  function filesDb() {
+    if (!filesDbPromise) {
+      filesDbPromise = new Promise(function (resolve, reject) {
+        if (!window.indexedDB) { reject(new Error("IndexedDB unavailable")); return; }
+        var req = indexedDB.open(FILES_DB, 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore(FILES_STORE); };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    }
+    return filesDbPromise;
+  }
+  function filesTx(mode, fn) {
+    return filesDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(FILES_STORE, mode);
+        var out = fn(tx.objectStore(FILES_STORE));
+        tx.oncomplete = function () { resolve(out && out.result); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error); };
+      });
+    });
+  }
+  function eachAttachment(fn) {
+    state.events.forEach(function (ev) {
+      if (ev.bankStatement) fn(ev.bankStatement);
+      (ev.expenses || []).forEach(function (exp) { if (exp.fileRef || exp.fileDataUrl) fn(exp); });
+    });
+  }
+  function persistAttachments() {
+    var live = {};
+    var toWrite = [];
+    eachAttachment(function (att) {
+      if (att.fileDataUrl && !att.fileRef) att.fileRef = "f_" + uid();
+      if (!att.fileRef) return;
+      live[att.fileRef] = true;
+      if (att.fileDataUrl && !storedRefs[att.fileRef]) toWrite.push(att);
+    });
+    var toDelete = hydrated ? Object.keys(storedRefs).filter(function (r) { return !live[r]; }) : [];
+    if (!toWrite.length && !toDelete.length) return Promise.resolve();
+    return filesTx("readwrite", function (store) {
+      toWrite.forEach(function (att) { store.put(att.fileDataUrl, att.fileRef); });
+      toDelete.forEach(function (r) { store.delete(r); });
+    }).then(function () {
+      toWrite.forEach(function (att) { storedRefs[att.fileRef] = true; });
+      toDelete.forEach(function (r) { delete storedRefs[r]; });
+    });
+  }
+  function serializeWithoutFiles() {
+    return JSON.stringify(state, function (key, value) {
+      return key === "fileDataUrl" ? undefined : value;
+    });
+  }
+  function hydrateAttachments() {
+    return filesTx("readonly", function (store) { return store.getAllKeys(); })
+      .then(function (keys) {
+        (keys || []).forEach(function (k) { storedRefs[k] = true; });
+        var needed = [];
+        eachAttachment(function (att) { if (att.fileRef && !att.fileDataUrl && storedRefs[att.fileRef]) needed.push(att); });
+        if (!needed.length) return;
+        return filesTx("readonly", function (store) {
+          needed.forEach(function (att) {
+            var r = store.get(att.fileRef);
+            r.onsuccess = function () { if (typeof r.result === "string") att.fileDataUrl = r.result; };
+          });
+        });
+      })
+      .then(function () {
+        hydrated = true;
+        // Older versions kept files inside localStorage; move them out now.
+        var legacy = false;
+        eachAttachment(function (att) { if (att.fileDataUrl && !att.fileRef) legacy = true; });
+        saveState();
+        if (legacy) notify("Moved your attached files to roomier browser storage.");
+        render();
+      })
+      .catch(function (e) {
+        console.error("Could not load attachments:", e);
+        notify("Couldn't load attached files from browser storage.", true);
+      });
+  }
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(function () {});
   }
 
   function escapeHtml(str) {
@@ -1199,8 +1331,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       bankFileInput.addEventListener("change", function () {
         var file = bankFileInput.files && bankFileInput.files[0];
         if (!file) return;
-        if (file.size > 4 * 1024 * 1024) {
-          alert("That file is a bit large to store in-browser (over 4MB). Try a smaller scan or a compressed image.");
+        if (file.size > MAX_FILE_BYTES) {
+          notify("That file is over 25 MB. Try a smaller scan or a compressed image.", true);
           bankFileInput.value = "";
           return;
         }
@@ -1211,7 +1343,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           renderSheet();
         };
         reader.onerror = function () {
-          alert("Couldn't read that file. Please try another one.");
+          notify("Couldn't read that file. Please try another one.", true);
         };
         reader.readAsDataURL(file);
       });
@@ -1264,8 +1396,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           chip.textContent = "";
           return;
         }
-        if (file.size > 4 * 1024 * 1024) {
-          alert("That file is a bit large to store in-browser (over 4MB). Try a smaller scan or a compressed image.");
+        if (file.size > MAX_FILE_BYTES) {
+          notify("That file is over 25 MB. Try a smaller scan or a compressed image.", true);
           fileInput.value = "";
           return;
         }
@@ -1277,7 +1409,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           chip.textContent = file.name;
         };
         reader.onerror = function () {
-          alert("Couldn't read that file. Please try another one.");
+          notify("Couldn't read that file. Please try another one.", true);
         };
         reader.readAsDataURL(file);
       });
@@ -1541,7 +1673,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var hasStatement = !!(ev.bankStatement && ev.bankStatement.fileDataUrl);
     if (!ev.expenses.length && !hasStatement) return;
     if (typeof window.JSZip !== "function") {
-      alert("The ZIP export library didn't load correctly, so this can't be downloaded right now. Reloading the page may help.");
+      notify("The ZIP export library didn't load correctly, so this can't be downloaded right now. Reloading the page may help.");
       return;
     }
 
@@ -1612,12 +1744,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             zipBtn.textContent = originalLabel;
           }
           if (skippedCount > 0) {
-            alert("Heads up: " + skippedCount + " attached file(s) couldn't be included in the ZIP due to a read error. The rest of the export completed normally.");
+            notify("Heads up: " + skippedCount + " attached file(s) couldn't be included in the ZIP due to a read error. The rest of the export completed normally.");
           }
         },
         function (err) {
           console.error("ZIP generation failed:", err);
-          alert("Something went wrong building the ZIP file. Please try again.");
+          notify("Something went wrong building the ZIP file. Please try again.", true);
           if (zipBtn) {
             zipBtn.disabled = false;
             zipBtn.textContent = originalLabel;
@@ -1626,7 +1758,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       );
     } catch (e) {
       console.error("Unexpected error preparing ZIP:", e);
-      alert("Something went wrong preparing the ZIP file. Please try again.");
+      notify("Something went wrong preparing the ZIP file. Please try again.", true);
       if (zipBtn) {
         zipBtn.disabled = false;
         zipBtn.textContent = originalLabel;
@@ -1645,7 +1777,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   render();
+  hydrateAttachments();
 })();
+</script>
+<script>
+/* Offline support: register the service worker that sits next to this page. */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>

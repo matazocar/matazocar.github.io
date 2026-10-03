@@ -257,6 +257,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .lib-list::-webkit-scrollbar{width:3px}
 .lib-list::-webkit-scrollbar-track{background:transparent}
 .lib-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px}
+.sync-btn{margin-top:14px;padding:7px 16px;border:none;border-radius:50px;background:transparent;color:var(--muted);font-size:12px;letter-spacing:1px;cursor:pointer}
+.sync-btn span{color:var(--l2);margin-left:4px}
+.cal-title{font-size:30px;font-weight:900;letter-spacing:-1px;margin-bottom:8px}
+.cal-sub{max-width:320px;text-align:center;color:var(--text);opacity:.7;font-size:14px;line-height:1.5;margin:0 20px 26px}
+.cal-pad{width:180px;height:180px;border-radius:50%;border:3px solid var(--l2);background:var(--l2d);color:var(--text);font-size:30px;font-weight:800;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .06s}
+.cal-pad.hit{transform:scale(.94)}
+.cal-pad.running{border-color:var(--l1);background:var(--l1d)}
+.cal-readout{display:flex;align-items:baseline;gap:10px;margin-top:24px}
+.cal-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.cal-val{font-size:26px;font-weight:800;color:var(--perfect);font-variant-numeric:tabular-nums}
+.cal-adjust{display:flex;gap:8px;margin-top:12px}
+.cal-step{min-width:56px;padding:9px 14px;border-radius:50px;border:1.5px solid var(--muted);background:transparent;color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+.cal-hint{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;padding:0 24px}
+.cal-done{margin-top:22px;min-width:140px}
 </style>
 </head>
 <body>
@@ -282,12 +296,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
       Library
     </button>
   </div>
+  <button class="sync-btn" id="syncBtn">Audio sync <span id="syncBtnVal"></span></button>
   <!-- BGM mute button -->
   <button class="bgm-btn" id="bgmBtn" aria-label="Toggle music">
     <svg id="bgmIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
     </svg>
   </button>
+</div>
+
+<!-- AUDIO SYNC -->
+<div class="screen hidden" id="calibrate">
+  <div class="cal-title">Audio sync</div>
+  <div class="cal-sub" id="calSub">Put on the headphones or speakers you play with. Press Start, then tap the circle on every click. Listen rather than watch.</div>
+  <button class="cal-pad" id="calPad" aria-label="Tap here on each click"><span id="calCount">Start</span></button>
+  <div class="cal-readout"><span class="cal-label">Offset</span><span class="cal-val" id="calVal">0 ms</span></div>
+  <div class="cal-adjust">
+    <button class="cal-step" id="calMinus" aria-label="Decrease offset by 5 milliseconds">−5</button>
+    <button class="cal-step" id="calReset">Reset</button>
+    <button class="cal-step" id="calPlus" aria-label="Increase offset by 5 milliseconds">+5</button>
+  </div>
+  <div class="cal-hint">If notes reach the line before you hear the beat, raise the offset. If they arrive after it, lower it.</div>
+  <button class="setup-back cal-done" id="calDone">Done</button>
 </div>
 
 <!-- SONG SETUP -->
@@ -1422,7 +1452,7 @@ function beginPlayback(chart){
   src.buffer=state.audioBuffer;src.connect(ctx.destination);src.start(0);
   src.onended=()=>{if(state.gameRunning&&!state.paused)scheduleEnd(0);};
   state.sourceNode=src;state.startTime=ctx.currentTime;state.pauseTime=0;state.gameRunning=true;
-  state.latency=Math.min(0.25,Math.max(0,(ctx.outputLatency||0)+(ctx.baseLatency||0)));
+  state.latency=Math.min(0.25,Math.max(0,(ctx.outputLatency||0)+(ctx.baseLatency||0)))+userOffsetSec();
   if(state.isDemo) HINTS.forEach(h=>setTimeout(()=>{if(state.gameRunning&&!state.paused)showHint(h.msg);},h.at*1000));
   gameLoop();
 }
@@ -1434,6 +1464,10 @@ function getCurrentTime(){
   const lat=state.latency||0;
   if(state.paused) return state.pauseTime-state.startTime-lat;
   return state.audioCtx.currentTime-state.startTime-lat;
+}
+// User-calibrated offset (ms) from the Sync screen; positive = you hear/tap later.
+function userOffsetSec(){
+  try{const v=parseFloat(localStorage.getItem('tapwave_offset_ms'));return isFinite(v)?v/1000:0;}catch(e){return 0;}
 }
 
 function gameLoop(){
@@ -2043,6 +2077,73 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('touchstart',startBGM,{once:true});
   document.addEventListener('click',startBGM,{once:true});
 });
+
+// ═══════════════════════════════════════════
+// AUDIO SYNC (calibration)
+// Plays clicks at 100 BPM; you tap along. The median gap between your taps and
+// the clicks becomes an offset applied to every song, covering Bluetooth delay
+// and touchscreen lag that the browser can't report.
+(function(){
+  const KEY='tapwave_offset_ms',BEAT=0.6,LEAD=1.2,CLICKS=16,USE=10;
+  const pad=document.getElementById('calPad'),count=document.getElementById('calCount');
+  const valEl=document.getElementById('calVal'),sub=document.getElementById('calSub');
+  const btnVal=document.getElementById('syncBtnVal');
+  let run=null;
+  const get=()=>{try{const v=parseFloat(localStorage.getItem(KEY));return isFinite(v)?v:0;}catch(e){return 0;}};
+  const set=v=>{v=Math.max(-300,Math.min(300,Math.round(v)));try{localStorage.setItem(KEY,String(v));}catch(e){}show();};
+  function show(){const v=get();const t=(v>0?'+':'')+v+' ms';valEl.textContent=t;btnVal.textContent=v?t:'';}
+  function click(ctx,t,accent){
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.frequency.value=accent?1500:1000;o.type='square';
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.002);g.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+0.06);
+  }
+  function start(){
+    const ctx=getCtx();
+    const lat=Math.min(0.25,Math.max(0,(ctx.outputLatency||0)+(ctx.baseLatency||0)));
+    const t0=ctx.currentTime+LEAD;
+    for(let i=0;i<CLICKS;i++) click(ctx,t0+i*BEAT,i%4===0);
+    run={ctx,lat,t0,diffs:[]};
+    pad.classList.add('running');count.textContent='Tap';
+    sub.textContent='Tap on every click…';
+    run.timer=setTimeout(finish,(LEAD+CLICKS*BEAT+0.4)*1000);
+  }
+  function finish(){
+    if(!run)return;
+    clearTimeout(run.timer);
+    const d=run.diffs.slice(-USE).sort((a,b)=>a-b);
+    pad.classList.remove('running');count.textContent='Again';
+    if(d.length<6){sub.textContent='Not enough taps were caught. Press Again and tap on each click.';run=null;return;}
+    const med=d[Math.floor(d.length/2)];
+    const spread=d[Math.floor(d.length*0.8)]-d[Math.floor(d.length*0.2)];
+    // the browser-reported latency is already applied in game, so store only the remainder
+    set(med*1000);
+    sub.textContent=spread>0.08?'Saved, but your taps were spread out. Try again for a steadier reading.':'Saved. This offset is applied to every song.';
+    run=null;
+  }
+  function tap(e){
+    e.preventDefault();
+    pad.classList.add('hit');setTimeout(()=>pad.classList.remove('hit'),70);
+    if(!run){start();return;}
+    const pos=run.ctx.currentTime-run.lat-run.t0;   // same clock the game uses
+    const i=Math.round(pos/BEAT);
+    if(i<0||i>=CLICKS)return;
+    const diff=pos-i*BEAT;
+    if(Math.abs(diff)<BEAT*0.45) run.diffs.push(diff);
+    count.textContent=String(run.diffs.length);
+  }
+  pad.addEventListener('pointerdown',tap);
+  document.getElementById('calMinus').addEventListener('click',()=>set(get()-5));
+  document.getElementById('calPlus').addEventListener('click',()=>set(get()+5));
+  document.getElementById('calReset').addEventListener('click',()=>set(0));
+  document.getElementById('calDone').addEventListener('click',()=>{if(run){clearTimeout(run.timer);run=null;}pad.classList.remove('running');count.textContent='Start';showScreen('home');});
+  document.getElementById('syncBtn').addEventListener('click',()=>{
+    showScreen('calibrate');bgmStop();
+    sub.textContent='Put on the headphones or speakers you play with. Press Start, then tap the circle on every click. Listen rather than watch.';
+    count.textContent='Start';
+  });
+  show();
+})();
 </script>
 </body>
 </html>

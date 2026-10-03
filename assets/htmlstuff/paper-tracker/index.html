@@ -838,6 +838,25 @@
   }
 
   input[type="file"] { display: none; }
+
+  /* ---- filters ---- */
+  .filter-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .filter-select {
+    flex: 1 1 140px; min-width: 0; padding: 8px 10px;
+    font-family: var(--font-body); font-size: 13px; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  }
+  .filter-select.active { border-color: var(--brass); color: var(--brass); }
+  .filter-reset {
+    font-family: var(--font-body); font-size: 12.5px; color: var(--ink-soft);
+    background: none; border: none; padding: 6px 4px; cursor: pointer; text-decoration: underline;
+  }
+  .filter-reset[hidden] { display: none; }
+  .topic-tag.clickable { cursor: pointer; }
+  .topic-tag.clickable:hover { border-color: var(--brass); }
+  .detail-authors .author-link { cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .detail-authors .author-link:hover { text-decoration-color: var(--brass); }
+  .detail-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -865,6 +884,11 @@
     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input type="text" class="search-input" id="searchInput" placeholder="Search title, authors, summary, topics…" autocomplete="off">
     <button class="search-clear" id="searchClear" aria-label="Clear search">×</button>
+  </div>
+  <div class="filter-row" id="filterRow">
+    <select class="filter-select" id="topicFilter" aria-label="Filter by topic"></select>
+    <select class="filter-select" id="authorFilter" aria-label="Filter by author"></select>
+    <button class="filter-reset" id="filterReset" hidden>Clear filters</button>
   </div>
 </header>
 
@@ -944,7 +968,16 @@
       </span>
       <span class="menu-action-text">
         <span class="menu-action-title">Import backup</span>
-        <span class="menu-action-desc">Load entries from a JSON file</span>
+        <span class="menu-action-desc">Load entries from a JSON or BibTeX (.bib) file</span>
+      </span>
+    </button>
+    <button class="menu-action" id="menuBibBtn">
+      <span class="menu-action-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+      </span>
+      <span class="menu-action-text">
+        <span class="menu-action-title">Export BibTeX</span>
+        <span class="menu-action-desc">Download the papers currently shown as a .bib file</span>
       </span>
     </button>
   </div>
@@ -975,7 +1008,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<input type="file" id="importFile" accept="application/json">
+<input type="file" id="importFile" accept="application/json,.json,.bib,application/x-bibtex,text/x-bibtex">
 
 <script>
 (function() {
@@ -1075,29 +1108,10 @@
   document.getElementById('apple-icon-link').setAttribute('href', iconDataUri);
 
   /* ===================== Service Worker (offline support) ===================== */
-  if ('serviceWorker' in navigator) {
-    const swCode = `
-      const CACHE = 'paper-tracker-v1';
-      self.addEventListener('install', e => { self.skipWaiting(); });
-      self.addEventListener('activate', e => { self.clients.claim(); });
-      self.addEventListener('fetch', e => {
-        e.respondWith(
-          caches.match(e.request).then(cached => {
-            const fetchPromise = fetch(e.request).then(networkResponse => {
-              if (e.request.method === 'GET' && networkResponse && networkResponse.status === 200) {
-                caches.open(CACHE).then(cache => cache.put(e.request, networkResponse.clone()));
-              }
-              return networkResponse;
-            }).catch(() => cached);
-            return cached || fetchPromise;
-          })
-        );
-      });
-    `;
-    const swBlob = new Blob([swCode], { type: 'application/javascript' });
-    const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).catch(() => {
-      /* Service worker registration can fail silently (e.g. file:// origin); app still works via localStorage */
+  // Blob-URL service workers are rejected by browsers, so the worker lives in sw.js next to this page.
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      /* Registration can fail (e.g. private mode); the app still works via localStorage */
     });
   }
 
@@ -1265,8 +1279,56 @@
     return hay.includes(stripDiacritics(q.toLowerCase()));
   }
 
+  /* ---- topic / author filters ---- */
+  let filterTopic = '';
+  let filterAuthor = '';
+  const topicFilter = document.getElementById('topicFilter');
+  const authorFilter = document.getElementById('authorFilter');
+  const filterReset = document.getElementById('filterReset');
+
+  function splitAuthors(str) {
+    return String(str || '').split(/,|;|\band\b/).map(a => a.trim()).filter(Boolean);
+  }
+  function fillFilterOptions() {
+    const topics = new Map(), authors = new Map();
+    entries.forEach(e => {
+      (e.topics || []).forEach(t => topics.set(t, (topics.get(t) || 0) + 1));
+      splitAuthors(e.authors).forEach(a => authors.set(a, (authors.get(a) || 0) + 1));
+    });
+    const opts = (map, label, cur) => {
+      const keys = [...map.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      if (cur && !map.has(cur)) keys.unshift(cur);
+      return `<option value="">${label}</option>` + keys.map(k =>
+        `<option value="${escapeHtml(k)}"${k === cur ? ' selected' : ''}>${escapeHtml(k)} (${map.get(k) || 0})</option>`).join('');
+    };
+    topicFilter.innerHTML = opts(topics, 'All topics', filterTopic);
+    authorFilter.innerHTML = opts(authors, 'All authors', filterAuthor);
+    topicFilter.classList.toggle('active', !!filterTopic);
+    authorFilter.classList.toggle('active', !!filterAuthor);
+    filterReset.hidden = !(filterTopic || filterAuthor);
+    document.getElementById('filterRow').style.display = entries.length ? '' : 'none';
+  }
+  function matchesFilters(e) {
+    if (filterTopic && !(e.topics || []).includes(filterTopic)) return false;
+    if (filterAuthor && !splitAuthors(e.authors).includes(filterAuthor)) return false;
+    return true;
+  }
+  function setFilters(topic, author) {
+    if (topic !== undefined) filterTopic = topic;
+    if (author !== undefined) filterAuthor = author;
+    render();
+  }
+  topicFilter.addEventListener('change', () => setFilters(topicFilter.value, undefined));
+  authorFilter.addEventListener('change', () => setFilters(undefined, authorFilter.value));
+  filterReset.addEventListener('click', () => setFilters('', ''));
+
+  function visibleEntries() {
+    return entries.filter(e => matchesQuery(e, currentQuery) && matchesFilters(e));
+  }
+
   function render() {
-    const filtered = entries.filter(e => matchesQuery(e, currentQuery));
+    fillFilterOptions();
+    const filtered = visibleEntries();
     const sorted = sortedEntries(filtered);
 
     countBadge.textContent = entries.length === 1 ? '1 paper' : entries.length + ' papers';
@@ -1294,7 +1356,7 @@
             <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <h2>No matches</h2>
-          <p>Nothing in the index matches "${escapeHtml(currentQuery)}".</p>
+          <p>${currentQuery ? `Nothing in the index matches "${escapeHtml(currentQuery)}"` : 'Nothing in the index matches'}${filterTopic || filterAuthor ? ' with the current filters' : ''}.</p>
         </div>`;
       azRail.innerHTML = '';
       return;
@@ -1322,7 +1384,7 @@
       card.dataset.id = entry.id;
 
       const topicsHtml = (entry.topics || []).length
-        ? `<div class="topic-tags">${entry.topics.map(t => `<span class="topic-tag">${escapeHtml(t)}</span>`).join('')}</div>`
+        ? `<div class="topic-tags">${entry.topics.map(t => `<span class="topic-tag clickable" data-topic="${escapeHtml(t)}" title="Show papers on ${escapeHtml(t)}">${escapeHtml(t)}</span>`).join('')}</div>`
         : '';
 
       const authorsHtml = entry.authors
@@ -1335,7 +1397,11 @@
         <div class="paper-summary">${escapeHtml(entry.summary)}</div>
         ${topicsHtml}
       `;
-      card.addEventListener('click', () => openDetail(entry.id));
+      card.addEventListener('click', (ev) => {
+        const tag = ev.target.closest('[data-topic]');
+        if (tag) { ev.stopPropagation(); setFilters(tag.dataset.topic, undefined); return; }
+        openDetail(entry.id);
+      });
       cardList.appendChild(card);
     });
 
@@ -1616,26 +1682,36 @@
     if (!entry) return;
 
     const authorsHtml = entry.authors
-      ? `<div class="detail-authors">${escapeHtml(entry.authors)}</div>`
+      ? `<div class="detail-authors">${splitAuthors(entry.authors).map(a => `<span class="author-link" data-author="${escapeHtml(a)}" title="Show papers by ${escapeHtml(a)}">${escapeHtml(a)}</span>`).join(', ')}</div>`
       : '';
+    const bf = (entry.bib && entry.bib.fields) || {};
+    const metaBits = [bf.journal || bf.booktitle, bf.year].filter(Boolean);
+    const metaHtml = metaBits.length ? `<div class="detail-meta">${escapeHtml(metaBits.join(' · '))}</div>` : '';
 
     const topicsHtml = (entry.topics || []).length
       ? `<div class="detail-rule"></div>
          <div class="detail-label">Topics &amp; Techniques</div>
-         <div class="detail-topics">${entry.topics.map(t => `<span class="topic-tag">${escapeHtml(t)}</span>`).join('')}</div>`
+         <div class="detail-topics">${entry.topics.map(t => `<span class="topic-tag clickable" data-topic="${escapeHtml(t)}" title="Show papers on ${escapeHtml(t)}">${escapeHtml(t)}</span>`).join('')}</div>`
       : '';
 
     detailBody.innerHTML = `
       <div class="detail-title">${escapeHtml(entry.title)}</div>
       ${authorsHtml}
+      ${metaHtml}
       <div class="detail-rule"></div>
       <div class="detail-label">Summary</div>
-      <div class="detail-summary">${escapeHtml(entry.summary)}</div>
+      <div class="detail-summary">${escapeHtml(entry.summary) || '<span style="color:var(--muted)">No summary yet — tap Edit to add one.</span>'}</div>
       ${topicsHtml}
       <div class="sheet-actions" style="margin-top:22px;">
         <button class="btn btn-secondary" id="detailEditBtn">Edit</button>
       </div>
     `;
+
+    detailBody.querySelectorAll('[data-topic],[data-author]').forEach(el => el.addEventListener('click', () => {
+      closeDetail();
+      if (el.dataset.topic) setFilters(el.dataset.topic, undefined);
+      else setFilters(undefined, el.dataset.author);
+    }));
 
     document.getElementById('detailEditBtn').addEventListener('click', () => {
       closeDetail();
@@ -1711,7 +1787,9 @@
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const imported = JSON.parse(reader.result);
+        const text = String(reader.result);
+        const isBib = /\.bib$/i.test(file.name) || /^\s*(%.*\n\s*)*@/.test(text);
+        const imported = isBib ? parseBibtex(text) : JSON.parse(text);
         if (!Array.isArray(imported)) throw new Error('Not an array');
         const validEntries = imported.filter(item =>
           item && typeof item.title === 'string' && typeof item.summary === 'string'
@@ -1721,7 +1799,8 @@
           summary: item.summary,
           authors: typeof item.authors === 'string' ? item.authors : '',
           topics: Array.isArray(item.topics) ? item.topics.filter(t => typeof t === 'string') : [],
-          createdAt: item.createdAt || Date.now()
+          createdAt: item.createdAt || Date.now(),
+          ...(item.bib && typeof item.bib === 'object' ? { bib: item.bib } : {})
         }));
 
         if (validEntries.length === 0) {
@@ -1740,9 +1819,12 @@
         });
         if (choice === 'merge') {
           const existingIds = new Set(entries.map(e => e.id));
+          const titleKey = t => stripDiacritics(String(t).toLowerCase()).replace(/[^a-z0-9]/g, '');
+          const existingTitles = new Set(entries.map(e => titleKey(e.title)));
           const merged = [...entries];
           validEntries.forEach(ve => {
-            if (!existingIds.has(ve.id)) merged.push(ve);
+            // BibTeX entries get fresh ids, so also skip papers whose title is already in the index
+            if (!existingIds.has(ve.id) && !existingTitles.has(titleKey(ve.title))) merged.push(ve);
           });
           entries = merged;
         } else if (choice === 'replace') {
@@ -1760,6 +1842,150 @@
       importFile.value = '';
     };
     reader.readAsText(file);
+  });
+
+
+  /* ===================== BibTeX ===================== */
+  const TEX_ACCENTS = { "'": '\u0301', '`': '\u0300', '^': '\u0302', '"': '\u0308', '~': '\u0303', '=': '\u0304', '.': '\u0307', 'u': '\u0306', 'v': '\u030C', 'H': '\u030B', 'c': '\u0327', 'k': '\u0328' };
+  const TEX_SYMBOLS = { ss: 'ß', o: 'ø', O: 'Ø', ae: 'æ', AE: 'Æ', oe: 'œ', OE: 'Œ', aa: 'å', AA: 'Å', l: 'ł', L: 'Ł', i: 'ı', '&': '&', '%': '%', '_': '_', '#': '#', '$': '$' };
+  function texToUnicode(str) {
+    let s = String(str);
+    s = s.replace(/\\([`'^"~=.uvHck])\s*\{?\s*(\\?[A-Za-z])\s*\}?/g, (m, acc, ch) => {
+      const base = ch === '\\i' ? 'i' : ch === '\\j' ? 'j' : ch.replace('\\', '');
+      return (base + TEX_ACCENTS[acc]).normalize('NFC');
+    });
+    s = s.replace(/\\(ss|o|O|ae|AE|oe|OE|aa|AA|l|L|i)\b\s?/g, (m, k) => TEX_SYMBOLS[k]);
+    s = s.replace(/\\([&%_#$])/g, '$1');
+    s = s.replace(/--/g, '–').replace(/~/g, ' ');
+    s = s.replace(/\\(?:emph|textit|textbf|textsc|mathrm|text)\s*/g, '');
+    s = s.replace(/[{}]/g, '');
+    return s.replace(/\s+/g, ' ').trim();
+  }
+  function parseBibtex(text) {
+    const out = [];
+    let i = 0;
+    const n = text.length;
+    while (i < n) {
+      const at = text.indexOf('@', i);
+      if (at < 0) break;
+      const m = /^@\s*([A-Za-z]+)\s*([{(])/.exec(text.slice(at, at + 60));
+      if (!m) { i = at + 1; continue; }
+      const type = m[1].toLowerCase();
+      const close = m[2] === '{' ? '}' : ')';
+      let j = at + m[0].length;
+      // find the matching close, respecting nested braces
+      let depth = 1, k = j, inQuote = false;
+      for (; k < n && depth > 0; k++) {
+        const c = text[k];
+        if (c === '\\') { k++; continue; }
+        if (c === '"' && depth === 1) inQuote = !inQuote;
+        else if (!inQuote && (c === '{' || c === '(')) depth++;
+        else if (!inQuote && (c === '}' || c === ')')) depth--;
+      }
+      const body = text.slice(j, k - 1);
+      i = k;
+      if (type === 'comment' || type === 'string' || type === 'preamble') continue;
+      const comma = body.indexOf(',');
+      if (comma < 0) continue;
+      const key = body.slice(0, comma).trim();
+      const fields = {};
+      let p = comma + 1;
+      while (p < body.length) {
+        const fm = /^\s*([A-Za-z][\w:-]*)\s*=\s*/.exec(body.slice(p));
+        if (!fm) break;
+        const name = fm[1].toLowerCase();
+        p += fm[0].length;
+        let value = '';
+        const parts = [];
+        // value may be {..}, ".." or bare word, joined with #
+        while (p < body.length) {
+          const c = body[p];
+          if (c === '{') {
+            let d = 1, q = p + 1;
+            for (; q < body.length && d > 0; q++) { if (body[q] === '\\') { q++; continue; } if (body[q] === '{') d++; else if (body[q] === '}') d--; }
+            parts.push(body.slice(p + 1, q - 1)); p = q;
+          } else if (c === '"') {
+            let d = 0, q = p + 1;
+            for (; q < body.length; q++) { if (body[q] === '\\') { q++; continue; } if (body[q] === '{') d++; else if (body[q] === '}') d--; else if (body[q] === '"' && d === 0) break; }
+            parts.push(body.slice(p + 1, q)); p = q + 1;
+          } else {
+            const wm = /^[^,#\s]+/.exec(body.slice(p));
+            if (wm) { parts.push(wm[0]); p += wm[0].length; } else break;
+          }
+          const rest = /^\s*#\s*/.exec(body.slice(p));
+          if (rest) { p += rest[0].length; continue; }
+          break;
+        }
+        value = parts.join('');
+        fields[name] = value;
+        const sep = /^\s*,?/.exec(body.slice(p));
+        p += sep ? sep[0].length : 1;
+      }
+      if (!fields.title) continue;
+      const authors = (fields.author || '').split(/\s+and\s+/i).map(a => {
+        a = texToUnicode(a);
+        if (!a) return '';
+        if (a.includes(',')) { const [last, first] = a.split(',').map(x => x.trim()); return first ? `${first} ${last}` : last; }
+        return a;
+      }).filter(Boolean).join(', ');
+      const topics = (fields.keywords || '').split(/[,;]/).map(t => texToUnicode(t)).filter(Boolean);
+      out.push({
+        title: texToUnicode(fields.title),
+        summary: texToUnicode(fields.abstract || ''),
+        authors,
+        topics,
+        bib: { type, key, fields },
+      });
+    }
+    return out;
+  }
+  function bibEscape(v) {
+    return String(v).replace(/\\/g, '\\textbackslash{}').replace(/([&%#_$])/g, '\\$1').replace(/[{}]/g, '');
+  }
+  function makeBibKey(entry, used) {
+    const firstAuthor = splitAuthors(entry.authors)[0] || 'anon';
+    const last = stripDiacritics(firstAuthor.split(/\s+/).pop()).toLowerCase().replace(/[^a-z]/g, '') || 'anon';
+    const year = (entry.bib && entry.bib.fields && entry.bib.fields.year) || '';
+    const word = stripDiacritics(entry.title).toLowerCase().split(/[^a-z0-9]+/)
+      .find(w => w.length > 3 && !['with','from','that','this','into','over','towards','using'].includes(w)) || 'paper';
+    let key = `${last}${year}${word}`, n = 2;
+    while (used.has(key)) key = `${last}${year}${word}${n++}`;
+    used.add(key);
+    return key;
+  }
+  function toBibtex(list) {
+    const used = new Set(list.map(e => e.bib && e.bib.key).filter(Boolean));
+    return list.map(e => {
+      const orig = e.bib && e.bib.fields ? { ...e.bib.fields } : {};
+      const type = (e.bib && e.bib.type) || 'misc';
+      const key = (e.bib && e.bib.key) || makeBibKey(e, used);
+      // the tracker's own fields win, so edits made in the app are exported
+      orig.title = `{${bibEscape(e.title)}}`;
+      const authors = splitAuthors(e.authors);
+      if (authors.length) orig.author = authors.map(bibEscape).join(' and '); else delete orig.author;
+      if (e.summary) orig.abstract = bibEscape(e.summary); else delete orig.abstract;
+      if ((e.topics || []).length) orig.keywords = e.topics.map(bibEscape).join(', '); else delete orig.keywords;
+      const order = ['title', 'author', 'journal', 'booktitle', 'year', 'volume', 'number', 'pages', 'publisher', 'doi', 'url', 'eprint', 'archiveprefix', 'keywords', 'abstract'];
+      const names = Object.keys(orig).sort((a, b) => {
+        const ia = order.indexOf(a), ib = order.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+      });
+      const pad = Math.max(...names.map(x => x.length));
+      return `@${type}{${key},\n` + names.map(name => `  ${name.padEnd(pad)} = {${orig[name]}}`).join(',\n') + '\n}';
+    }).join('\n\n') + '\n';
+  }
+  document.getElementById('menuBibBtn').addEventListener('click', () => {
+    closeMenu();
+    const list = sortedEntries(visibleEntries());
+    if (!list.length) { showToast('No papers to export'); return; }
+    const blob = new Blob([toBibtex(list)], { type: 'application/x-bibtex' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `papers-${new Date().toISOString().slice(0, 10)}.bib`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(`Exported ${list.length} ${list.length === 1 ? 'paper' : 'papers'} to BibTeX`);
   });
 
   /* ===================== Init ===================== */
