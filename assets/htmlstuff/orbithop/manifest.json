@@ -1,0 +1,18 @@
+{
+  "name": "Orbit Hop",
+  "short_name": "OrbitHop",
+  "start_url": "./",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "icons/orbit-hop-icon-512-1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/orbit-hop-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
