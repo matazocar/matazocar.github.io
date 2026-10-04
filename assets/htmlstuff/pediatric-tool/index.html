@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prontuario pediatrico</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#16202B; --muted:#56636F; --line:#D5DDE4; --soft:#F5F8FA;
+  --red:#C8323F; --blue:#1F6FC0; --green:#1E8A5A; --purple:#6C45BE; --orange:#C9661A; --pink:#B42A68;
+  --warn-bg:#FFF4E0; --warn-ink:#7A4A00; --hi:#FFF2B3;
+  --font:"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F151C; --surface:#18212B; --ink:#E6ECF2; --muted:#9AA8B5; --line:#2A3542; --soft:#1D2733;
+    --red:#E25563; --blue:#4D97E6; --green:#3DB37E; --purple:#9877E3; --orange:#E68A3E; --pink:#DC5592;
+    --warn-bg:#3A2C12; --warn-ink:#F3C77A; --hi:#3B3615;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --surface:#18212B; --ink:#E6ECF2; --muted:#9AA8B5; --line:#2A3542; --soft:#1D2733;
+  --red:#E25563; --blue:#4D97E6; --green:#3DB37E; --purple:#9877E3; --orange:#E68A3E; --pink:#DC5592;
+  --warn-bg:#3A2C12; --warn-ink:#F3C77A; --hi:#3B3615;
+}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 90px)}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;font-variant-numeric:tabular-nums;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:4px}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
+/* patient strip */
+.patient{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 2px 10px -6px rgba(0,0,0,.25)}
+.patient .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;gap:10px 16px;align-items:end;flex-wrap:wrap}
+.brand{font-weight:800;font-size:18px;letter-spacing:-.01em;margin-right:auto;align-self:center;text-decoration:none;color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:2px}
+.field label{font-size:12px;color:var(--muted);font-weight:600}
+.field input,.field select{width:76px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--soft);font-weight:600}
+.field select{width:auto}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue);background:var(--surface)}
+.wnote{font-size:12px;color:var(--warn-ink);background:var(--warn-bg);padding:2px 8px;border-radius:6px;align-self:center}
+@media (max-width:560px){.patient .in{padding:8px 12px;gap:6px 8px}.brand{flex-basis:100%;font-size:16px}.field input{width:62px;padding:6px}.wnote{flex-basis:100%;order:9}}
+.langbtn{font-weight:800;font-size:14px;padding:0 10px}
+.iconbtn{border:1px solid var(--line);background:var(--soft);border-radius:8px;min-width:38px;min-height:38px;cursor:pointer}
+/* home */
+.hero{padding:26px 0 8px}
+.hero h1{font-size:30px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em;line-height:1.15}
+.hero p{margin:0;color:var(--muted);max-width:62ch}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:20px 0}
+@media (min-width:700px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tile{display:flex;flex-direction:column;justify-content:space-between;gap:16px;min-height:132px;padding:16px;border:0;border-radius:14px;color:#fff;text-align:left;cursor:pointer;text-decoration:none;position:relative;overflow:hidden}
+.tile::after{content:"";position:absolute;right:-24px;top:-24px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.14)}
+.tile b{font-size:19px;font-weight:800;line-height:1.2;position:relative}
+.tile span{font-size:14px;opacity:.92;line-height:1.35}
+.tile:hover{filter:brightness(1.06)}
+.tile:active{transform:scale(.99)}
+.emerg{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.emerg strong{font-size:26px;color:var(--red);font-weight:800}
+/* tool pages */
+.toolhead{margin:0 -16px;padding:18px 16px 16px;color:#fff;background:var(--c)}
+.toolhead .back{color:#fff;text-decoration:none;font-weight:600;font-size:15px;opacity:.9}
+.toolhead h1{margin:6px 0 2px;font-size:26px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+.toolhead p{margin:0;opacity:.9;font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+.card h2{font-size:17px;font-weight:800;margin:0 0 10px}
+.card h3{font-size:15px;font-weight:800;margin:14px 0 6px}
+.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--soft);border-radius:10px;padding:10px 12px;border-left:4px solid var(--c)}
+.stat .k{font-size:13px;color:var(--muted);font-weight:600}
+.stat .v{font-size:22px;font-weight:800;line-height:1.25}
+.stat .u{font-size:13px;color:var(--muted)}
+.tbl{overflow-x:auto;margin-top:6px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:700}
+tr.hi td{background:var(--hi);font-weight:700}
+.note{font-size:14px;color:var(--muted);margin:8px 0 0}
+.warn{background:var(--warn-bg);color:var(--warn-ink);border-radius:10px;padding:10px 12px;font-size:14px;margin-top:14px}
+.src{font-size:13px;color:var(--muted);margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.seg button{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:#fff}
+.drug{display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:12px 0;border-top:1px solid var(--line)}
+.drug:first-of-type{border-top:0}
+.drug .n{font-weight:800}
+.drug .how{font-size:14px;color:var(--muted)}
+.drug .dose{text-align:right;font-weight:800;font-size:18px;white-space:nowrap}
+.drug .vol{text-align:right;font-size:14px;color:var(--muted)}
+.cap{font-size:12px;font-weight:700;color:var(--warn-ink);background:var(--warn-bg);border-radius:5px;padding:1px 6px;margin-left:4px}
+@media (max-width:520px){.drug{grid-template-columns:1fr}.drug .dose,.drug .vol{text-align:left}}
+ul.clean{margin:4px 0 0;padding-left:20px}
+ul.clean li{margin:3px 0}
+.domains{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.domain{background:var(--soft);border-radius:10px;padding:10px 12px}
+.domain h3{margin:0 0 4px;color:var(--c)}
+.vax{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.vax:first-child{border-top:0}
+.vax .age{font-weight:800;color:var(--c)}
+@media (max-width:520px){.vax{grid-template-columns:1fr;gap:2px}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:14px}
+.inl input,.inl select{width:96px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--soft);font-weight:600}
+.inl select{width:auto}
+.inl label{display:block;font-size:12px;color:var(--muted);font-weight:600}
+footer{font-size:13px;color:var(--muted);margin-top:28px}
+</style>
+</head>
+<body>
+<div class="patient" role="region" id="patientRegion">
+  <div class="in">
+    <a class="brand" href="#">Prontuario pediatrico</a>
+    <div class="field"><label for="pY" data-t="ageY"></label><input id="pY" type="number" min="0" max="18" inputmode="numeric" placeholder="–"></div>
+    <div class="field"><label for="pM" data-t="ageM"></label><input id="pM" type="number" min="0" max="11" inputmode="numeric" placeholder="–"></div>
+    <div class="field"><label for="pW" data-t="wt"></label><input id="pW" type="number" min="0.5" max="150" step="0.1" inputmode="decimal" placeholder="–"></div>
+    <span class="wnote" id="wNote" hidden></span>
+    <button class="iconbtn langbtn" id="langBtn"></button>
+    <button class="iconbtn" id="themeBtn">◐</button>
+  </div>
+</div>
+<div class="wrap"><main id="app"></main>
+<footer data-t="footer"></footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+let lang = "it";
+try { const l = localStorage.getItem("prontuario.lang"); if (l === "en" || l === "it") lang = l; } catch(e){}
+const L = (it, en) => lang === "it" ? it : en;
+const P = { y:null, m:null, w:null };
+const fmt = (n, d=1) => { if (n == null || !isFinite(n)) return "–"; const r = Math.round(n * 10**d) / 10**d; return r.toLocaleString(lang === "it" ? "it-IT" : "en-GB", {maximumFractionDigits:d}); };
+
+/* ---------- static labels ---------- */
+const STATIC = {
+  ageY: ["Età, anni","Age, years"], ageM: ["+ mesi","+ months"], wt: ["Peso, kg","Weight, kg"],
+  footer: ["Solo per studio e consultazione rapida. Dosi e valori vanno verificati con i protocolli del tuo ospedale, il Riassunto delle Caratteristiche del Prodotto (AIFA) e le linee guida aggiornate prima dell'uso su un paziente.",
+           "For study and quick reference only. Doses and values must be checked against your hospital protocols, the product SmPC (AIFA) and current guidelines before use on a patient."]
+};
+function applyStatic(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(e => { const s = STATIC[e.dataset.t]; e.textContent = L(s[0], s[1]); });
+  const lb = $("#langBtn");
+  lb.textContent = lang === "it" ? "EN" : "IT";
+  lb.setAttribute("aria-label", L("Switch to English", "Passa all'italiano"));
+  lb.title = lb.getAttribute("aria-label");
+  $("#themeBtn").setAttribute("aria-label", L("Tema chiaro o scuro", "Light or dark theme"));
+  $("#patientRegion").setAttribute("aria-label", L("Dati del paziente", "Patient details"));
+  updateWNote();
+}
+
+/* ---------- patient context ---------- */
+function ageMonths(){ if (P.y == null && P.m == null) return null; return (P.y || 0) * 12 + (P.m || 0); }
+function estWeight(mo){
+  if (mo == null) return null;
+  if (mo < 12) return 0.5 * mo + 4;
+  const y = Math.floor(mo / 12);
+  if (y <= 5) return 2 * y + 8;
+  if (y <= 12) return 3 * y + 7;
+  return null;
+}
+function weight(){
+  if (P.w) return { w:P.w, est:false };
+  const e = estWeight(ageMonths());
+  return e ? { w:e, est:true } : { w:null, est:false };
+}
+function updateWNote(){
+  const n = $("#wNote"), w = weight();
+  if (w.est){ n.hidden = false; n.textContent = L(`Stimato ${fmt(w.w)} kg dall'età`, `Estimated ${fmt(w.w)} kg from age`); }
+  else n.hidden = true;
+}
+for (const [id,key] of [["#pY","y"],["#pM","m"],["#pW","w"]]){
+  $(id).addEventListener("input", e => { const v = parseFloat(e.target.value); P[key] = isFinite(v) && v >= 0 ? v : null; updateWNote(); if (current && current.update) current.update(); });
+}
+
+/* ---------- tools ---------- */
+const TOOLS = [
+  { id:"vitals", t:["Parametri vitali per età","Vital signs by age"], b:["Valori normali, ipotensione, SpO₂","Normal ranges, hypotension, SpO₂"], c:"var(--red)" },
+  { id:"fluids", t:["Liquidi","Fluids"], b:["Mantenimento, disidratazione, boli","Maintenance, dehydration, boluses"], c:"var(--blue)" },
+  { id:"growth", t:["Accrescimento","Growth and body"], b:["BMI, superficie corporea, target, velocità","BMI, BSA, target height, velocity"], c:"var(--green)" },
+  { id:"milestones", t:["Tappe dello sviluppo","Milestones"], b:["Sviluppo per età e segnali d'allarme","Development by age and red flags"], c:"var(--purple)" },
+  { id:"vaccines", t:["Vaccinazioni","Vaccines"], b:["Calendario italiano e obblighi","Italian schedule and mandatory list"], c:"var(--orange)" },
+  { id:"doses", t:["Dosi in emergenza","Emergency doses"], b:["Dosi per peso e vie aeree","Weight-based doses and airway"], c:"var(--pink)" }
+];
+const tt = t => L(t.t[0], t.t[1]);
+let current = null;
+const app = $("#app");
+
+function head(t, sub){
+  return `<div class="toolhead" style="--c:${t.c}"><a class="back" href="#">‹ ${L("Tutti gli strumenti","All tools")}</a><h1>${tt(t)}</h1><p>${sub}</p></div>`;
+}
+const needWeight = () => `<div class="card">${L("Inserisci il peso (o l'età per stimarlo) in alto.","Enter the weight (or the age to estimate it) at the top.")}</div>`;
+
+/* ===== HOME ===== */
+function home(){
+  app.innerHTML = `
+  <section class="hero"><h1>${L("Consultazione rapida in reparto","Ward quick reference")}</h1>
+  <p>${L("Inserisci una sola volta età e peso del bambino in alto: tutti gli strumenti li usano. Scegli uno strumento qui sotto.","Enter the child's age and weight at the top once; every tool uses them. Pick a tool below.")}</p></section>
+  <nav class="tiles" aria-label="${L("Strumenti","Tools")}">
+    ${TOOLS.map(t => `<a class="tile" href="#${t.id}" style="background:${t.c}"><b>${tt(t)}</b><span>${L(t.b[0], t.b[1])}</span></a>`).join("")}
+  </nav>
+  <div class="emerg"><strong>112</strong><div>${L(
+    "Numero Unico di Emergenza (NUE 112, o 118 dove ancora attivo). Per le intossicazioni chiama un Centro Antiveleni (CAV): l'elenco dei CAV è sul sito del Ministero della Salute.",
+    "Numero Unico di Emergenza (NUE 112, or 118 where still active). For poisonings, call a Centro Antiveleni (CAV); the list of CAVs is on the Ministero della Salute website.")}</div></div>`;
+  return {};
+}
+
+/* ===== VITALS ===== */
+const BANDS = [
+  { lab:["Neonato (0–28 giorni)","Neonate (0–28 days)"], to:1, hrA:"100–205", hrS:"90–160", rr:"30–53", sbp:"67–84" },
+  { lab:["Lattante (1–12 mesi)","Infant (1–12 months)"], to:12, hrA:"100–180", hrS:"90–160", rr:"30–53", sbp:"72–104" },
+  { lab:["Bambino piccolo (1–2 anni)","Toddler (1–2 years)"], to:36, hrA:"98–140", hrS:"80–120", rr:"22–37", sbp:"86–106" },
+  { lab:["Età prescolare (3–5 anni)","Preschool (3–5 years)"], to:72, hrA:"80–120", hrS:"65–100", rr:"20–28", sbp:"89–112" },
+  { lab:["Età scolare (6–9 anni)","School age (6–9 years)"], to:120, hrA:"75–118", hrS:"58–90", rr:"18–25", sbp:"97–115" },
+  { lab:["Preadolescente (10–12 anni)","Preadolescent (10–12 years)"], to:156, hrA:"75–118", hrS:"58–90", rr:"18–25", sbp:"102–120" },
+  { lab:["Adolescente (13–18 anni)","Adolescent (13–18 years)"], to:999, hrA:"60–100", hrS:"50–90", rr:"12–20", sbp:"110–131" }
+];
+function hypotension(mo){
+  if (mo == null) return null;
+  if (mo < 1) return "< 60";
+  if (mo < 12) return "< 70";
+  const y = mo / 12;
+  if (y <= 10) return "< " + Math.round(70 + 2 * Math.floor(y));
+  return "< 90";
+}
+function vitals(t){
+  app.innerHTML = head(t, L("Valori normali di frequenza cardiaca, respiratoria e pressione","Normal ranges for heart rate, breathing and blood pressure")) + `<div id="out"></div>`;
+  const update = () => {
+    const mo = ageMonths();
+    const bi = mo == null ? -1 : BANDS.findIndex(b => mo < b.to);
+    const b = BANDS[bi];
+    $("#out").innerHTML = `
+    <div class="card" style="--c:${t.c}">
+      <h2>${b ? L(b.lab[0], b.lab[1]) : L("Inserisci l'età in alto per evidenziare la riga giusta","Set the age at the top to highlight the right row")}</h2>
+      ${b ? `<div class="big">
+        <div class="stat"><div class="k">${L("FC da sveglio","Heart rate, awake")}</div><div class="v">${b.hrA}</div><div class="u">${L("battiti/min (nel sonno","beats/min (asleep")} ${b.hrS})</div></div>
+        <div class="stat"><div class="k">${L("Frequenza respiratoria","Respiratory rate")}</div><div class="v">${b.rr}</div><div class="u">${L("atti/min","breaths/min")}</div></div>
+        <div class="stat"><div class="k">${L("PA sistolica","Systolic BP")}</div><div class="v">${b.sbp}</div><div class="u">mmHg</div></div>
+        <div class="stat"><div class="k">${L("Ipotensione se PAS","Hypotension if SBP")}</div><div class="v">${hypotension(mo)}</div><div class="u">mmHg</div></div>
+      </div>` : ""}
+      <div class="tbl"><table>
+        <thead><tr><th>${L("Età","Age")}</th><th>${L("FC sveglio","HR awake")}</th><th>${L("FC nel sonno","HR asleep")}</th><th>${L("FR","RR")}</th><th>${L("PAS","SBP")}</th></tr></thead>
+        <tbody>${BANDS.map((x,i) => `<tr class="${i===bi?"hi":""}"><td>${L(x.lab[0], x.lab[1])}</td><td>${x.hrA}</td><td>${x.hrS}</td><td>${x.rr}</td><td>${x.sbp}</td></tr>`).join("")}</tbody>
+      </table></div>
+    </div>
+    <div class="card"><h2>${L("Altri obiettivi","Other targets")}</h2>
+      <ul class="clean">${L(`
+        <li><b>SpO₂:</b> obiettivo 94–98% nel bambino in fase acuta (ERC 2021).</li>
+        <li><b>Tempo di refill capillare:</b> normale fino a 2 secondi; tempi più lunghi suggeriscono scarsa perfusione.</li>
+        <li><b>Soglie di ipotensione:</b> sotto 60 mmHg nel neonato a termine, sotto 70 nel lattante, sotto 70 + (2 × età in anni) da 1 a 10 anni, sotto 90 oltre i 10 anni.</li>
+        <li><b>Febbre:</b> temperatura corporea di 38 °C o più (linea guida SIP sulla febbre). Sotto i 3 mesi qualsiasi febbre richiede una valutazione urgente.</li>`,`
+        <li><b>SpO₂:</b> aim for 94–98% in the acutely ill child (ERC 2021).</li>
+        <li><b>Capillary refill:</b> normally 2 seconds or less; longer suggests poor perfusion.</li>
+        <li><b>Hypotension thresholds:</b> under 60 mmHg in term neonates, under 70 in infants, under 70 + (2 × age in years) from 1 to 10 years, under 90 over 10 years.</li>
+        <li><b>Fever:</b> body temperature of 38 °C or more (Italian SIP fever guideline). Under 3 months, any fever needs urgent assessment.</li>`)}
+      </ul>
+    </div>
+    <p class="src">${L(
+      "Valori dalle tabelle di riferimento PALS (AHA 2020), coerenti con l'approccio EPALS insegnato nei corsi IRC (Italian Resuscitation Council). I range variano tra le fonti: per l'escalation usa la scheda PEWS del tuo reparto.",
+      "Ranges from PALS reference tables (AHA 2020), consistent with the EPALS approach taught in Italian Resuscitation Council (IRC) courses. Ranges vary between sources; use your unit's PEWS chart for escalation.")}</p>`;
+  };
+  update(); return { update };
+}
+
+/* ===== FLUIDS ===== */
+function maint(w){
+  const day = w <= 10 ? 100*w : w <= 20 ? 1000 + 50*(w-10) : 1500 + 20*(w-20);
+  const hr = w <= 10 ? 4*w : w <= 20 ? 40 + 2*(w-10) : 60 + (w-20);
+  return { day: Math.min(day, 2400), hr: Math.min(hr, 100), capped: day > 2400 };
+}
+let dehyd = "mild", defPct = 5;
+function fluids(t){
+  app.innerHTML = head(t, L("Mantenimento secondo Holliday–Segar, reidratazione nella gastroenterite, boli nello shock","Holliday–Segar maintenance, gastroenteritis rehydration, shock boluses")) + `<div id="out"></div>`;
+  const update = () => {
+    const W = weight(), w = W.w, mo = ageMonths();
+    if (!w){ $("#out").innerHTML = needWeight(); return; }
+    const m = maint(w);
+    const neo = mo != null && mo < 1;
+    $("#out").innerHTML = `
+    ${W.est ? `<div class="warn">${L(`Uso un peso stimato di ${fmt(w)} kg. Quando possibile pesa il bambino.`,`Using an estimated weight of ${fmt(w)} kg. Weigh the child whenever possible.`)}</div>` : ""}
+    ${neo ? `<div class="warn">${L("Queste regole non valgono per il neonato nel primo mese: usa i protocolli neonatali.","These rules are not for neonates in the first month; use neonatal fluid protocols.")}</div>` : ""}
+    <div class="card" style="--c:${t.c}"><h2>${L("Mantenimento (Holliday–Segar)","Maintenance (Holliday–Segar)")}</h2>
+      <div class="big">
+        <div class="stat"><div class="k">${L("All'ora","Per hour")}</div><div class="v">${fmt(m.hr)} mL/h</div><div class="u">${L("regola 4-2-1","4-2-1 rule")}</div></div>
+        <div class="stat"><div class="k">${L("Al giorno","Per day")}</div><div class="v">${fmt(m.day,0)} mL</div><div class="u">${L("regola 100-50-20","100-50-20 rule")}${m.capped ? L(", limitato al volume dell'adulto",", capped at adult volume") : ""}</div></div>
+      </div>
+      <p class="note">${L(
+        "Usa soluzioni isotoniche (per esempio NaCl 0,9% con glucosio 5%) per evitare l'iponatriemia. Molti bambini in fase acuta richiedono un volume ridotto (per esempio due terzi del mantenimento) per la secrezione di ADH: controlla la sodiemia e segui il protocollo del reparto.",
+        "Use isotonic fluids (for example NaCl 0.9% with glucose 5%) to avoid hyponatraemia. Many acutely ill children need a restricted volume (for example two thirds of maintenance) because of ADH secretion; check sodium and follow your unit protocol.")}</p>
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Gastroenterite: disidratazione","Gastroenteritis: dehydration")}</h2>
+      <div class="seg" role="group" aria-label="${L("Grado di disidratazione","Degree of dehydration")}">
+        ${[["none",L("Assente o minima (< 3%)","No or minimal (< 3%)")],["mild",L("Lieve-moderata (3–9%)","Mild to moderate (3–9%)")],["severe",L("Grave (> 9%)","Severe (> 9%)")]].map(([k,l]) => `<button type="button" data-d="${k}" aria-pressed="${dehyd===k}">${l}</button>`).join("")}
+      </div>
+      <div id="dh"></div>
+      <h3>${L("Perdite in corso (reintegrare con SRO)","Ongoing losses (replace with ORS)")}</h3>
+      <div class="big">
+        <div class="stat"><div class="k">${L("Per ogni scarica diarroica","Each watery stool")}</div><div class="v">${fmt(10*w,0)} mL</div><div class="u">10 mL/kg</div></div>
+        <div class="stat"><div class="k">${L("Per ogni vomito","Each vomit")}</div><div class="v">${fmt(2*w,0)} mL</div><div class="u">2 mL/kg</div></div>
+      </div>
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Correzione del deficit (EV)","Deficit replacement (IV)")}</h2>
+      <div class="row inl"><div><label for="defPct">${L("Disidratazione, %","Dehydration, %")}</label><input id="defPct" type="number" min="1" max="15" value="${defPct}"></div></div>
+      <div class="big" style="margin-top:10px">
+        <div class="stat"><div class="k">Deficit</div><div class="v" id="defV">${fmt(defPct*w*10,0)} mL</div><div class="u">% × kg × 10</div></div>
+        <div class="stat"><div class="k">${L("Deficit + mantenimento in 24 h","Deficit + maintenance over 24 h")}</div><div class="v" id="defH">${fmt((defPct*w*10 + m.day)/24,0)} mL/h</div><div class="u">${L("sottrai i boli già somministrati","subtract boluses already given")}</div></div>
+      </div>
+      <p class="note">${L("Non per la chetoacidosi diabetica, che ha un protocollo dedicato (ISPAD / SIEDP), né per bambini con cardiopatia o nefropatia.","Not for diabetic ketoacidosis, which has its own protocol (ISPAD / SIEDP), or for children with heart or kidney disease.")}</p>
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Shock: bolo di liquidi","Shock: fluid bolus")}</h2>
+      <div class="big"><div class="stat"><div class="k">${L("Cristalloide isotonico","Isotonic crystalloid")}</div><div class="v">${fmt(10*w,0)} mL</div><div class="u">${L("10 mL/kg in 5–10 min","10 mL/kg, over 5–10 min")}</div></div></div>
+      <p class="note">${L(
+        "Rivaluta dopo ogni bolo (segni di sovraccarico: crepitii, epatomegalia). Nello shock settico possono servire fino a 40–60 mL/kg nella prima ora; considera precocemente gli inotropi (ERC 2021).",
+        "Reassess after every bolus (signs of overload: crackles, hepatomegaly). Up to 40–60 mL/kg may be needed in the first hour of septic shock; consider early inotropes (ERC 2021).")}</p>
+    </div>
+    <p class="src">${L(
+      "Fonti: metodo di Holliday e Segar; linea guida ESPGHAN/ESPID sulla gastroenterite acuta del bambino in Europa (2014); linee guida ERC Paediatric Life Support 2021 (IRC in Italia). Usa SRO a ridotta osmolarità, come raccomandato da ESPGHAN.",
+      "Sources: Holliday & Segar method; ESPGHAN/ESPID guideline on acute gastroenteritis in children in Europe (2014); ERC Paediatric Life Support guidelines 2021 (IRC in Italy). Use reduced-osmolarity ORS as recommended by ESPGHAN.")}</p>`;
+    const dh = $("#dh");
+    if (dehyd === "none") dh.innerHTML = `<p>${L("Prosegui l'allattamento e l'alimentazione abituale. Dai SRO per reintegrare le perdite in corso (sotto). Evita succhi di frutta e bibite.","Continue breastfeeding and a normal diet. Give ORS to replace ongoing losses (below). Avoid fruit juices and soft drinks.")}</p>`;
+    if (dehyd === "mild") dh.innerHTML = `<div class="big"><div class="stat"><div class="k">${L("SRO in 3–4 ore","ORS over 3–4 hours")}</div><div class="v">${fmt(50*w,0)}–${fmt(100*w,0)} mL</div><div class="u">${L("50–100 mL/kg, a piccoli sorsi frequenti","50–100 mL/kg, small frequent sips")}</div></div></div>
+      <p class="note">${L(
+        "Prima scelta è la reidratazione orale; se non tollerata, SRO con sondino nasogastrico. Riprendi l'alimentazione normale appena reidratato. L'ondansetron può aiutare in caso di vomito (vedi la dose in Dosi in emergenza e il protocollo locale).",
+        "First choice is oral rehydration; if not tolerated, give ORS by nasogastric tube. Restart normal feeding as soon as rehydrated. Ondansetron may help vomiting (check the dose in the Emergency doses tool and local protocol).")}</p>`;
+    if (dehyd === "severe") dh.innerHTML = `<div class="warn">${L(
+      `La disidratazione grave è un'emergenza: avvia liquidi EV o IO. Somministra un bolo di ${fmt(10*w,0)} mL (10 mL/kg) se ci sono segni di shock, poi correggi il deficit qui sotto. Controlla elettroliti e glicemia.`,
+      `Severe dehydration is an emergency: start IV or IO fluids. Give a ${fmt(10*w,0)} mL bolus (10 mL/kg) if there are signs of shock, then replace the deficit below. Check electrolytes and glucose.`)}</div>`;
+    app.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => { dehyd = b.dataset.d; update(); }));
+    $("#defPct").addEventListener("input", e => {
+      const v = parseFloat(e.target.value); if (!isFinite(v)) return; defPct = v;
+      $("#defV").textContent = fmt(v*w*10,0) + " mL"; $("#defH").textContent = fmt((v*w*10 + m.day)/24,0) + " mL/h";
+    });
+  };
+  update(); return { update };
+}
+
+/* ===== GROWTH ===== */
+const G = { sex:"M", h:null, f:null, mo:null, ph:null, pm:null };
+function growth(t){
+  app.innerHTML = head(t, L("BMI, superficie corporea, statura bersaglio e velocità di crescita","BMI, body surface area, target height and growth velocity")) + `
+  <div class="card" style="--c:${t.c}"><h2>${L("Misure","Measurements")}</h2>
+    <div class="row inl">
+      <div><label for="gS">${L("Sesso","Sex")}</label><select id="gS"><option value="M">${L("Maschio","Male")}</option><option value="F">${L("Femmina","Female")}</option></select></div>
+      <div><label for="gH">${L("Statura, cm","Height, cm")}</label><input id="gH" type="number" step="0.1" inputmode="decimal"></div>
+      <div><label for="gF">${L("Padre, cm","Father, cm")}</label><input id="gF" type="number" step="0.1" inputmode="decimal"></div>
+      <div><label for="gMo">${L("Madre, cm","Mother, cm")}</label><input id="gMo" type="number" step="0.1" inputmode="decimal"></div>
+    </div>
+    <h3>${L("Per la velocità di crescita","For growth velocity")}</h3>
+    <div class="row inl">
+      <div><label for="gPH">${L("Statura precedente, cm","Previous height, cm")}</label><input id="gPH" type="number" step="0.1" inputmode="decimal"></div>
+      <div><label for="gPM">${L("Mesi trascorsi","Months between")}</label><input id="gPM" type="number" step="1" inputmode="numeric"></div>
+    </div>
+  </div><div id="out"></div>`;
+  const bind = (id, k, num=true) => { const e = $(id); e.value = G[k] ?? ""; e.addEventListener("input", () => { const v = num ? parseFloat(e.value) : e.value; G[k] = num ? (isFinite(v) ? v : null) : v; update(); }); };
+  bind("#gS","sex",false); bind("#gH","h"); bind("#gF","f"); bind("#gMo","mo"); bind("#gPH","ph"); bind("#gPM","pm");
+  const update = () => {
+    const w = P.w, h = G.h;
+    const bmi = w && h ? w / ((h/100)**2) : null;
+    const bsa = w && h ? Math.sqrt(w*h/3600) : null;
+    let th = null; if (G.f && G.mo) th = (G.f + G.mo + (G.sex === "M" ? 13 : -13)) / 2;
+    const vel = G.ph && h && G.pm ? (h - G.ph) / G.pm * 12 : null;
+    $("#out").innerHTML = `
+    <div class="card" style="--c:${t.c}"><h2>${L("Risultati","Results")}</h2>
+      ${!w ? `<p class="note">${L("Inserisci il peso misurato in alto (qui non si usa il peso stimato).","Enter the measured weight at the top (an estimated weight is not used here).")}</p>` : ""}
+      <div class="big">
+        <div class="stat"><div class="k">BMI</div><div class="v">${fmt(bmi)}</div><div class="u">kg/m²</div></div>
+        <div class="stat"><div class="k">${L("Superficie corporea","Body surface area")}</div><div class="v">${fmt(bsa,2)}</div><div class="u">m² (Mosteller)</div></div>
+        <div class="stat"><div class="k">${L("Statura bersaglio","Target height")}</div><div class="v">${th ? fmt(th) : "–"}</div><div class="u">${th ? L(`cm, intervallo ${fmt(th-8.5)}–${fmt(th+8.5)}`,`cm, range ${fmt(th-8.5)}–${fmt(th+8.5)}`) : L("cm, servono entrambi i genitori","cm, needs both parents")}</div></div>
+        <div class="stat"><div class="k">${L("Velocità di crescita","Growth velocity")}</div><div class="v">${fmt(vel)}</div><div class="u">${L("cm/anno","cm/year")}${G.pm && G.pm < 6 ? L(", poco affidabile sotto i 6 mesi",", less reliable under 6 months") : ""}</div></div>
+      </div>
+    </div>
+    <div class="card"><h2>${L("Quali curve usare in Italia","Which charts to use in Italy")}</h2>
+      <ul class="clean">${L(`
+        <li><b>0–2 anni:</b> standard di crescita OMS (2006). Sotto i 2 anni usa il peso per lunghezza invece del BMI.</li>
+        <li><b>2–20 anni:</b> curve di crescita italiane di Cacciari et al. (2006), raccomandate dalla SIEDP, per statura, peso e BMI.</li>
+        <li><b>BMI:</b> va interpretato solo con i centili di BMI per età e sesso; i cut-off dell'adulto (25 e 30) non valgono nel bambino.</li>
+        <li><b>Statura bersaglio:</b> (padre + madre ± 13 cm) ÷ 2, più 13 nei maschi e meno 13 nelle femmine; la maggior parte dei bambini rientra in circa ± 8,5 cm.</li>
+        <li><b>Condizioni specifiche:</b> usa curve dedicate per sindrome di Down, sindrome di Turner e prematuri (età corretta fino a 2 anni).</li>`,`
+        <li><b>0–2 years:</b> WHO Child Growth Standards (2006). Use weight-for-length rather than BMI under 2 years.</li>
+        <li><b>2–20 years:</b> Italian growth charts by Cacciari et al. (2006), recommended by SIEDP, for height, weight and BMI.</li>
+        <li><b>BMI:</b> interpret only against BMI-for-age centiles for sex; the adult cut-offs (25 and 30) do not apply to children.</li>
+        <li><b>Target height:</b> (father + mother ± 13 cm) ÷ 2, plus 13 for boys and minus 13 for girls; most children end within about ± 8.5 cm.</li>
+        <li><b>Specific conditions:</b> use dedicated charts for Down syndrome, Turner syndrome and preterm infants (corrected age up to 2 years).</li>`)}
+      </ul>
+      <p class="note">${L("Questo strumento non calcola centili o z-score, perché servono le tabelle di riferimento pubblicate. Riporta i valori sulle curve indicate sopra.","This tool does not calculate centiles or z-scores, because that needs the published reference tables. Plot the values on the charts above.")}</p>
+    </div>`;
+  };
+  update(); return { update };
+}
+
+/* ===== MILESTONES ===== */
+// each item: [italiano, english]
+const MS = [
+  [["2 mesi","2 months"], {
+    S:[["Si calma quando gli si parla o viene preso in braccio","Calms when spoken to or picked up"],["Guarda il tuo viso","Looks at your face"],["Sorride quando gli parli o gli sorridi","Smiles when you talk or smile"]],
+    L:[["Emette suoni diversi dal pianto","Makes sounds other than crying"],["Reagisce ai rumori forti","Reacts to loud sounds"]],
+    C:[["Ti segue con lo sguardo quando ti muovi","Watches you as you move"],["Guarda un giocattolo per alcuni secondi","Looks at a toy for several seconds"]],
+    M:[["Solleva la testa da prono","Holds head up when on tummy"],["Muove entrambe le braccia e le gambe","Moves both arms and legs"],["Apre brevemente le mani","Opens hands briefly"]]}],
+  [["4 mesi","4 months"], {
+    S:[["Sorride spontaneamente per attirare l'attenzione","Smiles on own to get attention"],["Ride sommessamente","Chuckles"],["Ti guarda, si muove o vocalizza per mantenere la tua attenzione","Looks at you, moves or makes sounds to keep your attention"]],
+    L:[["Fa vocalizzi (lallazione iniziale)","Coos"],["Risponde con suoni quando gli parli","Makes sounds back when you talk"],["Gira la testa verso la tua voce","Turns head towards your voice"]],
+    C:[["Apre la bocca quando ha fame vedendo seno o biberon","Opens mouth when hungry at breast or bottle"],["Osserva con interesse le proprie mani","Looks at own hands with interest"]],
+    M:[["Tiene la testa ferma senza sostegno","Holds head steady without support"],["Trattiene un giocattolo messo in mano","Holds a toy put in hand"],["Porta le mani alla bocca","Brings hands to mouth"],["Da prono si solleva sui gomiti","Pushes up onto elbows on tummy"]]}],
+  [["6 mesi","6 months"], {
+    S:[["Riconosce le persone familiari","Knows familiar people"],["Gli piace guardarsi allo specchio","Likes to look at self in a mirror"],["Ride","Laughs"]],
+    L:[["Fa a turno con te nel produrre suoni","Takes turns making sounds with you"],["Fa le pernacchie","Blows raspberries"],["Emette gridolini","Squeals"]],
+    C:[["Porta gli oggetti alla bocca per esplorarli","Puts things in mouth to explore"],["Allunga la mano per afferrare un giocattolo","Reaches to grab a toy"]],
+    M:[["Si gira da prono a supino","Rolls from tummy to back"],["Da prono si solleva a braccia tese","Pushes up with straight arms on tummy"],["Da seduto si appoggia sulle mani","Leans on hands to support when sitting"]]}],
+  [["9 mesi","9 months"], {
+    S:[["È timido o si aggrappa con gli estranei","Shy or clingy with strangers"],["Mostra diverse espressioni del viso","Shows several facial expressions"],["Si gira quando viene chiamato per nome","Looks when called by name"],["Reagisce quando ti allontani","Reacts when you leave"]],
+    L:[["Produce sillabe ripetute come “mamamama” e “babababa”","Makes sounds like “mamamama” and “babababa”"],["Alza le braccia per essere preso in braccio","Lifts arms up to be picked up"]],
+    C:[["Cerca gli oggetti caduti fuori dalla vista","Looks for objects when dropped out of sight"],["Sbatte due oggetti tra loro","Bangs two things together"]],
+    M:[["Si mette seduto da solo","Gets to sitting position alone"],["Passa gli oggetti da una mano all'altra","Moves things from one hand to the other"],["Sta seduto senza sostegno","Sits without support"]]}],
+  [["12 mesi","12 months"], {
+    S:[["Fa giochi come “batti le manine”","Plays games like pat-a-cake"]],
+    L:[["Fa “ciao” con la mano","Waves bye-bye"],["Chiama un genitore “mamma”, “papà” o con un nome speciale","Calls a parent “mama” or “papà” or another special name"],["Capisce il “no”","Understands “no”"]],
+    C:[["Mette un oggetto in un contenitore","Puts something in a container"],["Cerca le cose che ti vede nascondere","Looks for things they see you hide"]],
+    M:[["Si tira su in piedi","Pulls up to stand"],["Cammina tenendosi ai mobili","Walks holding on to furniture"],["Beve da un bicchiere senza coperchio se lo tieni tu","Drinks from a cup without a lid as you hold it"],["Prende oggetti tra pollice e indice (pinza)","Picks things up between thumb and pointer finger"]]}],
+  [["15 mesi","15 months"], {
+    S:[["Imita gli altri bambini mentre gioca","Copies other children while playing"],["Ti mostra un oggetto che gli piace","Shows you an object they like"],["Batte le mani quando è eccitato","Claps when excited"],["Abbraccia un peluche o una bambola","Hugs a toy or doll"]],
+    L:[["Prova a dire una o due parole oltre a mamma/papà","Tries to say one or two words besides mama/papà"],["Guarda un oggetto familiare quando lo nomini","Looks at a familiar object when you name it"],["Segue indicazioni date con gesti e parole","Follows directions given with gesture and words"],["Indica per chiedere qualcosa","Points to ask for something"]],
+    C:[["Prova a usare gli oggetti nel modo giusto (telefono, bicchiere, libro)","Tries to use things the right way (phone, cup, book)"],["Impila due piccoli oggetti","Stacks two small objects"]],
+    M:[["Fa qualche passo da solo","Takes a few steps alone"],["Si alimenta con le dita","Uses fingers to feed self"]]}],
+  [["18 mesi","18 months"], {
+    S:[["Si allontana ma controlla che tu sia vicino","Moves away but checks you are close"],["Indica per mostrarti qualcosa di interessante","Points to show you something interesting"],["Guarda alcune pagine di un libro con te","Looks at a few pages in a book with you"]],
+    L:[["Prova a dire tre o più parole oltre a mamma/papà","Tries to say three or more words besides mama/papà"],["Esegue un comando semplice senza gesti","Follows one-step directions without gestures"]],
+    C:[["Ti imita nelle faccende di casa","Copies you doing chores"],["Gioca con i giocattoli in modo semplice","Plays with toys in a simple way"]],
+    M:[["Cammina senza appoggio","Walks without holding on"],["Scarabocchia","Scribbles"],["Beve da un bicchiere senza coperchio","Drinks from a cup without a lid"],["Prova a usare il cucchiaio","Tries to use a spoon"],["Sale e scende da divano o sedia","Climbs on and off a couch or chair"]]}],
+  [["2 anni","2 years"], {
+    S:[["Si accorge quando gli altri si fanno male o sono tristi","Notices when others are hurt or upset"],["Ti guarda in viso per capire come reagire in una situazione nuova","Looks at your face to see how to react in a new situation"]],
+    L:[["Indica le figure in un libro quando richiesto","Points to things in a book when asked"],["Dice almeno due parole insieme (“ancora latte”)","Says at least two words together (“more milk”)"],["Indica almeno due parti del corpo","Points to at least two body parts"],["Usa gesti oltre a salutare e indicare","Uses more gestures than waving and pointing"]],
+    C:[["Tiene un oggetto in una mano mentre usa l'altra","Holds something in one hand while using the other"],["Prova a usare interruttori, manopole o pulsanti","Tries to use switches, knobs or buttons"],["Gioca con più giocattoli contemporaneamente","Plays with more than one toy at a time"]],
+    M:[["Calcia una palla","Kicks a ball"],["Corre","Runs"],["Sale alcuni gradini con o senza aiuto","Walks up a few stairs with or without help"],["Mangia con il cucchiaio","Eats with a spoon"]]}],
+  [["3 anni","3 years"], {
+    S:[["Si calma entro 10 minuti dopo che ti sei allontanato","Calms down within 10 minutes after you leave"],["Nota gli altri bambini e si unisce al loro gioco","Notices other children and joins them to play"]],
+    L:[["Sostiene una conversazione con almeno due scambi","Has a conversation with at least two back-and-forth exchanges"],["Fa domande con chi, cosa, dove o perché","Asks who, what, where or why questions"],["Dice il proprio nome se richiesto","Says first name when asked"],["È comprensibile agli altri per la maggior parte del tempo","Is understood by others most of the time"]],
+    C:[["Disegna un cerchio se gli viene mostrato come","Draws a circle when shown how"],["Evita di toccare oggetti caldi se avvisato","Avoids touching hot objects when warned"]],
+    M:[["Infila oggetti, come perline grandi","Strings items together, such as large beads"],["Si veste da solo in parte","Puts on some clothes alone"],["Usa la forchetta","Uses a fork"]]}],
+  [["4 anni","4 years"], {
+    S:[["Durante il gioco finge di essere qualcos'altro","Pretends to be something else during play"],["Chiede di giocare con altri bambini","Asks to play with children"],["Consola chi si è fatto male o è triste","Comforts others who are hurt or sad"],["Adatta il comportamento al luogo in cui si trova","Changes behaviour based on where they are"]],
+    L:[["Dice frasi di quattro o più parole","Says sentences with four or more words"],["Ripete parti di una canzone, una storia o una filastrocca","Says some words from a song, story or nursery rhyme"],["Racconta almeno una cosa successa durante la giornata","Talks about at least one thing that happened during the day"],["Risponde a domande semplici","Answers simple questions"]],
+    C:[["Nomina alcuni colori","Names a few colours"],["Dice cosa succede dopo in una storia conosciuta","Tells what comes next in a well-known story"],["Disegna una persona con tre o più parti del corpo","Draws a person with three or more body parts"]],
+    M:[["Afferra una palla grande quasi sempre","Catches a large ball most of the time"],["Si serve il cibo o versa l'acqua con supervisione","Serves self food or pours water with supervision"],["Slaccia alcuni bottoni","Unbuttons some buttons"],["Tiene il pastello tra dita e pollice","Holds a crayon between fingers and thumb"]]}],
+  [["5 anni","5 years"], {
+    S:[["Segue le regole o rispetta i turni nei giochi","Follows rules or takes turns in games"],["Canta, balla o recita per te","Sings, dances or acts for you"],["Svolge semplici compiti in casa","Does simple chores at home"]],
+    L:[["Racconta una storia con almeno due eventi","Tells a story with at least two events"],["Risponde a domande semplici su una storia","Answers simple questions about a story"],["Porta avanti una conversazione con più di tre scambi","Keeps a conversation going with more than three exchanges"],["Usa o riconosce rime semplici","Uses or recognises simple rhymes"]],
+    C:[["Conta fino a 10","Counts to 10"],["Riconosce alcuni numeri da 1 a 5","Names some numbers between 1 and 5 when pointed to"],["Mantiene l'attenzione per 5–10 minuti","Pays attention for 5 to 10 minutes"],["Scrive alcune lettere del proprio nome","Writes some letters of own name"]],
+    M:[["Allaccia alcuni bottoni","Buttons some buttons"],["Salta su un piede","Hops on one foot"]]}]
+];
+const DOM = { S:["Sociale ed emotivo","Social and emotional"], L:["Linguaggio e comunicazione","Language and communication"], C:["Cognitivo","Cognitive"], M:["Motorio","Movement and physical"] };
+function msIndex(mo){ if (mo == null) return 0; const ages = [2,4,6,9,12,15,18,24,36,48,60]; let i = 0; ages.forEach((a,k) => { if (mo >= a) i = k; }); return i; }
+let msSel = null;
+function milestones(t){
+  app.innerHTML = head(t, L("Cosa fa la maggior parte dei bambini a ogni età e quando inviare","What most children do by each age, and when to refer")) + `<div id="out"></div>`;
+  const update = () => {
+    const i = msSel ?? msIndex(ageMonths()); const [lab, d] = MS[i];
+    $("#out").innerHTML = `
+    <div class="card" style="--c:${t.c}">
+      <div class="seg" role="group" aria-label="${L("Età","Age")}">${MS.map((m,k) => `<button type="button" data-k="${k}" aria-pressed="${k===i}">${L(m[0][0], m[0][1])}</button>`).join("")}</div>
+      <h2>${L(`Entro i ${lab[0]}, la maggior parte dei bambini:`, `By ${lab[1]}, most children:`)}</h2>
+      <div class="domains">${Object.keys(DOM).map(k => `<div class="domain"><h3>${L(DOM[k][0], DOM[k][1])}</h3><ul class="clean">${d[k].map(x => `<li>${L(x[0], x[1])}</li>`).join("")}</ul></div>`).join("")}</div>
+      <p class="note">${L(
+        "Sono competenze raggiunte da circa il 75% dei bambini a questa età: una competenza mancante richiede un follow-up più stretto, non una diagnosi. Correggi per la prematurità fino ai 2 anni.",
+        "These are things about 75% of children do by this age, so a missing item calls for closer follow-up rather than a diagnosis. Correct for prematurity up to 2 years.")}</p>
+    </div>
+    <div class="card"><h2>${L("Segnali d'allarme: invia a valutazione","Red flags: refer for assessment")}</h2>
+      <ul class="clean">${L(`
+        <li><b>Qualsiasi regressione</b> di competenze linguistiche, sociali o motorie, a qualsiasi età.</li>
+        <li>Assenza del sorriso sociale verso i 3 mesi; scarso controllo del capo dopo i 4 mesi.</li>
+        <li>Non sta seduto senza sostegno a 9 mesi; non cammina da solo a 18 mesi.</li>
+        <li>Assenza di lallazione e di gesti (indicare, salutare) a 12 mesi.</li>
+        <li>Nessuna parola singola a 16 mesi; nessuna frase spontanea di due parole a 24 mesi.</li>
+        <li>Netta preferenza per una mano prima dei 18 mesi (possibile deficit dell'altro lato).</li>
+        <li>Persistenza dei riflessi primitivi, ipotonia o ipertonia marcate, o asimmetrie a qualsiasi età.</li>
+        <li>Preoccupazione dei genitori per udito, vista, linguaggio o interazione sociale.</li>`,`
+        <li><b>Any loss</b> of language, social or motor skills at any age.</li>
+        <li>No social smile by about 3 months; poor head control after 4 months.</li>
+        <li>Not sitting without support by 9 months; not walking alone by 18 months.</li>
+        <li>No babbling and no gestures (pointing, waving) by 12 months.</li>
+        <li>No single words by 16 months; no spontaneous two-word phrases by 24 months.</li>
+        <li>Clear hand preference before 18 months (possible weakness on the other side).</li>
+        <li>Persistent primitive reflexes, very floppy or very stiff tone, or asymmetry at any age.</li>
+        <li>Parental concern about hearing, vision, speech or social interaction.</li>`)}
+      </ul>
+    </div>
+    <p class="src">${L(
+      "Tappe adattate da CDC/AAP “Learn the Signs. Act Early.” (revisione 2022). In Italia lo sviluppo viene valutato dal pediatra di libera scelta nei bilanci di salute (calendario variabile per regione). Lo screening dell'autismo con M-CHAT-R/F a 18–24 mesi è raccomandato dalla linea guida ISS sui disturbi dello spettro autistico.",
+      "Milestones adapted from CDC/AAP “Learn the Signs. Act Early.” (2022 revision). In Italy, development is checked by the pediatra di libera scelta at the bilanci di salute (timing varies by region). Autism screening with M-CHAT-R/F at 18–24 months is recommended by the ISS autism guideline.")}</p>`;
+    app.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => { msSel = Number(b.dataset.k); update(); }));
+  };
+  update(); return { update };
+}
+
+/* ===== VACCINES ===== */
+function vaccines(t){
+  const rows = [
+    [["Alla nascita","At birth"], ["Vaccino anti-epatite B + immunoglobuline entro 12–24 ore se la madre è HBsAg positiva (poi si prosegue con il ciclo completo).","Hepatitis B vaccine + immunoglobulin within 12–24 hours if the mother is HBsAg positive (then continue the full schedule)."]],
+    [["Prima stagione RSV","First RSV season"], ["Nirsevimab (anticorpo monoclonale contro il virus respiratorio sinciziale) per neonati e lattanti nella prima stagione; organizzato da ogni regione, di solito ottobre–marzo.","Nirsevimab (monoclonal antibody against RSV) for newborns and infants in their first season; organised by each region, usually October–March."]],
+    [["Dalle 6 settimane","From 6 weeks"], ["Rotavirus, per bocca: 2 o 3 dosi a seconda del prodotto, da completare entro 24–32 settimane di vita.","Rotavirus, oral: 2 or 3 doses depending on the product, completed within 24–32 weeks of age."]],
+    [["Primo anno di vita","First year of life"], ["Esavalente (DTPa-IPV-Hib-HBV) e pneumococco coniugato (PCV): 3 dosi con schema 2+1, a partire dal 61° giorno di vita, con la terza dose verso gli 11–13 mesi. Meningococco B: ciclo che inizia nei primi mesi, con richiamo nel secondo anno.","Hexavalent (DTPa-IPV-Hib-HBV) and pneumococcal conjugate (PCV): 3 doses in a 2+1 schedule, starting from the 61st day of life, with the third dose around 11–13 months. Meningococcus B: course starting in the first months, with a booster in the second year."]],
+    [["13–15 mesi","13–15 months"], ["Morbillo, parotite, rosolia e varicella (MPRV oppure MPR + V), 1ª dose. Meningococco ACWY coniugato.","Measles, mumps, rubella and varicella (MMRV or MMR + V), 1st dose. Meningococcal ACWY conjugate."]],
+    [["6 mesi–6 anni","6 months–6 years"], ["Vaccino antinfluenzale stagionale, offerto gratuitamente ogni anno (due dosi a 4 settimane di distanza la prima volta sotto i 9 anni).","Seasonal influenza vaccine, offered free every year (two doses 4 weeks apart the first time under 9 years)."]],
+    [["5–6 anni","5–6 years"], ["Richiamo dTpa-IPV (difterite, tetano, pertosse, polio). MPRV, 2ª dose.","dTpa-IPV booster (diphtheria, tetanus, pertussis, polio). MMRV, 2nd dose."]],
+    [["11–12 anni","11–12 years"], ["HPV per ragazze e ragazzi (2 dosi se si inizia prima dei 15 anni).","HPV for girls and boys (2 doses if started before 15 years)."]],
+    [["12–18 anni","12–18 years"], ["Richiamo dTpa-IPV. Richiamo meningococco ACWY. Poi dT(pa) ogni 10 anni.","dTpa-IPV booster. Meningococcal ACWY booster. Then dT(pa) every 10 years."]]
+  ];
+  const mand = [["Poliomielite","Poliomyelitis"],["Difterite","Diphtheria"],["Tetano","Tetanus"],["Epatite B","Hepatitis B"],["Pertosse","Pertussis"],["Haemophilus influenzae tipo b","Haemophilus influenzae type b"],["Morbillo","Measles"],["Parotite","Mumps"],["Rosolia","Rubella"],["Varicella","Varicella"]];
+  const rec = [["Pneumococco","Pneumococcus"],["Meningococco B","Meningococcus B"],["Meningococco ACWY","Meningococcus ACWY"],["Rotavirus","Rotavirus"],["HPV","HPV"],["Influenza","Influenza"],["Profilassi RSV","RSV prophylaxis"]];
+  app.innerHTML = head(t, L("Calendario nazionale (PNPV 2023–2025) e Legge 119/2017","National schedule (PNPV 2023–2025) and Legge 119/2017")) + `
+  <div class="card" style="--c:${t.c}"><h2>${L("Calendario dell'infanzia in sintesi","Childhood schedule overview")}</h2>
+    <div>${rows.map(r => `<div class="vax"><div class="age">${L(r[0][0], r[0][1])}</div><div>${L(r[1][0], r[1][1])}</div></div>`).join("")}</div>
+    <div class="warn">${L(
+      "Tempi esatti e prodotti variano tra le regioni e il piano nazionale viene aggiornato periodicamente. Controlla sempre il calendario PNPV in vigore e quello della tua regione prima di dare indicazioni alle famiglie.",
+      "Exact timing and products differ between regions, and the national plan is periodically updated. Always check the current PNPV calendar and your region's calendar before advising families.")}</div>
+  </div>
+  <div class="card" style="--c:${t.c}"><h2>${L("Vaccinazioni obbligatorie (Legge 119/2017)","Mandatory vaccines (Legge 119/2017)")}</h2>
+    <p>${L("Dieci vaccinazioni sono obbligatorie per i minori da 0 a 16 anni:","Ten vaccines are mandatory for children aged 0–16 years:")}</p>
+    <div class="chips">${mand.map(x => `<span class="chip">${L(x[0], x[1])}</span>`).join("")}</div>
+    <p class="note">${L(
+      "Essere in regola è requisito per l'accesso a nido e scuola dell'infanzia (0–6 anni). Dai 6 ai 16 anni si può frequentare la scuola, ma alle famiglie inadempienti possono essere applicate sanzioni. Sono previste esenzioni per documentati motivi clinici o immunità da malattia naturale.",
+      "Being up to date is a requirement for attending nursery and preschool (0–6 years). From 6 to 16 years, children can attend school but families may be fined. Exemptions apply for documented medical reasons or immunity after natural infection.")}</p>
+    <h3>${L("Raccomandate e offerte gratuitamente (non obbligatorie)","Recommended and offered free (not mandatory)")}</h3>
+    <div class="chips">${rec.map(x => `<span class="chip">${L(x[0], x[1])}</span>`).join("")}</div>
+  </div>
+  <div class="card"><h2>${L("Verifiche utili","Useful checks")}</h2>
+    <ul class="clean">${L(`
+      <li><b>Le vere controindicazioni</b> sono poche: reazione allergica grave a una dose precedente o a un componente; vaccini vivi (MPRV, rotavirus) in caso di immunodeficienza grave e gravidanza.</li>
+      <li><b>Non sono controindicazioni:</b> malattia lieve con o senza febbricola, terapia antibiotica, prematurità (si vaccina all'età cronologica), familiarità per convulsioni febbrili.</li>
+      <li><b>Dosi saltate:</b> non si ricomincia mai il ciclo; si riprende da dove si era interrotto, rispettando gli intervalli minimi.</li>`,`
+      <li><b>True contraindications</b> are few: severe allergic reaction to a previous dose or component; live vaccines (MMRV, rotavirus) in severe immunodeficiency and pregnancy.</li>
+      <li><b>Not contraindications:</b> mild illness with or without low fever, antibiotics, prematurity (vaccinate at chronological age), family history of febrile seizures.</li>
+      <li><b>Missed doses:</b> never restart the series; continue where it stopped, respecting minimum intervals.</li>`)}
+    </ul>
+  </div>
+  <p class="src">${L(
+    "Fonti: Piano Nazionale di Prevenzione Vaccinale (PNPV) 2023–2025, Ministero della Salute; Legge 31 luglio 2017 n. 119; “Calendario per la Vita” delle società scientifiche italiane (SItI, SIP, FIMP, FIMMG) per le raccomandazioni aggiuntive.",
+    "Sources: Piano Nazionale di Prevenzione Vaccinale (PNPV) 2023–2025, Ministero della Salute; Legge 31 luglio 2017 n. 119; the “Calendario per la Vita” of the Italian scientific societies (SItI, SIP, FIMP, FIMMG) for additional recommendations.")}</p>`;
+  return {};
+}
+
+/* ===== DOSES ===== */
+function dline(name, how, perKg, w, max, unit, conc, concLabel, opts={}){
+  let v = perKg * w, capped = false;
+  if (max != null && v > max){ v = max; capped = true; }
+  const d = opts.dec ?? (v < 0.1 ? 3 : v < 1 ? 2 : 1);
+  const vol = conc ? `${fmt(v/conc, v/conc < 1 ? 2 : 1)} mL ${L("di","of")} ${concLabel}` : (opts.volText || "");
+  return `<div class="drug"><div><div class="n">${name}</div><div class="how">${how}</div></div>
+    <div><div class="dose">${fmt(v,d)} ${unit}${capped ? `<span class="cap">max</span>` : ""}</div><div class="vol">${vol}</div></div></div>`;
+}
+function fixed(name, how, dose, vol=""){
+  return `<div class="drug"><div><div class="n">${name}</div><div class="how">${how}</div></div><div><div class="dose">${dose}</div><div class="vol">${vol}</div></div></div>`;
+}
+function buccolam(mo){
+  if (mo == null) return L("inserisci l'età","set age");
+  if (mo < 3) return L("non autorizzato < 3 mesi","not licensed < 3 months");
+  if (mo < 12) return "2,5 mg".replace(",", lang === "it" ? "," : ".");
+  if (mo < 60) return "5 mg";
+  if (mo < 120) return lang === "it" ? "7,5 mg" : "7.5 mg";
+  return "10 mg";
+}
+function doses(t){
+  app.innerHTML = head(t, L("Dosi per peso nelle emergenze più comuni (ERC 2021 / IRC)","Weight-based doses for common emergencies (ERC 2021 / IRC)")) + `<div id="out"></div>`;
+  const update = () => {
+    const W = weight(), w = W.w, mo = ageMonths();
+    if (!w){ $("#out").innerHTML = needWeight(); return; }
+    const y = mo != null ? mo/12 : null;
+    let ett = L("inserisci l'età","set age");
+    if (y != null) ett = y < 1 ? L("cuffiato 3,0–3,5","cuffed 3.0–3.5") : L(`cuffiato ${fmt(Math.floor(y)/4 + 3.5)}, non cuffiato ${fmt(Math.floor(y)/4 + 4)}`, `cuffed ${fmt(Math.floor(y)/4 + 3.5)}, uncuffed ${fmt(Math.floor(y)/4 + 4)}`);
+    const depth = y != null && y >= 1 ? fmt(Math.floor(y)/2 + 12,0) + L(" cm alle labbra"," cm at the lips") : "";
+    const autoinj = w < 15 ? L("sotto 15 kg: dose IM aspirata da fiala","below 15 kg: use a drawn-up IM dose") : w <= 30 ? L("autoiniettore 0,15 mg (junior)","0.15 mg (junior) autoinjector") : L("autoiniettore 0,3 mg","0.3 mg autoinjector");
+    const est = estWeight(mo);
+    $("#out").innerHTML = `
+    ${W.est ? `<div class="warn">${L(`Uso un peso stimato di ${fmt(w)} kg dall'età (formula APLS). Quando possibile usa il peso misurato o un nastro basato sulla lunghezza.`,`Using an estimated weight of ${fmt(w)} kg from age (APLS formula). Use the measured weight or a length-based tape whenever possible.`)}</div>` : ""}
+    ${mo != null && mo < 1 ? `<div class="warn">${L("Dosi e rianimazione neonatali sono diverse: usa i protocolli NLS (rianimazione neonatale).","Neonatal doses and resuscitation differ; use NLS (newborn life support) protocols.")}</div>` : ""}
+    <div class="card" style="--c:${t.c}"><h2>${L("Arresto cardiaco","Cardiac arrest")}</h2>
+      ${dline(L("Adrenalina EV/IO","Adrenaline IV/IO"), L("0,01 mg/kg (10 mcg/kg), max 1 mg, ogni 3–5 min. Diluire 1 mg in 10 mL (0,1 mg/mL).","0.01 mg/kg (10 mcg/kg), max 1 mg, every 3–5 min. Dilute 1 mg in 10 mL (0.1 mg/mL)."),0.01,w,1,"mg",0.1,L("0,1 mg/mL","0.1 mg/mL"))}
+      ${dline(L("Amiodarone EV/IO, 1ª dose","Amiodarone IV/IO, 1st dose"), L("Ritmo defibrillabile, dopo il 3° shock. 5 mg/kg, max 300 mg.","Shockable rhythm, after the 3rd shock. 5 mg/kg, max 300 mg."),5,w,300,"mg",50,"50 mg/mL (150 mg/3 mL)")}
+      ${dline(L("Amiodarone EV/IO, 2ª dose","Amiodarone IV/IO, 2nd dose"), L("Dopo il 5° shock. 5 mg/kg, max 150 mg.","After the 5th shock. 5 mg/kg, max 150 mg."),5,w,150,"mg",50,"50 mg/mL")}
+      ${dline(L("Defibrillazione","Defibrillation"), L("4 J/kg per shock; non superare l'energia dell'adulto.","4 J/kg per shock; do not exceed the adult energy dose."),4,w,null,"J",null,"",{dec:0})}
+      ${dline(L("Bolo di liquidi","Fluid bolus"), L("Cristalloide isotonico 10 mL/kg, poi rivalutare.","Isotonic crystalloid 10 mL/kg, then reassess."),10,w,null,"mL",null,"",{dec:0})}
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Anafilassi","Anaphylaxis")}</h2>
+      ${dline(L("Adrenalina IM (coscia anterolaterale)","Adrenaline IM (anterolateral thigh)"), L("0,01 mg/kg della soluzione 1 mg/mL, max 0,5 mg. Ripetere dopo 5 min se non migliora.","0.01 mg/kg of 1 mg/mL, max 0.5 mg. Repeat after 5 min if no improvement."),0.01,w,0.5,"mg",1,"1 mg/mL")}
+      ${fixed(L("Autoiniettore","Autoinjector option"), L("Per peso, secondo il foglietto: 0,15 mg tra 15 e 30 kg, 0,3 mg sopra 30 kg.","By weight, per product leaflet: 0.15 mg for 15–30 kg, 0.3 mg above 30 kg."),autoinj)}
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Crisi convulsiva di 5 minuti o più","Seizure lasting 5 minutes or more")}</h2>
+      ${fixed(L("Midazolam oromucosale (Buccolam)","Midazolam buccal (Buccolam)"), L("Dose fissa per età: 3–11 mesi 2,5 mg, 1–4 anni 5 mg, 5–9 anni 7,5 mg, 10–17 anni 10 mg.","Fixed dose by age: 3–11 months 2.5 mg, 1–4 years 5 mg, 5–9 years 7.5 mg, 10–17 years 10 mg."),buccolam(mo))}
+      ${dline(L("Midazolam IM o intranasale","Midazolam IM or intranasal"), L("0,2 mg/kg, max 10 mg.","0.2 mg/kg, max 10 mg."),0.2,w,10,"mg",null,"")}
+      ${dline(L("Diazepam rettale","Diazepam rectal"), L("0,5 mg/kg, max 10 mg (microclismi da 5 mg e 10 mg).","0.5 mg/kg, max 10 mg (rectal tubes 5 mg and 10 mg)."),0.5,w,10,"mg",null,"")}
+      ${dline(L("Lorazepam EV","Lorazepam IV"), L("0,1 mg/kg, max 4 mg. Ripetibile una volta dopo 5–10 min.","0.1 mg/kg, max 4 mg. May repeat once after 5–10 min."),0.1,w,4,"mg",null,"")}
+      ${dline(L("Diazepam EV","Diazepam IV"), L("0,2 mg/kg, max 10 mg, lentamente.","0.2 mg/kg, max 10 mg, slowly."),0.2,w,10,"mg",null,"")}
+      ${dline(L("Levetiracetam EV (2ª linea)","Levetiracetam IV (2nd line)"), L("40–60 mg/kg in 5–15 min, max 4.500 mg. Dose mostrata a 60 mg/kg.","40–60 mg/kg over 5–15 min, max 4,500 mg. Dose shown at 60 mg/kg."),60,w,4500,"mg",null,"",{dec:0})}
+      <p class="note">${L(
+        "Monitora il respiro dopo le benzodiazepine; non più di due dosi di benzodiazepine in totale, poi passa alla seconda linea (levetiracetam, fenitoina o fenobarbital secondo il protocollo locale).",
+        "Watch breathing after benzodiazepines; give no more than two benzodiazepine doses in total, then move to second line (levetiracetam, phenytoin or phenobarbital per local protocol).")}</p>
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Ipoglicemia e aritmie","Hypoglycaemia and arrhythmias")}</h2>
+      ${dline(L("Glucosio 10% EV/IO","Glucose 10% IV/IO"), L("0,2 g/kg = 2 mL/kg di glucosio 10%. Ricontrolla la glicemia dopo 10 min.","0.2 g/kg = 2 mL/kg of glucose 10%. Recheck glucose after 10 min."),2,w,null,"mL",null,"",{dec:0,volText:`= ${fmt(0.2*w)} g ${L("di glucosio","glucose")}`})}
+      ${dline(L("Adenosina (TPSV), 1ª dose","Adenosine (SVT), 1st dose"), L("0,1–0,2 mg/kg in bolo EV rapido con lavaggio, max 6 mg. Dose mostrata a 0,1 mg/kg.","0.1–0.2 mg/kg rapid IV push with flush, max 6 mg. Shown at 0.1 mg/kg."),0.1,w,6,"mg",3,"3 mg/mL (6 mg/2 mL)")}
+      ${dline(L("Adenosina, 2ª dose","Adenosine, 2nd dose"), L("0,3 mg/kg, max 12 mg.","0.3 mg/kg, max 12 mg."),0.3,w,12,"mg",3,"3 mg/mL")}
+      ${dline(L("Atropina EV/IO","Atropine IV/IO"), L("Bradicardia da stimolazione vagale: 0,02 mg/kg, max 0,5 mg.","Bradycardia from vagal stimulation: 0.02 mg/kg, max 0.5 mg."),0.02,w,0.5,"mg",null,"")}
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Febbre e dolore","Fever and pain")}</h2>
+      ${dline(L("Paracetamolo per bocca","Paracetamol oral"), L("10–15 mg/kg ogni 4–6 h, max 60 mg/kg/die (dose mostrata a 15 mg/kg). Sciroppo 120 mg/5 mL.","10–15 mg/kg every 4–6 h, max 60 mg/kg/day (dose shown at 15 mg/kg). Syrup 120 mg/5 mL."),15,w,1000,"mg",24,"120 mg/5 mL")}
+      ${dline(L("Paracetamolo rettale","Paracetamol rectal"), L("20 mg/kg per dose, solo se la via orale non è possibile; max 60 mg/kg/die in totale.","20 mg/kg per dose, only if oral is not possible; max 60 mg/kg/day in total."),20,w,1000,"mg",null,"")}
+      ${dline(L("Paracetamolo EV","Paracetamol IV"), w < 10 ? L("Sotto 10 kg: 7,5 mg/kg per dose, max 30 mg/kg/die.","Under 10 kg: 7.5 mg/kg per dose, max 30 mg/kg/day.") : L("10–50 kg: 15 mg/kg per dose, ogni 4–6 h, max 60 mg/kg/die.","10–50 kg: 15 mg/kg per dose, every 4–6 h, max 60 mg/kg/day."), w < 10 ? 7.5 : 15, w, 1000, "mg", 10, "10 mg/mL")}
+      ${dline(L("Ibuprofene per bocca","Ibuprofen oral"), L("10 mg/kg ogni 6–8 h, max 30 mg/kg/die. Dai 3 mesi e ≥ 5–6 kg; evitare se disidratato o con varicella. Sospensione 100 mg/5 mL.","10 mg/kg every 6–8 h, max 30 mg/kg/day. From 3 months and ≥ 5–6 kg; avoid if dehydrated or with varicella. Suspension 100 mg/5 mL."),10,w,400,"mg",20,"100 mg/5 mL")}
+      ${dline(L("Ondansetron per bocca","Ondansetron oral"), L("Vomito nella gastroenterite: 0,15 mg/kg in dose singola, max 8 mg.","Vomiting in gastroenteritis: 0.15 mg/kg single dose, max 8 mg."),0.15,w,8,"mg",null,"")}
+    </div>
+    <div class="card" style="--c:${t.c}"><h2>${L("Vie aeree e peso stimato","Airway and estimated weight")}</h2>
+      ${fixed(L("Tubo endotracheale (diametro interno, mm)","Endotracheal tube (internal diameter, mm)"), L("Cuffiato: età/4 + 3,5; non cuffiato: età/4 + 4 (da 1 anno).","Cuffed: age/4 + 3.5; uncuffed: age/4 + 4 (from 1 year)."),ett,depth)}
+      ${fixed(L("Peso stimato (APLS)","Estimated weight (APLS)"), L("0–12 mesi: 0,5 × mesi + 4; 1–5 anni: 2 × età + 8; 6–12 anni: 3 × età + 7.","0–12 months: 0.5 × months + 4; 1–5 years: 2 × age + 8; 6–12 years: 3 × age + 7."), est ? fmt(est) + " kg" : L("inserisci l'età","set age"))}
+    </div>
+    <p class="src">${L(
+      "Fonti: linee guida ERC Paediatric Life Support 2021 (insegnate in Italia da IRC); indicazioni EAACI sull'anafilassi; RCP dei prodotti (AIFA) per Buccolam, paracetamolo e ibuprofene; linea guida SIP sulla gestione della febbre; ESPGHAN 2014 per l'ondansetron. Verifica le concentrazioni con i prodotti presenti in reparto.",
+      "Sources: ERC Paediatric Life Support guidelines 2021 (taught in Italy by IRC); EAACI anaphylaxis guidance; product SmPC (AIFA) for Buccolam, paracetamol and ibuprofen; SIP guideline on fever management; ESPGHAN 2014 for ondansetron. Check concentrations against the products in your ward.")}</p>`;
+  };
+  update(); return { update };
+}
+
+/* ---------- routing ---------- */
+const VIEWS = { vitals, fluids, growth, milestones, vaccines, doses };
+function route(keepScroll){
+  const id = location.hash.slice(1);
+  const t = TOOLS.find(x => x.id === id);
+  current = t ? VIEWS[id](t) : home();
+  if (!keepScroll) window.scrollTo(0, 0);
+  document.title = (t ? tt(t) + " – " : "") + "Prontuario pediatrico";
+}
+window.addEventListener("hashchange", () => route(false));
+
+/* language */
+$("#langBtn").addEventListener("click", () => {
+  lang = lang === "it" ? "en" : "it";
+  try { localStorage.setItem("prontuario.lang", lang); } catch(e){}
+  applyStatic(); route(true);
+});
+
+/* theme */
+$("#themeBtn").addEventListener("click", () => {
+  const r = document.documentElement; const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  r.dataset.theme = cur === "dark" ? "light" : "dark"; try { localStorage.setItem("prontuario.theme", r.dataset.theme); } catch(e){}
+});
+try { const th = localStorage.getItem("prontuario.theme"); if (th) document.documentElement.dataset.theme = th; } catch(e){}
+
+applyStatic();
+route(false);
+})();
+</script>
+</body>
+</html>
