@@ -130,7 +130,7 @@ main{max-width:600px;margin:0 auto;padding:18px 16px calc(96px + env(safe-area-i
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .badge.W,:root:not([data-theme="light"]) .badge.L,:root:not([data-theme="light"]) .badge.D{color:#0D1214;} }
 
 /* ---------- Stats ---------- */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);margin-top:10px;background:var(--card);border:1px solid var(--rule);border-radius:var(--r-md);}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:10px;background:var(--card);border:1px solid var(--rule);border-radius:var(--r-md);}
 .stat{padding:12px 10px 11px;text-align:center;border-left:1px solid var(--rule-soft);}
 .stat:first-child{border-left:none;}
 .stat-v{font-family:var(--display);font-weight:700;font-size:26px;line-height:1.05;}
@@ -197,10 +197,15 @@ td{padding:11px 12px;border-bottom:1px solid var(--rule-soft);}
 tr:last-child td{border-bottom:none;}
 td.n,th.n{text-align:right;}
 td.rk{font-family:var(--display);font-weight:700;font-size:19px;width:44px;}
-td.nm{font-weight:600;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+td.nm{font-weight:600;width:100%;max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stand-wrap td,.stand-wrap th{padding-left:9px;padding-right:9px;}
+.stand-wrap td.n{white-space:nowrap;}
+.stand-wrap td.rk{width:auto;padding-left:12px;}
 tr.me td{background:var(--accent-soft);}
 tr.me td:first-child{box-shadow:inset 4px 0 0 var(--accent);}
 tr.out td{color:var(--ink-soft);}
+td.sc{font-weight:600;color:var(--accent);font-size:14.5px;padding-right:12px;}
+tr.out td.sc{color:var(--ink-soft);}
 .nm .vs{font-weight:400;color:var(--ink-soft);font-size:13px;}
 .asof{font-size:13.5px;color:var(--ink-soft);margin:10px 2px 0;}
 
@@ -528,8 +533,7 @@ function renderMe(){
   const statsArr = [
     [st && st.rank ? st.rank : "–", "Rank"],
     [rec.pts, "Points"],
-    [recText(rec), "Record"],
-    [st ? Math.round(parseFloat(st.omw)) + "%" : "–", "OMW"]
+    [recText(rec), "Record"]
   ];
   $("me-stats").innerHTML = statsArr.map(([v,k])=>`<div class="stat"><div class="stat-v">${esc(v)}</div><div class="stat-k">${k}</div></div>`).join("");
 
@@ -609,10 +613,10 @@ function renderStandings(){
   const rows = snap.standings.map(s=>{
     const p = playerById(s.id); if(!p) return "";
     const rec = s.w + "–" + s.l + (s.d ? "–" + s.d : "");
-    return `<tr class="${s.id === myId ? "me" : ""} ${p.dq ? "out" : ""}"><td class="rk">${s.rank || "–"}</td><td class="nm">${esc(p.name)}${p.dq ? " <span class=\"vs\">(dropped)</span>" : ""}</td><td class="n">${s.pts}</td><td class="n">${rec}</td><td class="n">${esc(s.omw)}</td></tr>`;
+    return `<tr class="${s.id === myId ? "me" : ""} ${p.dq ? "out" : ""}"><td class="rk">${s.rank || "–"}</td><td class="nm">${esc(p.name)}${p.dq ? " <span class=\"vs\">(dropped)</span>" : ""}</td><td class="n">${s.pts}</td><td class="n">${rec}</td><td class="n sc">${esc(s.score)}</td></tr>`;
   }).join("");
-  body.innerHTML = `<div class="stand-wrap"><table><thead><tr><th>#</th><th>Player</th><th class="n">Pts</th><th class="n">Record</th><th class="n">OMW</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="asof">After Round ${snap.event.round}. Ties are broken by opponents' match win % (OMW), then their opponents' (OOMW), then by how early in the event any losses came.</p>`;
+  body.innerHTML = `<div class="stand-wrap"><table><thead><tr><th>#</th><th>Player</th><th class="n">Pts</th><th class="n">Record</th><th class="n">Score</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="asof">After Round ${snap.event.round}. The score combines match points, opponents' match win % (OMW), their opponents' win % (OOMW) and how late any losses came. Higher is better.</p>`;
   if(myId){ const tr = body.querySelector("tr.me"); if(tr && tab === "standings" && !renderStandings.scrolled){ renderStandings.scrolled = true; tr.scrollIntoView({block:"center"}); } }
 }
 
