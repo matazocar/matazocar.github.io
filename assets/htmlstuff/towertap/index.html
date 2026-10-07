@@ -237,7 +237,7 @@
     <button class="rbtn" id="bOk" type="button">ENTER</button>
   </div>
   <table class="table"><tbody id="bRows"></tbody></table>
-  <p class="local-note">TOP 10 · SAVED ON THIS DEVICE</p>
+  <p class="local-note" id="bNote">TOP 10 · SAVED ON THIS DEVICE</p>
   <div class="bbtns">
     <button class="rbtn" id="bAgain" type="button">PLAY AGAIN</button>
     <button class="rbtn alt" id="bShare" type="button">SHARE</button>
@@ -463,7 +463,8 @@
     pickMessage();
     setShareLinks();
     fitTowerBelowPanel();
-    setTimeout(() => { if (state === 'over') openBoard(); }, 900);
+    const boardReady = refreshBoard(); // fetch the world board while the game-over card shows
+    setTimeout(() => boardReady.then(() => { if (state === 'over') openBoard(); }), 900);
   }
 
   window.addEventListener('resize', () => { if (state === 'over') fitTowerBelowPanel(); });
@@ -525,6 +526,66 @@
   }
   function saveBoard(b) { try { localStorage.setItem('towertap-board', JSON.stringify(b)); } catch (e) {} }
   let board = loadBoard();
+
+  // ---------- Online leaderboard (Supabase) ----------
+  // Paste your values from Supabase → Project Settings → API. Until you do, the game keeps its local board.
+  const SB_URL = 'https://paugcrgndvpkvqzrxcdz.supabase.co';
+  const SB_KEY = 'sb_publishable_dQzekECBP_-DI4R_5YsprQ_bIOK8Gx9';
+  const SB_GAME = 'towertap';
+  const SB_ON = !SB_URL.includes('YOUR-') && !SB_KEY.includes('YOUR-');
+  let online = false;
+
+  async function sb(path, opts = {}) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 5000);
+    try {
+      const res = await fetch(SB_URL + '/rest/v1/' + path, {
+        ...opts, signal: ctl.signal,
+        headers: { apikey: SB_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+      });
+      if (!res.ok) { const err = new Error('HTTP ' + res.status); err.status = res.status; throw err; }
+      return res.status === 204 || res.status === 201 ? null : res.json();
+    } finally { clearTimeout(timer); }
+  }
+  const fetchTop = () => sb(`scores?game=eq.${SB_GAME}&select=name,score&order=score.desc,created_at.asc&limit=10`);
+  const postScore = (name, score) => sb('scores', {
+    method: 'POST', headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ game: SB_GAME, name, score })
+  });
+
+  // Scores made offline wait here and upload next time there's a connection
+  const PENDING_KEY = SB_GAME + '-pending';
+  function getPending() {
+    try { const p = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+  }
+  function setPending(p) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(p.slice(-20))); } catch (e) {} }
+  async function flushPending() {
+    const p = getPending();
+    while (p.length) {
+      try { await postScore(p[0].name, p[0].score); }
+      catch (e) { if (!(e.status >= 400 && e.status < 500)) throw e; } // rejected by the database: drop it
+      p.shift(); setPending(p);
+    }
+  }
+  async function submitOnline(name, score) {
+    if (!SB_ON) return;
+    setPending([...getPending(), { name, score }]);
+    try { await flushPending(); } catch (e) {}
+  }
+
+  async function refreshBoard() {
+    if (!SB_ON) return;
+    try {
+      await flushPending().catch(() => {});
+      const rows = await fetchTop();
+      board = rows.map(r => ({ n: String(r.name), s: Number(r.score) }));
+      online = true;
+      saveBoard(board); // cached so the last world board still shows offline
+    } catch (e) { online = false; }
+    document.getElementById('bNote').textContent = online ? 'TOP 10 · WORLDWIDE' : 'TOP 10 · SAVED ON THIS DEVICE';
+  }
+  const boardTitle = () => (online ? 'WORLD TOP 10' : 'YOUR BEST');
+  refreshBoard();
   try {
     const last = localStorage.getItem('towertap-initials');
     if (last && last.length === 3) initials = [...last].map(c => Math.max(0, CHARS.indexOf(c)));
@@ -578,7 +639,7 @@
       selSlot = 0; renderSlots();
       sfx.fanfare();
     } else {
-      bTitle.textContent = 'YOUR BEST';
+      bTitle.textContent = boardTitle();
       bSub.textContent = `YOU STACKED ${score} · BEST ${best}`;
       renderRows();
     }
@@ -594,9 +655,10 @@
     board = board.slice(0, 10);
     mineIdx = board.indexOf(entry);
     saveBoard(board);
+    submitOnline(name, entry.s);
     entering = false;
     boardEl.classList.remove('entering');
-    bTitle.textContent = 'YOUR BEST';
+    bTitle.textContent = boardTitle();
     bSub.textContent = `WELL DONE, ${name}!`;
     renderRows();
     sfx.confirm();
@@ -633,7 +695,9 @@
   document.getElementById('bAgain').addEventListener('click', () => start());
   document.getElementById('toBoard').addEventListener('click', () => {
     sfx.click(); panel.classList.add('hidden');
+    bTitle.textContent = boardTitle();
     renderRows(); boardOpen = true; boardEl.classList.add('open');
+    refreshBoard().then(() => { if (boardOpen && !entering) { bTitle.textContent = boardTitle(); renderRows(); } });
   });
   document.getElementById('bShare').addEventListener('click', () => {
     sfx.click(); closeBoard();

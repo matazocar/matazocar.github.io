@@ -5,13 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Prontuario pediatrico</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%20%20%3Cdefs%3E%20%20%20%20%3CclipPath%20id%3D%22r%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%22112%22/%3E%3C/clipPath%3E%20%20%3C/defs%3E%20%20%3Cg%20clip-path%3D%22url%28%23r%29%22%3E%20%20%20%20%3Crect%20x%3D%220%22%20%20%20width%3D%2286%22%20height%3D%22512%22%20fill%3D%22%23C8323F%22/%3E%20%20%20%20%3Crect%20x%3D%2285%22%20%20width%3D%2286%22%20height%3D%22512%22%20fill%3D%22%23C9661A%22/%3E%20%20%20%20%3Crect%20x%3D%22170%22%20width%3D%2286%22%20height%3D%22512%22%20fill%3D%22%231E8A5A%22/%3E%20%20%20%20%3Crect%20x%3D%22255%22%20width%3D%2286%22%20height%3D%22512%22%20fill%3D%22%231F6FC0%22/%3E%20%20%20%20%3Crect%20x%3D%22340%22%20width%3D%2286%22%20height%3D%22512%22%20fill%3D%22%236C45BE%22/%3E%20%20%20%20%3Crect%20x%3D%22425%22%20width%3D%2287%22%20height%3D%22512%22%20fill%3D%22%23B42A68%22/%3E%20%20%20%20%3Crect%20width%3D%22512%22%20height%3D%22512%22%20fill%3D%22%23000%22%20opacity%3D%220.08%22/%3E%20%20%3C/g%3E%20%20%3Crect%20x%3D%2296%22%20y%3D%2296%22%20width%3D%22320%22%20height%3D%22320%22%20rx%3D%2272%22%20fill%3D%22%2316202B%22%20opacity%3D%220.18%22%20transform%3D%22translate%280%2010%29%22/%3E%20%20%3Crect%20x%3D%2296%22%20y%3D%2296%22%20width%3D%22320%22%20height%3D%22320%22%20rx%3D%2272%22%20fill%3D%22%23FFFFFF%22/%3E%20%20%3Cpath%20d%3D%22M226%20150h60a10%2010%200%200%201%2010%2010v66h66a10%2010%200%200%201%2010%2010v40a10%2010%200%200%201-10%2010h-66v66a10%2010%200%200%201-10%2010h-60a10%2010%200%200%201-10-10v-66h-66a10%2010%200%200%201-10-10v-40a10%2010%200%200%201%2010-10h66v-66a10%2010%200%200%201%2010-10z%22%20fill%3D%22%2316202B%22/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#EEF2F5; --surface:#FFFFFF; --ink:#16202B; --muted:#56636F; --line:#D5DDE4; --soft:#F5F8FA;
-  --red:#C8323F; --blue:#1F6FC0; --green:#1E8A5A; --purple:#6C45BE; --orange:#C9661A; --pink:#B42A68;
+  --red:#C8323F; --blue:#1F6FC0; --green:#1E8A5A; --purple:#6C45BE; --orange:#C9661A; --pink:#B42A68; --teal:#0E7F86;
   --warn-bg:#FFF4E0; --warn-ink:#7A4A00; --hi:#FFF2B3;
   --font:"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   box-sizing:border-box;
@@ -20,13 +22,13 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0F151C; --surface:#18212B; --ink:#E6ECF2; --muted:#9AA8B5; --line:#2A3542; --soft:#1D2733;
-    --red:#E25563; --blue:#4D97E6; --green:#3DB37E; --purple:#9877E3; --orange:#E68A3E; --pink:#DC5592;
+    --red:#E25563; --blue:#4D97E6; --green:#3DB37E; --purple:#9877E3; --orange:#E68A3E; --pink:#DC5592; --teal:#35B3BA;
     --warn-bg:#3A2C12; --warn-ink:#F3C77A; --hi:#3B3615;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0F151C; --surface:#18212B; --ink:#E6ECF2; --muted:#9AA8B5; --line:#2A3542; --soft:#1D2733;
-  --red:#E25563; --blue:#4D97E6; --green:#3DB37E; --purple:#9877E3; --orange:#E68A3E; --pink:#DC5592;
+  --red:#E25563; --blue:#4D97E6; --green:#3DB37E; --purple:#9877E3; --orange:#E68A3E; --pink:#DC5592; --teal:#35B3BA;
   --warn-bg:#3A2C12; --warn-ink:#F3C77A; --hi:#3B3615;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -189,7 +191,8 @@ const TOOLS = [
   { id:"growth", t:["Accrescimento","Growth and body"], b:["BMI, superficie corporea, target, velocità","BMI, BSA, target height, velocity"], c:"var(--green)" },
   { id:"milestones", t:["Tappe dello sviluppo","Milestones"], b:["Sviluppo per età e segnali d'allarme","Development by age and red flags"], c:"var(--purple)" },
   { id:"vaccines", t:["Vaccinazioni","Vaccines"], b:["Calendario italiano e obblighi","Italian schedule and mandatory list"], c:"var(--orange)" },
-  { id:"doses", t:["Dosi in emergenza","Emergency doses"], b:["Dosi per peso e vie aeree","Weight-based doses and airway"], c:"var(--pink)" }
+  { id:"doses", t:["Dosi in emergenza","Emergency doses"], b:["Dosi per peso e vie aeree","Weight-based doses and airway"], c:"var(--pink)" },
+  { id:"antibiotics", t:["Antibiotici","Antibiotics"], b:["Infezioni comuni: scelta, dosi, durata","Common infections: choice, doses, duration"], c:"var(--teal)" }
 ];
 const tt = t => L(t.t[0], t.t[1]);
 let current = null;
@@ -627,8 +630,172 @@ function doses(t){
   update(); return { update };
 }
 
+/* ===== ANTIBIOTICS ===== */
+function freqText(div){
+  return { 1:L("una volta al giorno","once daily"), 2:L("ogni 12 h","every 12 h"), 3:L("ogni 8 h","every 8 h"), 4:L("ogni 6 h","every 6 h") }[div];
+}
+// mg: mg/kg/day (number or [low, high]); div: doses per day; max: max mg per dose
+function ax(name, how, mg, div, w, max, conc, concL){
+  const [a, b] = Array.isArray(mg) ? mg : [mg, mg];
+  let lo = a * w / div, hi = b * w / div, capped = false;
+  if (max != null){ if (hi > max){ hi = max; capped = true; } if (lo > max) lo = max; }
+  const dp = x => x >= 10 ? 0 : 1;
+  const dose = lo === hi ? `${fmt(lo, dp(lo))} mg` : `${fmt(lo, dp(lo))}–${fmt(hi, dp(hi))} mg`;
+  const vol = conc ? (lo === hi ? `${fmt(lo/conc)} mL` : `${fmt(lo/conc)}–${fmt(hi/conc)} mL`) + ` ${L("di","of")} ${concL}` : "";
+  return `<div class="drug"><div><div class="n">${name}</div><div class="how">${how}</div></div>
+    <div><div class="dose">${dose}${capped ? `<span class="cap">max</span>` : ""}</div><div class="vol">${freqText(div)}${vol ? "<br>" + vol : ""}</div></div></div>`;
+}
+function capd(x, max){ return Math.min(x, max); }
+let infSel = "aom";
+function antibiotics(t){
+  const INF = [
+    ["aom", ["Otite media acuta","Acute otitis media"]],
+    ["phar", ["Faringotonsillite streptococcica","Strep pharyngitis"]],
+    ["cap", ["Polmonite acquisita in comunità","Community-acquired pneumonia"]],
+    ["uti", ["Infezione urinaria febbrile","Febrile urinary tract infection"]],
+    ["skin", ["Impetigine e cellulite","Impetigo and cellulitis"]],
+    ["sepsis", ["Sepsi e meningite","Sepsis and meningitis"]],
+    ["pert", ["Pertosse","Pertussis"]],
+    ["endo", ["Profilassi dell'endocardite","Endocarditis prophylaxis"]]
+  ];
+  app.innerHTML = head(t, L("Prima scelta, alternative e durata per le infezioni più comuni (oltre il primo mese di vita)","First choice, alternatives and duration for common infections (beyond the first month of life)")) + `<div id="out"></div>`;
+  const update = () => {
+    const W = weight(), w = W.w, mo = ageMonths();
+    const pick = `<div class="card" style="--c:${t.c}"><div class="seg" role="group" aria-label="${L("Infezione","Infection")}">${INF.map(([k,l]) => `<button type="button" data-i="${k}" aria-pressed="${infSel===k}">${L(l[0], l[1])}</button>`).join("")}</div></div>`;
+    if (!w){ $("#out").innerHTML = pick + needWeight(); bindPick(); return; }
+    const warn = (W.est ? `<div class="warn">${L(`Uso un peso stimato di ${fmt(w)} kg dall'età. Per gli antibiotici usa sempre il peso misurato.`,`Using an estimated weight of ${fmt(w)} kg from age. Always use the measured weight for antibiotics.`)}</div>` : "")
+      + (mo != null && mo < 1 ? `<div class="warn">${L("Nel neonato (primo mese) dosi e intervalli sono diversi: usa riferimenti neonatali e il protocollo del reparto.","In neonates (first month) doses and intervals differ; use neonatal references and your unit protocol.")}</div>` : "");
+    const sec = (title, inner) => `<div class="card" style="--c:${t.c}"><h2>${title}</h2>${inner}</div>`;
+    const p = (it, en) => `<p class="note">${L(it, en)}</p>`;
+    const ul = (it, en) => `<ul class="clean">${L(it, en)}</ul>`;
+    let body = "";
+
+    if (infSel === "aom") body =
+      sec(L("Quando trattare","When to treat"), ul(`
+        <li><b>Antibiotico subito:</b> sotto i 6 mesi, otorrea, sintomi gravi (febbre alta, otalgia intensa), otite bilaterale sotto i 2 anni, otiti ricorrenti.</li>
+        <li><b>Vigile attesa di 48–72 h</b> con antidolorifico: possibile nelle forme lievi senza otorrea, se è garantito il controllo.</li>
+        <li>Tratta sempre il dolore (paracetamolo o ibuprofene).</li>`,`
+        <li><b>Antibiotics straight away:</b> under 6 months, otorrhoea, severe symptoms (high fever, severe ear pain), bilateral AOM under 2 years, recurrent AOM.</li>
+        <li><b>Watchful waiting for 48–72 h</b> with pain relief: an option in mild cases without otorrhoea, if follow-up is guaranteed.</li>
+        <li>Always treat the pain (paracetamol or ibuprofen).</li>`))
+      + sec(L("Prima scelta","First choice"),
+        ax(L("Amoxicillina per bocca","Amoxicillin oral"), L("80–90 mg/kg/die in 3 dosi (anche 2 dosi).","80–90 mg/kg/day in 3 doses (2 doses also acceptable)."), [80,90], 3, w, 1000, 50, "250 mg/5 mL")
+        + ax(L("Amoxicillina-clavulanato per bocca","Amoxicillin-clavulanate oral"), L("Se antibiotico negli ultimi 30 giorni, sindrome otite-congiuntivite, otiti ricorrenti o forma grave. 80–90 mg/kg/die di amoxicillina in 2 dosi.","If antibiotics in the last 30 days, otitis-conjunctivitis syndrome, recurrent AOM or severe illness. 80–90 mg/kg/day of amoxicillin in 2 doses."), [80,90], 2, w, 1000, 80, "400/57 mg/5 mL"))
+      + sec(L("Allergia alla penicillina","Penicillin allergy"),
+        ax(L("Cefuroxima axetil per bocca","Cefuroxime axetil oral"), L("Reazione non grave (non IgE-mediata). 30 mg/kg/die in 2 dosi.","Non-severe (non-IgE) reaction. 30 mg/kg/day in 2 doses."), 30, 2, w, 500, 50, "250 mg/5 mL")
+        + ax(L("Cefpodoxima proxetil per bocca","Cefpodoxime proxetil oral"), L("Reazione non grave. 8 mg/kg/die in 2 dosi.","Non-severe reaction. 8 mg/kg/day in 2 doses."), 8, 2, w, 200, 8, "40 mg/5 mL")
+        + ax(L("Claritromicina per bocca","Clarithromycin oral"), L("Reazione grave (IgE-mediata, anafilassi). 15 mg/kg/die in 2 dosi.","Severe (IgE-mediated, anaphylaxis) reaction. 15 mg/kg/day in 2 doses."), 15, 2, w, 500, 25, "125 mg/5 mL"))
+      + sec(L("Durata","Duration"), p("10 giorni sotto i 2 anni, con otorrea o otiti ricorrenti; 5–7 giorni nei bambini più grandi con forma non complicata.","10 days under 2 years, with otorrhoea or recurrent AOM; 5–7 days in older children with uncomplicated AOM."));
+
+    if (infSel === "phar") body =
+      sec(L("Quando trattare","When to treat"), ul(`
+        <li>Tratta solo se il <b>test rapido antigenico o la coltura</b> sono positivi per streptococco beta-emolitico di gruppo A.</li>
+        <li>Il punteggio di McIsaac aiuta a decidere chi testare; sotto i 3 anni la faringite streptococcica è rara.</li>
+        <li>La diagnosi solo clinica non basta: la maggior parte delle faringiti è virale.</li>`,`
+        <li>Treat only if the <b>rapid antigen test or throat culture</b> is positive for group A streptococcus.</li>
+        <li>The McIsaac score helps decide who to test; strep pharyngitis is rare under 3 years.</li>
+        <li>A clinical diagnosis alone is not enough: most sore throats are viral.</li>`))
+      + sec(L("Prima scelta","First choice"),
+        ax(L("Amoxicillina per bocca","Amoxicillin oral"), L("50 mg/kg/die in 2 dosi (o 3) per 10 giorni.","50 mg/kg/day in 2 doses (or 3) for 10 days."), 50, 2, w, 1000, 50, "250 mg/5 mL")
+        + fixed(L("Benzilpenicillina benzatina IM","Benzathine benzylpenicillin IM"), L("Dose singola, se l'aderenza alla terapia orale è dubbia.","Single dose, if adherence to oral treatment is doubtful."), w < 30 ? L("600.000 UI","600,000 IU") : L("1.200.000 UI","1,200,000 IU"), L("sotto 30 kg: 600.000 UI; da 30 kg: 1.200.000 UI","under 30 kg: 600,000 IU; 30 kg and over: 1,200,000 IU")))
+      + sec(L("Allergia alla penicillina","Penicillin allergy"),
+        ax(L("Cefuroxima axetil per bocca","Cefuroxime axetil oral"), L("Reazione non grave. 20 mg/kg/die in 2 dosi per 10 giorni.","Non-severe reaction. 20 mg/kg/day in 2 doses for 10 days."), 20, 2, w, 250, 50, "250 mg/5 mL")
+        + ax(L("Claritromicina per bocca","Clarithromycin oral"), L("Reazione grave. 15 mg/kg/die in 2 dosi per 10 giorni. Le resistenze ai macrolidi sono frequenti.","Severe reaction. 15 mg/kg/day in 2 doses for 10 days. Macrolide resistance is common."), 15, 2, w, 250, 25, "125 mg/5 mL"))
+      + sec(L("Durata","Duration"), p("10 giorni di terapia orale per prevenire la febbre reumatica.","10 days of oral treatment to prevent rheumatic fever."));
+
+    if (infSel === "cap") body =
+      sec(L("Quando trattare","When to treat"), ul(`
+        <li>Sotto i 5 anni la polmonite è spesso virale: con respiro sibilante diffuso e febbre modesta l'antibiotico di solito non serve.</li>
+        <li>Ricovero se SpO₂ sotto 92%, distress respiratorio importante, disidratazione, età sotto 6 mesi o mancata risposta dopo 48–72 h.</li>`,`
+        <li>Under 5 years, pneumonia is often viral: with widespread wheeze and low fever, antibiotics are usually not needed.</li>
+        <li>Admit if SpO₂ is below 92%, there is marked respiratory distress, dehydration, age under 6 months or no response after 48–72 h.</li>`))
+      + sec(L("Prima scelta (a domicilio)","First choice (outpatient)"),
+        ax(L("Amoxicillina per bocca","Amoxicillin oral"), L("90 mg/kg/die in 3 dosi (anche 2).","90 mg/kg/day in 3 doses (2 also acceptable)."), 90, 3, w, 1000, 50, "250 mg/5 mL")
+        + ax(L("Amoxicillina-clavulanato per bocca","Amoxicillin-clavulanate oral"), L("Se vaccinazione anti-Hib incompleta o dopo influenza. 90 mg/kg/die di amoxicillina in 2 dosi.","If Hib vaccination is incomplete or after influenza. 90 mg/kg/day of amoxicillin in 2 doses."), 90, 2, w, 1000, 80, "400/57 mg/5 mL"))
+      + sec(L("Sospetta forma atipica (Mycoplasma), di solito sopra i 5 anni","Suspected atypical (Mycoplasma), usually over 5 years"),
+        ax(L("Claritromicina per bocca","Clarithromycin oral"), L("15 mg/kg/die in 2 dosi per 7 giorni.","15 mg/kg/day in 2 doses for 7 days."), 15, 2, w, 500, 25, "125 mg/5 mL")
+        + fixed(L("Azitromicina per bocca","Azithromycin oral"), L("10 mg/kg il 1° giorno (max 500 mg), poi 5 mg/kg dal 2° al 5° giorno (max 250 mg). Sospensione 200 mg/5 mL.","10 mg/kg on day 1 (max 500 mg), then 5 mg/kg on days 2–5 (max 250 mg). Suspension 200 mg/5 mL."), `${fmt(capd(10*w,500),0)} mg → ${fmt(capd(5*w,250),0)} mg`, `${fmt(capd(10*w,500)/40)} mL → ${fmt(capd(5*w,250)/40)} mL`))
+      + sec(L("In ospedale (EV)","Hospital (IV)"),
+        ax(L("Ampicillina EV","Ampicillin IV"), L("150–200 mg/kg/die in 4 dosi.","150–200 mg/kg/day in 4 doses."), [150,200], 4, w, 2000)
+        + ax(L("Ceftriaxone EV","Ceftriaxone IV"), L("Se vaccinazioni incomplete, forma grave o complicata. 50–100 mg/kg/die in dose unica.","If vaccinations are incomplete, or severe or complicated pneumonia. 50–100 mg/kg/day once daily."), [50,100], 1, w, 2000))
+      + sec(L("Durata","Duration"), p("5–7 giorni nelle forme non complicate; passa alla via orale appena il bambino migliora e si alimenta.","5–7 days for uncomplicated pneumonia; switch to oral as soon as the child improves and is eating."));
+
+    if (infSel === "uti") body =
+      sec(L("Prima di iniziare","Before starting"), ul(`
+        <li>Raccogli l'urinocoltura <b>prima</b> dell'antibiotico, con mitto intermedio o cateterismo (non con sacchetto).</li>
+        <li>Terapia EV e ricovero sotto i 2 mesi, se il bambino appare settico, vomita o non assume la terapia orale.</li>
+        <li>Adatta la terapia all'antibiogramma appena disponibile.</li>`,`
+        <li>Collect a urine culture <b>before</b> the antibiotic, by clean catch or catheter (not a bag).</li>
+        <li>IV treatment and admission under 2 months, if the child looks septic, is vomiting or cannot take oral treatment.</li>
+        <li>Adjust treatment to the culture result as soon as it is available.</li>`))
+      + sec(L("Prima scelta (per bocca)","First choice (oral)"),
+        ax(L("Amoxicillina-clavulanato per bocca","Amoxicillin-clavulanate oral"), L("50 mg/kg/die di amoxicillina in 3 dosi (anche 2).","50 mg/kg/day of amoxicillin in 3 doses (2 also acceptable)."), 50, 3, w, 1000, 80, "400/57 mg/5 mL")
+        + ax(L("Cefixima per bocca","Cefixime oral"), L("Alternativa, o se le resistenze locali all'amoxicillina-clavulanato sono alte. 8 mg/kg/die in 1 dose (o 2).","Alternative, or if local resistance to amoxicillin-clavulanate is high. 8 mg/kg/day in 1 dose (or 2)."), 8, 1, w, 400, 20, "100 mg/5 mL"))
+      + sec(L("Terapia EV","IV treatment"),
+        ax(L("Ceftriaxone EV","Ceftriaxone IV"), L("50 mg/kg/die in dose unica.","50 mg/kg/day once daily."), 50, 1, w, 2000)
+        + ax(L("Amikacina EV","Amikacin IV"), L("Alternativa: 15 mg/kg/die in dose unica. Controlla la funzione renale.","Alternative: 15 mg/kg/day once daily. Check kidney function."), 15, 1, w, 1500))
+      + sec(L("Durata","Duration"), p("10 giorni in totale; passa alla via orale dopo 2–4 giorni di terapia EV se il bambino migliora.","10 days in total; switch to oral after 2–4 days of IV treatment if the child improves."));
+
+    if (infSel === "skin") body =
+      sec(L("Impetigine localizzata","Localised impetigo"), p("Terapia topica con acido fusidico o mupirocina 3 volte al giorno per 5–7 giorni, dopo aver rimosso le croste.","Topical fusidic acid or mupirocin 3 times a day for 5–7 days, after removing the crusts."))
+      + sec(L("Impetigine estesa, cellulite, morso di animale","Extensive impetigo, cellulitis, animal bite"),
+        ax(L("Amoxicillina-clavulanato per bocca","Amoxicillin-clavulanate oral"), L("50 mg/kg/die di amoxicillina in 2–3 dosi (mostrato per 2).","50 mg/kg/day of amoxicillin in 2–3 doses (shown for 2)."), 50, 2, w, 1000, 80, "400/57 mg/5 mL")
+        + ax(L("Clindamicina per bocca","Clindamycin oral"), L("Allergia grave alla penicillina. 30 mg/kg/die in 3 dosi.","Severe penicillin allergy. 30 mg/kg/day in 3 doses."), 30, 3, w, 450))
+      + sec(L("Quando ricoverare","When to admit"), p("Cellulite estesa o in rapida progressione, cellulite periorbitaria con segni orbitari (dolore ai movimenti oculari, proptosi, deficit del visus), febbre alta con aspetto sofferente, età sotto 1 anno: terapia EV. Durata 5–7 giorni nelle forme non complicate.","Extensive or rapidly spreading cellulitis, periorbital cellulitis with orbital signs (pain on eye movement, proptosis, reduced vision), high fever with an unwell child, age under 1 year: IV treatment. Duration 5–7 days if uncomplicated."));
+
+    if (infSel === "sepsis") body =
+      `<div class="warn">${L("Emergenza: somministra l'antibiotico entro 1 ora. Fai l'emocoltura prima se non ritarda la terapia; la puntura lombare non deve ritardare l'antibiotico.","Emergency: give the antibiotic within 1 hour. Take a blood culture first if it does not delay treatment; a lumbar puncture must not delay the antibiotic.")}</div>`
+      + sec(L("Oltre il primo mese di vita","Beyond the first month of life"),
+        ax(L("Ceftriaxone EV","Ceftriaxone IV"), L("100 mg/kg/die in 1–2 dosi (mostrato per 2), max 4 g/die.","100 mg/kg/day in 1–2 doses (shown for 2), max 4 g/day."), 100, 2, w, 2000)
+        + ax(L("Cefotaxima EV","Cefotaxime IV"), L("Alternativa: 200–300 mg/kg/die in 4 dosi (300 nella meningite), max 12 g/die.","Alternative: 200–300 mg/kg/day in 4 doses (300 in meningitis), max 12 g/day."), [200,300], 4, w, 3000)
+        + ax(L("Vancomicina EV","Vancomycin IV"), L("Da aggiungere se si sospetta pneumococco resistente o MRSA, secondo i dati locali. 60 mg/kg/die in 4 dosi; monitora i livelli.","Add if resistant pneumococcus or MRSA is suspected, according to local data. 60 mg/kg/day in 4 doses; monitor levels."), 60, 4, w, null)
+        + ax(L("Desametasone EV","Dexamethasone IV"), L("Sospetta meningite batterica: 0,15 mg/kg ogni 6 h per 2–4 giorni, prima o insieme alla prima dose di antibiotico.","Suspected bacterial meningitis: 0.15 mg/kg every 6 h for 2–4 days, before or with the first antibiotic dose."), 0.6, 4, w, 10))
+      + sec(L("Neonato (primo mese)","Neonate (first month)"), p("Ampicillina più cefotaxima (o gentamicina), con dosi neonatali per età gestazionale e postnatale. Aggiungi aciclovir se si sospetta infezione da herpes simplex. Evita il ceftriaxone nel neonato.","Ampicillin plus cefotaxime (or gentamicin), at neonatal doses for gestational and postnatal age. Add aciclovir if herpes simplex infection is suspected. Avoid ceftriaxone in neonates."))
+      + sec(L("Profilassi dei contatti stretti (meningococco)","Prophylaxis for close contacts (meningococcus)"),
+        ax(L("Rifampicina per bocca","Rifampicin oral"), L("10 mg/kg ogni 12 h per 2 giorni (5 mg/kg sotto 1 mese).","10 mg/kg every 12 h for 2 days (5 mg/kg under 1 month)."), mo != null && mo < 1 ? 10 : 20, 2, w, 600)
+        + fixed(L("Ceftriaxone IM","Ceftriaxone IM"), L("Dose singola: 125 mg sotto 12 anni, 250 mg da 12 anni.","Single dose: 125 mg under 12 years, 250 mg from 12 years."), mo == null ? L("inserisci l'età","set age") : (mo < 144 ? "125 mg" : "250 mg"))
+        + p("La meningite è una malattia a notifica obbligatoria: segnala subito il caso al Servizio di Igiene e Sanità Pubblica, che gestisce i contatti.","Meningitis is a notifiable disease: report the case immediately to the public health service (Servizio di Igiene e Sanità Pubblica), which manages the contacts."));
+
+    if (infSel === "pert") body =
+      sec(L("Trattamento e profilassi dei contatti","Treatment and contact prophylaxis"),
+        (mo != null && mo < 6
+          ? ax(L("Azitromicina per bocca","Azithromycin oral"), L("Sotto i 6 mesi: 10 mg/kg/die per 5 giorni. Sotto 1 mese è il macrolide preferito; controlla il rischio di stenosi pilorica.","Under 6 months: 10 mg/kg/day for 5 days. Preferred macrolide under 1 month; watch for pyloric stenosis."), 10, 1, w, 500, 40, "200 mg/5 mL")
+          : fixed(L("Azitromicina per bocca","Azithromycin oral"), L("Dai 6 mesi: 10 mg/kg il 1° giorno (max 500 mg), poi 5 mg/kg dal 2° al 5° giorno (max 250 mg). Sospensione 200 mg/5 mL.","From 6 months: 10 mg/kg on day 1 (max 500 mg), then 5 mg/kg on days 2–5 (max 250 mg). Suspension 200 mg/5 mL."), `${fmt(capd(10*w,500),0)} mg → ${fmt(capd(5*w,250),0)} mg`, `${fmt(capd(10*w,500)/40)} mL → ${fmt(capd(5*w,250)/40)} mL`))
+        + ax(L("Claritromicina per bocca","Clarithromycin oral"), L("Alternativa dopo il primo mese: 15 mg/kg/die in 2 dosi per 7 giorni.","Alternative after the first month: 15 mg/kg/day in 2 doses for 7 days."), 15, 2, w, 500, 25, "125 mg/5 mL")
+        + p("La terapia riduce il contagio soprattutto se iniziata nelle prime 3 settimane di tosse. I lattanti sotto i 6 mesi rischiano apnee e vanno spesso ricoverati. La pertosse è a notifica obbligatoria.","Treatment mainly reduces spread if started within 3 weeks of the cough. Infants under 6 months are at risk of apnoea and often need admission. Pertussis is notifiable."));
+
+    if (infSel === "endo") body =
+      sec(L("Solo per pazienti ad alto rischio","Only for high-risk patients"), ul(`
+        <li>Precedente endocardite, protesi valvolari, cardiopatie congenite cianogene non corrette o corrette con materiale protesico (nei primi 6 mesi, o a vita se c'è un difetto residuo).</li>
+        <li>Indicata per procedure odontoiatriche con manipolazione della gengiva o della regione periapicale.</li>`,`
+        <li>Previous endocarditis, prosthetic valves, unrepaired cyanotic congenital heart disease or repair with prosthetic material (for 6 months, or for life with a residual defect).</li>
+        <li>Indicated for dental procedures involving the gums or the periapical region.</li>`))
+      + sec(L("Dose singola 30–60 minuti prima","Single dose 30–60 minutes before"),
+        fixed(L("Amoxicillina per bocca","Amoxicillin oral"), L("50 mg/kg, max 2 g.","50 mg/kg, max 2 g."), `${fmt(capd(50*w,2000),0)} mg`, `${fmt(capd(50*w,2000)/50)} mL ${L("di","of")} 250 mg/5 mL`)
+        + fixed(L("Azitromicina per bocca","Azithromycin oral"), L("Allergia alla penicillina: 15 mg/kg, max 500 mg.","Penicillin allergy: 15 mg/kg, max 500 mg."), `${fmt(capd(15*w,500),0)} mg`, `${fmt(capd(15*w,500)/40)} mL ${L("di","of")} 200 mg/5 mL`));
+
+    $("#out").innerHTML = pick + warn + body + `
+    <div class="card"><h2>${L("Uso responsabile degli antibiotici","Responsible antibiotic use")}</h2>
+      <ul class="clean">${L(`
+        <li><b>Allergia alla penicillina:</b> la maggior parte delle etichette non è confermata. Dopo un esantema lieve e tardivo si possono usare le cefalosporine; invia all'allergologo per la valutazione.</li>
+        <li><b>Preferisci gli antibiotici “Access”</b> della classificazione OMS AWaRe (come l'amoxicillina) e riserva cefalosporine di 3ª generazione e macrolidi a indicazioni precise.</li>
+        <li>Rivaluta la terapia a 48–72 h e adattala alle colture.</li>`,`
+        <li><b>Penicillin allergy:</b> most labels are not confirmed. After a mild delayed rash, cephalosporins can be used; refer for allergy assessment.</li>
+        <li><b>Prefer “Access” antibiotics</b> in the WHO AWaRe classification (such as amoxicillin) and keep third-generation cephalosporins and macrolides for specific indications.</li>
+        <li>Review treatment at 48–72 h and adjust it to culture results.</li>`)}
+      </ul>
+    </div>
+    <p class="src">${L(
+      "Fonti: linee guida intersocietarie italiane su otite media acuta (SIP, aggiornamento 2019), faringotonsillite (2012), polmonite acquisita in comunità (consensus 2020) e prima infezione urinaria febbrile (raccomandazioni 2020); linee guida ESC 2023 sull'endocardite; Piano Nazionale di Contrasto all'Antibiotico-Resistenza (PNCAR) 2022–2025. Le concentrazioni delle sospensioni sono quelle più comuni in Italia: verifica il prodotto prescritto e le resistenze locali.",
+      "Sources: Italian intersociety guidelines on acute otitis media (SIP, 2019 update), pharyngotonsillitis (2012), community-acquired pneumonia (2020 consensus) and first febrile urinary tract infection (2020 recommendations); ESC 2023 endocarditis guidelines; Italian national plan against antibiotic resistance (PNCAR) 2022–2025. Suspension strengths are the most common ones in Italy: check the product prescribed and local resistance data.")}</p>`;
+    bindPick();
+  };
+  const bindPick = () => app.querySelectorAll("[data-i]").forEach(b => b.addEventListener("click", () => { infSel = b.dataset.i; update(); }));
+  update(); return { update };
+}
+
 /* ---------- routing ---------- */
-const VIEWS = { vitals, fluids, growth, milestones, vaccines, doses };
+const VIEWS = { vitals, fluids, growth, milestones, vaccines, doses, antibiotics };
 function route(keepScroll){
   const id = location.hash.slice(1);
   const t = TOOLS.find(x => x.id === id);
