@@ -168,6 +168,7 @@ input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--a
 .names button:hover{background:color-mix(in srgb, var(--ink) 5%, transparent);}
 .names .tag{font-size:13px;color:var(--ink-soft);font-weight:500;}
 .none{padding:18px 16px;color:var(--ink-soft);}
+.pairs li.none,.history li.none{display:block;padding:18px 16px;}
 
 /* ---------- Pairings & standings ---------- */
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
@@ -582,7 +583,7 @@ function renderPairings(){
   const cur = curRound();
   if(!cur){
     sel.hidden = true;
-    $("pair-list").innerHTML = `<li class="none">"Pairings appear here when Round 1 is posted."</li>`;
+    $("pair-list").innerHTML = `<li class="none">Pairings appear here when Round 1 is posted.</li>`;
     return;
   }
   sel.hidden = false;

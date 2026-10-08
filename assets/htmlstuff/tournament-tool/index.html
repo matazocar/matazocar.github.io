@@ -915,7 +915,7 @@ input[type=email],input[type=password],input[type=url]{
     <div class="card explainer">
       <p>Players are ranked in this order:</p>
       <ol>
-        <li><b>Match points:</b> <span id="scoring-rule-text">3 per win, 1 per draw -0 in Advanced Format-, 0 per loss</span> (a bye counts as a win).</li>
+        <li><b>Match points:</b> <span id="scoring-rule-text">3 per win, 1 per draw (0 in Advanced Format), 0 per loss</span> (a bye counts as a win).</li>
         <li><b>Match win % (MW%):</b> match points ÷ (rounds played × max points), floored at the configured minimum.</li>
         <li><b>Opponents' match win % (OMW%):</b> the average of each opponent's MW%, each floored first.</li>
       </ol>
@@ -1373,7 +1373,7 @@ function renderScoringRuleText(){
   const w = state.config.ptsWin, l = state.config.ptsLoss, dr = state.config.ptsDraw;
   el.textContent = state.config.drawRuling==="strict"
     ? `${w} per win, ${l} per loss, and a draw is scored as a loss (${l}) for both players`
-    : `${w} per win, ${dr} per draw, ${l} per loss`;
+    : `${w} per win, ${dr} per draw (${l} in Advanced Format), ${l} per loss`;
 }
 
 document.getElementById("apply-config").addEventListener("click", ()=>{
@@ -1393,14 +1393,26 @@ document.getElementById("apply-config").addEventListener("click", ()=>{
 });
 
 document.getElementById("reset-all").addEventListener("click", async ()=>{
-  const ok = await confirmDialog("This clears every player, round, and result. This cannot be undone. Continue?");
+  const ok = await confirmDialog("This clears every player, round, and result, and the event code. This cannot be undone. Continue?");
   if(!ok) return;
   const snap = JSON.stringify(state);
+  const oldSlug = live.cfg.slug;
+  // Clear the code before saving, so the empty event is never sent to the old player link.
+  live.cfg.slug = ""; live.lastOk = 0; saveLiveCfg();
   state = JSON.parse(JSON.stringify(DEFAULT_STATE));
   saveState();
   fillConfigForm();
   renderAll();
-  offerUndo("Event reset.", snap);
+  renderLive();
+  toast("Event reset.", {label:"Undo", fn:()=>{
+    live.cfg.slug = oldSlug; saveLiveCfg();
+    state = JSON.parse(snap);
+    saveState();
+    selectedDataRound = null;
+    renderAll();
+    renderLive();
+    toast("Change undone.");
+  }});
 });
 
 /* ============================================================
