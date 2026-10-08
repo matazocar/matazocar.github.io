@@ -582,7 +582,7 @@ function renderPairings(){
   const cur = curRound();
   if(!cur){
     sel.hidden = true;
-    $("pair-list").innerHTML = `<div class="msg">Pairings appear here when Round 1 is posted.</div>`;
+    $("pair-list").innerHTML = `<li class="none"><p>Pairings appear here when Round 1 is posted.</p></li>`;
     return;
   }
   sel.hidden = false;
