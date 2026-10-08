@@ -128,6 +128,25 @@ textarea{width:100%;min-height:74px;background:var(--mat);border:1.5px solid var
   <div class="dlg-body" id="levelGrid"></div>
 </dialog>
 
+<dialog id="dlgCheat" aria-labelledby="dlgCheatTitle">
+  <div class="dlg-head"><h2 id="dlgCheatTitle">Cheat codes</h2><button class="btn" data-close>Close</button></div>
+  <div class="dlg-body">
+    <div class="section">
+      <p>For testing. Codes aren't case-sensitive.</p>
+      <p><b>UNLOCKALL</b> unlocks every designed level and the first 50 Endless levels.<br>
+      <b>ENDLESS</b> unlocks everything up to Endless and jumps to its first level.<br>
+      <b>LEVEL 150</b> unlocks up to any level number and jumps there.<br>
+      <b>RELOCK</b> locks everything past your real progress again. Your stars stay.</p>
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="cheatInput" type="text" autocomplete="off" spellcheck="false" aria-label="Cheat code"
+          style="flex:1;min-width:0;background:var(--mat);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;text-transform:uppercase">
+        <button class="btn primary" id="btnCheat">Enter</button>
+      </div>
+      <div class="status" id="cheatStatus" role="status"></div>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dlgSave" aria-labelledby="dlgSaveTitle">
   <div class="dlg-head"><h2 id="dlgSaveTitle">Save and load</h2><button class="btn" data-close>Close</button></div>
   <div class="dlg-body">
@@ -175,8 +194,8 @@ textarea{width:100%;min-height:74px;background:var(--mat);border:1.5px solid var
    "best" scores for that level may no longer match the new shape; you can
    clear them in a migration if that matters to you.
    ===================================================================== */
-const GAME_VERSION = '1.1.0';
-const SAVE_VERSION = 2;
+const GAME_VERSION = '1.4.0';
+const SAVE_VERSION = 3;
 const SAVE_FORMAT = 'halfcut-save';
 const STORAGE_KEY = 'halfcut.save';
 const CODE_PREFIX = 'HALFCUT1.';
@@ -194,7 +213,23 @@ const MIGRATIONS = {
     if (d.current > OLD_END) d.current = OLD_END + 1;
     return d;
   },
-  // 2: (data) => { data.newField = data.newField ?? 0; return data; },
+  // 1.4.0 mixed 12 new shapes into Endless. Records for Endless levels whose
+  // shape changed are dropped, since they were set on a different shape.
+  2: (d) => {
+    const levels = {};
+    for (const [k, v] of Object.entries(d.levels || {})) {
+      const L = +k;
+      if (L > LEVELS.length) {
+        const def = levelDef(L);
+        if (def.g !== def.legacyG) continue;
+        if (def.over && def.over.twin && def.over.twin.g !== def.over.twin.legacyG) continue;
+      }
+      levels[L] = v;
+    }
+    d.levels = levels;
+    return d;
+  },
+  // 3: (data) => { data.newField = data.newField ?? 0; return data; },
 };
 
 /* ---------------- RNG ---------------- */
@@ -302,10 +337,58 @@ const GEN = {
       const hp=place(r,hr,inDisk(r,b.min),0.05);
       parts.push({outer:radialPts(120,b.f,c.x,c.y),holes:hp.filter(Boolean).map(h=>ellipsePts(c.x+h.x,c.y+h.y,h.r,h.r,40))});});
     return parts;},
+
+  /* ---- Added in 1.4.0 (Endless only) ---- */
+  cloud: r => {const n=ri(r,6,8),ph=rr(r,0,TAU),amp=Array.from({length:n},()=>rr(r,0.12,0.32));
+    return one(radialPts(n*40,t=>{const u=n*t/2+ph,b=((Math.floor(u/Math.PI)%n)+n)%n;return 0.8+amp[b]*Math.pow(Math.abs(Math.sin(u)),0.6);}));},
+  keyhole: r => {const pw=rr(r,0.8,1.0),ph=rr(r,1.1,1.35),ox=rr(r,-0.25,0.25),cy=rr(r,-0.45,-0.15),R=rr(r,0.24,0.32),w=rr(r,0.12,0.2),y1=cy+rr(r,0.55,0.8);
+    const t0=Math.atan2(Math.sqrt(R*R-w*w/4),w/2),t1=Math.PI-t0-TAU,hole=[[ox+w/2,y1]];
+    for(let i=0;i<=48;i++){const t=t0+(t1-t0)*i/48;hole.push([ox+R*Math.cos(t),cy+R*Math.sin(t)]);}
+    hole.push([ox-w/2,y1]);
+    return one(rectPts(-pw,-ph,pw,ph),[hole]);},
+  dumbbell: r => {const R1=rr(r,0.45,0.62),R2=rr(r,0.28,0.44),h=rr(r,0.08,0.16),c1=-1.1,c2=rr(r,0.9,1.3),p=[];
+    const a1=Math.asin(h/R1),a2=Math.asin(h/R2);
+    for(let i=0;i<=60;i++){const t=(Math.PI-a2)-i/60*(2*Math.PI-2*a2);p.push([c2+R2*Math.cos(t),R2*Math.sin(t)]);}
+    for(let i=0;i<=72;i++){const t=-a1-i/72*(2*Math.PI-2*a1);p.push([c1+R1*Math.cos(t),R1*Math.sin(t)]);}
+    return one(p);},
+  pie: r => {const gap=rr(r,0.5,1.4),st=rr(r,0,TAU),p=[[0,0]];
+    for(let i=0;i<=96;i++){const t=st+gap/2+i/96*(TAU-gap);p.push([Math.cos(t),Math.sin(t)]);}
+    return one(p);},
+  hourglass: r => {const w1=rr(r,0.6,1.1),w2=rr(r,0.6,1.1),ww=rr(r,0.12,0.25),ox=rr(r,-0.3,0.3),wy=rr(r,-0.25,0.25),tl=rr(r,-0.2,0.2);
+    return one([[-w1,-1.2+tl],[w1,-1.2-tl],[ox+ww,wy],[w2,1.2],[-w2,1.2],[ox-ww,wy]]);},
+  stairs: r => {const n=ri(r,4,5),sw=0.5;let H=0;const hs=[];for(let i=0;i<n;i++){H+=rr(r,0.25,0.55);hs.push(H);}
+    const W=n*sw,p=[[0,0],[W,0],[W,-hs[n-1]]];
+    for(let i=n-1;i>=1;i--)p.push([i*sw,-hs[i]],[i*sw,-hs[i-1]]);
+    p.push([0,-hs[0]]);return one(p);},
+  amoeba: r => {const b=blobFn(r,{minK:2,maxK:3,amp:0.18});const lobes=Array.from({length:ri(r,3,4)},()=>[rr(r,0,TAU),rr(r,0.35,0.7),rr(r,0.14,0.24)]);
+    return one(radialPts(240,t=>b.f(t)+lobes.reduce((s,[c,h,wd])=>{let d=Math.abs(t-c)%TAU;d=Math.min(d,TAU-d);return s+h*Math.exp(-((d/wd)**2));},0)));},
+  boomerang: r => {const a=rr(r,0.9,1.4),r0=rr(r,0.48,0.6),tilt=rr(r,-0.15,0.15),p=[];
+    for(let i=0;i<=64;i++){const t=-a+i/64*2*a;p.push([Math.cos(t),Math.sin(t)]);}
+    for(let i=64;i>=0;i--){const t=-a+i/64*2*a,ri_=r0+tilt*t/a;p.push([ri_*Math.cos(t),ri_*Math.sin(t)]);}
+    return one(p);},
+  squiggle: r => {const A=rr(r,0.25,0.4),k=rr(r,1.6,2.2),w=rr(r,0.16,0.24),ph=rr(r,0,TAU),N=160,top=[],bot=[];
+    for(let i=0;i<=N;i++){const x=-1.6+3.2*i/N,y=A*Math.sin(k*x+ph),dy=A*k*Math.cos(k*x+ph),L=Math.hypot(1,dy),nx=-dy/L,ny=1/L;
+      top.push([x+nx*w,y+ny*w]);bot.push([x-nx*w,y-ny*w]);}
+    return one(top.concat(bot.reverse()));},
+  waffle: r => {const holes=[],cw=0.8,chh=2/3;
+    for(let i=0;i<3;i++)for(let j=0;j<3;j++){if(r()<0.2)continue;
+      const cx=-1.2+cw*(i+0.5),cy=-1+chh*(j+0.5),hw=cw*rr(r,0.17,0.36),hh=chh*rr(r,0.17,0.36);
+      holes.push(rectPts(cx-hw,cy-hh,cx+hw,cy+hh));}
+    return one(rectPts(-1.2,-1,1.2,1),holes);},
+  saw: r => {const n=ri(r,10,14),dep=rr(r,0.15,0.25),hr=rr(r,0.15,0.25),a=rr(r,0,TAU),d=rr(r,0,0.25);
+    return one(radialPts(n*20,t=>{const f=(t/TAU*n)%1;return 1-dep*f;}),[ellipsePts(Math.cos(a)*d,Math.sin(a)*d,hr,hr,48)]);},
+  birdhouse: r => {const ew=rr(r,0.95,1.15),px=rr(r,-0.3,0.3),ry=-rr(r,1.0,1.3),hr=rr(r,0.16,0.24),hx=rr(r,-0.35,0.35),hy=rr(r,0.15,0.55);
+    return one([[-0.8,1.2],[0.8,1.2],[0.8,-0.2],[ew,-0.2],[px,ry],[-ew,-0.2],[-0.8,-0.2]],[ellipsePts(hx,hy,hr,hr,48)]);},
 };
 const GEN_NAMES = {spiky:'Urchin',gear:'Cog',spiral:'Spiral',splat:'Splat',cheese:'Swiss cheese',blobHoles:'Holey puddle',
   islands:'Archipelago',islandsHoles:'Atoll chain',starIrr:'Lopsided star',comb:'Comb',bolt:'Lightning bolt',crescent:'Crescent'};
-const ENDLESS_POOL = Object.keys(GEN_NAMES);
+const ENDLESS_POOL = Object.keys(GEN_NAMES); // the original 12; keep this order so old levels stay the same
+const NEW_SHAPES = {cloud:'Cloud',keyhole:'Keyhole plate',dumbbell:'Dumbbell',pie:'Missing slice',hourglass:'Hourglass',stairs:'Staircase',
+  amoeba:'Amoeba',boomerang:'Boomerang',squiggle:'Squiggle',waffle:'Waffle',saw:'Saw blade',birdhouse:'Birdhouse'};
+const NEW_POOL = Object.keys(NEW_SHAPES);
+Object.assign(GEN_NAMES,NEW_SHAPES);
+// Half of Endless levels swap their legacy shape for one of the new ones.
+function mixInNew(legacyG,seed){const q=mulberry32(seed*6151+11);return q()<0.5?NEW_POOL[Math.floor(q()*NEW_POOL.length)]:legacyG;}
 
 /* ---------------- Level table ---------------- */
 const CHAPTERS = [
@@ -360,12 +443,33 @@ const MOVE_TYPES=['slideX','slideY','diag','orbit','eight','bounce','wander','da
 function levelDef(L){
   if(L<=LEVELS.length) return LEVELS[L-1];
   const k=L-LEVELS.length,seed=k+LEGACY_DESIGNED;const r=mulberry32(seed*9973+7);
-  const g=ENDLESS_POOL[Math.floor(r()*ENDLESS_POOL.length)];
+  const legacyG=ENDLESS_POOL[Math.floor(r()*ENDLESS_POOL.length)];
+  const g=mixInNew(legacyG,seed);
   const spin=(0.25+Math.min(0.55,k*0.02))*(r()<0.5?-1:1);
   const m=mulberry32(seed*7717+3);
   const move={type:MOVE_TYPES[Math.floor(m()*MOVE_TYPES.length)],speed:Math.min(1.5,0.9+k*0.015)};
-  return {g,name:`Endless ${k}: ${GEN_NAMES[g]}`,spin,move,seed,chapter:'Endless'};
+  const def={g,legacyG,name:`Endless ${k}: ${GEN_NAMES[g]}`,spin,move,seed,chapter:'Endless'};
+  // Overdrive: from level 127 (Endless 41) new pressures stack up, one by one.
+  const n=L-OVERDRIVE_FROM+1;
+  if(n>=1){
+    move.speed=Math.min(2.5,1.5+n*0.01);
+    def.tol=Math.max(0.35,0.6-n*0.005);
+    const o={n,accel:Math.min(0.6,0.12+n*0.012)};                 // n>=1: speeds up while you aim
+    if(n>=10)o.shrink=Math.min(0.12,0.04+n*0.002);                // n>=10: shrinks while you aim
+    if(n>=20&&(n>=40||n%2===0)){                                  // n>=20: a second shape joins
+      const q=mulberry32(seed*4241+9);
+      const legacyG2=ENDLESS_POOL[Math.floor(q()*ENDLESS_POOL.length)];
+      const g2=mixInNew(legacyG2,seed+100000);
+      let t2=MOVE_TYPES[Math.floor(q()*MOVE_TYPES.length)];if(t2===move.type)t2=MOVE_TYPES[(MOVE_TYPES.indexOf(t2)+3)%MOVE_TYPES.length];
+      o.twin={g:g2,legacyG:legacyG2,seed:seed+100000,move:{type:t2,speed:move.speed*0.85}};
+      def.name+=` + ${GEN_NAMES[g2]}`;
+    }
+    if(n>=30)o.ghost=Math.max(0.08,0.5-(n-30)*0.01);              // n>=30: fades in and out
+    def.over=o;
+  }
+  return def;
 }
+const OVERDRIVE_FROM=LEGACY_DESIGNED+50+40+1; // level 127
 const tolerance = L => {const d=levelDef(L);return d.tol!=null?d.tol:Math.max(0.6, 3*Math.pow(0.95, L-1));};
 function starsFor(err,tol){ if(err<=tol*0.25)return 3; if(err<=tol*0.6)return 2; if(err<=tol)return 1; return 0; }
 
@@ -374,9 +478,14 @@ function signedArea(pts){let a=0;for(let i=0,n=pts.length;i<n;i++){const p=pts[i
 
 function buildShape(L){
   const def=levelDef(L);
-  L=def.seed??L;
+  const main=geometry(def.g,def.seed??L);
+  const pieces=[{...main,move:def.move,tOff:0,dseed:L}];
+  if(def.over&&def.over.twin){const t=def.over.twin;pieces.push({...geometry(t.g,t.seed),move:t.move,tOff:1.7,dseed:L*7+3});}
+  return {def,pieces,parts:main.parts,signs:pieces.flatMap(p=>p.signs),maxR:main.maxR,hx:main.hx,hy:main.hy};
+}
+function geometry(g,L){
   const r=mulberry32((L*1013904223+12345)>>>0);
-  let parts=GEN[def.g](r);
+  let parts=GEN[g](r);
   const rot=L<=2?0:rr(r,0,TAU);
   const amt=L<9?0:Math.min(0.65,(L-8)*0.03);
   const sx=1+rr(r,-amt,amt), sy=1+rr(r,-amt,amt), sh=rr(r,-amt,amt)*0.6;
@@ -389,7 +498,7 @@ function buildShape(L){
   let maxR=0,hx=0,hy=0;
   parts.forEach(p=>p.outer.forEach(([x,y])=>{maxR=Math.max(maxR,Math.hypot(x,y));hx=Math.max(hx,Math.abs(x));hy=Math.max(hy,Math.abs(y));}));
   const signs=parts.map(p=>({outer:Math.sign(signedArea(p.outer))||1,holes:p.holes.map(h=>Math.sign(signedArea(h))||1)}));
-  return {def,parts,signs,maxR,hx,hy};
+  return {parts,signs,maxR,hx,hy};
 }
 
 /* ---------------- Slicing math ---------------- */
@@ -520,7 +629,13 @@ function setAimMessage(){
   const best=data.levels[level];
   $('msg').textContent=level===1&&!best?'Drag a line across the shape to cut it in two.':'Drag a line across the shape.';
   const parts=[`Pass within ${tolerance(level).toFixed(2)} points of 50/50.`];
-  if(shape.def.move)parts.push(shape.def.spin?'It moves and turns until you let go.':'It keeps moving until you let go.');
+  const o=shape.def.over;
+  if(o){
+    const m=[o.twin?'Two shapes, one cut: split their combined area.':'It moves and turns until you let go.','It speeds up the longer you aim.'];
+    if(o.shrink)m.push('It shrinks while you aim.');
+    if(o.ghost!=null)m.push('It fades in and out.');
+    parts.push(m.join(' '));
+  }else if(shape.def.move)parts.push(shape.def.spin?'It moves and turns until you let go.':'It keeps moving until you let go.');
   else if(shape.def.spin)parts.push('It keeps turning until you let go.');
   else if(level<=2)parts.push('The cut runs straight through, edge to edge.');
   if(best)parts.push(`Best: off by ${best.err.toFixed(2)} ${starStr(best.stars)}`);
@@ -534,10 +649,12 @@ function layout(){
   view.cx=W/2;view.cy=H/2;
   if(shape){
     if(shape.def.move){
-      const R=Math.min(W,H)*0.24;view.scale=R/shape.maxR;
+      const R=Math.min(W,H)*(shape.pieces.length>1?0.2:0.24);
+      shape.pieces.forEach(pc=>pc.scale=R/pc.maxR);view.scale=shape.pieces[0].scale;
       view.ax=Math.max(0,W/2-R-14);view.ay=Math.max(0,H/2-R-14);
     }else{
       view.scale=shape.def.spin?Math.min(W,H)*0.42/shape.maxR:Math.min(W*0.42/shape.hx,H*0.4/shape.hy);
+      shape.pieces.forEach(pc=>pc.scale=view.scale);
       view.ax=view.ay=0;
     }
   }
@@ -563,8 +680,8 @@ function buildGrid(){
 // Offset of a moving shape at time t (seconds), within ±ax, ±ay pixels.
 const tri=x=>2/Math.PI*Math.asin(Math.sin(x));
 const ease=f=>f<0.5?4*f*f*f:1-Math.pow(-2*f+2,3)/2;
-function motionOffset(t){
-  const mv=shape.def.move;if(!mv)return [0,0];
+function motionOffset(mv,t,dseed){
+  if(!mv)return [0,0];
   const w=mv.speed*1.5,ax=view.ax,ay=view.ay,S=Math.sin;
   switch(mv.type){
     case 'slideX':return [ax*S(w*t),0];
@@ -576,26 +693,34 @@ function motionOffset(t){
     case 'wander':return [ax*(0.62*S(w*t)+0.38*S(2.3*w*t)),ay*(0.62*S(1.3*w*t)+0.38*S(2.9*w*t))];
     case 'dash':{
       const seg=2.2/w,i=Math.floor(t/seg),f=(t-i*seg)/seg;
-      const P=k=>{if(k===0)return [0,0];const q=mulberry32(levelSeed*31+k*7919);return [(q()*2-1)*ax,(q()*2-1)*ay];};
+      const P=k=>{if(k===0)return [0,0];const q=mulberry32(dseed*31+k*7919);return [(q()*2-1)*ax,(q()*2-1)*ay];};
       const a=P(i),b=P(i+1),e=f<0.4?0:ease((f-0.4)/0.6);
       return [a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e];}
   }
   return [0,0];
 }
-function worldParts(){
-  const c=Math.cos(angle),s=Math.sin(angle),k=view.scale;
-  const [ox,oy]=motionOffset(motionT);const X=view.cx+ox,Y=view.cy+oy;
-  return mapParts(shape.parts,([x,y])=>[X+(x*c-y*s)*k,Y+(x*s+y*c)*k]);
+// Overdrive "speeds up while you aim": time runs faster the longer you hold, up to 4x.
+function warp(t){const a=shape.def.over?shape.def.over.accel:0;if(!a)return t;const M=4,tc=(M-1)/a;return t<tc?t+0.5*a*t*t:tc+0.5*a*tc*tc+M*(t-tc);}
+function shrinkFactor(){const k=shape.def.over&&shape.def.over.shrink;return k?Math.max(0.55,1-k*motionT):1;}
+function ghostAlpha(){const g=shape.def.over&&shape.def.over.ghost;if(g==null||state!=='aim')return 1;return g+(1-g)*(0.5+0.5*Math.cos(motionT*TAU/2.4));}
+function worldPieces(){
+  const ph=warp(motionT),sf=shrinkFactor();
+  return shape.pieces.map((pc,i)=>{
+    const a=(shape.def.spin||0)*ph*(i?-1.3:1),c=Math.cos(a),s=Math.sin(a),k=pc.scale*sf;
+    const [ox,oy]=motionOffset(pc.move,ph+pc.tOff,pc.dseed);const X=view.cx+ox,Y=view.cy+oy;
+    return mapParts(pc.parts,([x,y])=>[X+(x*c-y*s)*k,Y+(x*s+y*c)*k]);
+  });
 }
+function worldParts(){return worldPieces().flat();}
 function tracePath(g,parts){
   g.beginPath();
   for(const p of parts)for(const ring of [p.outer,...p.holes]){g.moveTo(ring[0][0],ring[0][1]);for(let i=1;i<ring.length;i++)g.lineTo(ring[i][0],ring[i][1]);g.closePath();}
 }
-function drawPaper(g,parts,color){
-  g.save();tracePath(g,parts);
+function drawPaper(g,parts,color,alpha=1){
+  g.save();g.globalAlpha=alpha;tracePath(g,parts);
   g.shadowColor='rgba(5,25,18,.45)';g.shadowOffsetX=3;g.shadowOffsetY=4;g.shadowBlur=0;
   g.fillStyle=color;g.fill('evenodd');g.restore();
-  g.save();tracePath(g,parts);g.lineWidth=1;g.strokeStyle='rgba(60,50,30,.25)';g.stroke();g.restore();
+  g.save();g.globalAlpha=alpha;tracePath(g,parts);g.lineWidth=1;g.strokeStyle='rgba(60,50,30,.25)';g.stroke();g.restore();
 }
 function halfPlanePath(g,px,py,dx,dy,nx,ny,sign){
   const B=6000;g.beginPath();
@@ -610,11 +735,11 @@ function drawLabel(g,x,y,text,color){
 }
 function frame(now){
   const dt=Math.min(0.05,(now-(frame.last||now))/1000);frame.last=now;
-  if(state==='aim'){angle+=(shape.def.spin||0)*dt;motionT+=dt;}
+  if(state==='aim')motionT+=dt;
   if(state==='result'&&sepT<1)sepT=reduceMotion?1:Math.min(1,sepT+dt/0.35);
   ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(gridCache,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);
   if(state==='aim'){
-    drawPaper(ctx,worldParts(),'#F7F4EC');
+    const ga=ghostAlpha();worldPieces().forEach(pp=>drawPaper(ctx,pp,'#F7F4EC',ga));
     if(drag&&drag.moved){
       const {x0,y0,x1,y1}=drag;const L=Math.hypot(x1-x0,y1-y0)||1,dx=(x1-x0)/L,dy=(y1-y0)/L,B=6000;
       ctx.save();ctx.setLineDash([6,7]);ctx.lineWidth=1.5;ctx.strokeStyle='rgba(227,235,238,.55)';
@@ -625,9 +750,9 @@ function frame(now){
     }
   }else if(result){
     const e=1-Math.pow(1-sepT,3),sep=9*e;
-    const {px,py,dx,dy,nx,ny,parts}=result;
+    const {px,py,dx,dy,nx,ny,pieces}=result;
     [[1,'#F4C542'],[-1,'#F28DB2']].forEach(([sgn,col])=>{
-      ctx.save();ctx.translate(nx*sep*sgn,ny*sep*sgn);halfPlanePath(ctx,px,py,dx,dy,nx,ny,sgn);ctx.clip();drawPaper(ctx,parts,col);ctx.restore();
+      ctx.save();ctx.translate(nx*sep*sgn,ny*sep*sgn);halfPlanePath(ctx,px,py,dx,dy,nx,ny,sgn);ctx.clip();pieces.forEach(pp=>drawPaper(ctx,pp,col));ctx.restore();
     });
     ctx.save();ctx.setLineDash([4,6]);ctx.strokeStyle='rgba(227,235,238,.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px-dx*6000,py-dy*6000);ctx.lineTo(px+dx*6000,py+dy*6000);ctx.stroke();ctx.restore();
     if(sepT>0.5){
@@ -668,12 +793,12 @@ function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');
 
 function slice(x0,y0,x1,y1){
   const L=Math.hypot(x1-x0,y1-y0);const dx=(x1-x0)/L,dy=(y1-y0)/L,nx=-dy,ny=dx,c=nx*x0+ny*y0;
-  const parts=worldParts();
+  const pieces=worldPieces(),parts=pieces.flat();
   const A=sideMoments(parts,shape.signs,nx,ny,c),B=sideMoments(parts,shape.signs,-nx,-ny,-c);
   const tot=A.a+B.a;
   if(!(tot>0)||A.a<tot*1e-4||B.a<tot*1e-4){toast('That line missed the shape. Drag right across it.');return;}
   const pctA=A.a/tot*100,err=Math.abs(pctA-50),tol=tolerance(level),stars=starsFor(err,tol);
-  result={px:x0,py:y0,dx,dy,nx,ny,parts,A,B,pctA,err,stars};state='result';sepT=0;
+  result={px:x0,py:y0,dx,dy,nx,ny,pieces,A,B,pctA,err,stars};state='result';sepT=0;
   data.stats.slices++;
   if(err<0.05)data.stats.deadCenter++;
   const prev=data.levels[level];
@@ -726,8 +851,50 @@ function retry(){state='aim';result=null;angle=0;motionT=0;setAimMessage();drawM
 $('btnRetry').addEventListener('click',retry);
 $('btnNext').addEventListener('click',()=>{if(canPlay(level+1))startLevel(level+1);});
 $('btnSound').addEventListener('click',()=>{data.settings.sound=!data.settings.sound;persist();updateHUD();});
+/* ---------------- Cheat codes ----------------
+   Open the panel by typing "cheat" anywhere, or by tapping the logo 5 times. */
+function cheatStatus(t,ok){const el=$('cheatStatus');el.textContent=t;el.className='status '+(ok?'ok':'err');}
+function openCheat(){$('cheatInput').value='';$('cheatStatus').textContent='';$('dlgCheat').showModal();$('cheatInput').focus();}
+function highestPassed(){return Object.entries(data.levels).reduce((m,[k,v])=>v.stars>0?Math.max(m,+k):m,0);}
+function runCheat(raw){
+  const code=raw.trim().toUpperCase().replace(/\s+/g,' ');
+  if(!code)return cheatStatus('Type a code first.',false);
+  let m;
+  if(code==='UNLOCKALL'){
+    data.unlocked=Math.max(data.unlocked,LEVELS.length+50);persist();updateHUD();
+    return cheatStatus(`Unlocked levels 1 to ${data.unlocked}.`,true);
+  }
+  if(code==='ENDLESS'){
+    data.unlocked=Math.max(data.unlocked,LEVELS.length+1);$('dlgCheat').close();startLevel(LEVELS.length+1);
+    return toast('Jumped to Endless 1.');
+  }
+  if((m=code.match(/^(?:LEVEL|GOTO) ?(\d{1,6})$/))){
+    const L=+m[1];if(L<1)return cheatStatus('Levels start at 1.',false);
+    data.unlocked=Math.max(data.unlocked,L);$('dlgCheat').close();startLevel(L);
+    return toast(`Jumped to level ${L}.`);
+  }
+  if(code==='RELOCK'){
+    data.unlocked=highestPassed()+1;persist();
+    if(!canPlay(level))startLevel(data.unlocked);else updateHUD();
+    return cheatStatus(`Locked again. You can play up to level ${data.unlocked}.`,true);
+  }
+  cheatStatus('That code doesn’t do anything.',false);
+}
+$('btnCheat').addEventListener('click',()=>runCheat($('cheatInput').value));
+$('cheatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runCheat($('cheatInput').value);}});
+let typed='';
 document.addEventListener('keydown',e=>{
-  if(document.querySelector('dialog[open]')||e.target.tagName==='TEXTAREA')return;
+  if(document.querySelector('dialog[open]')||/^(TEXTAREA|INPUT)$/.test(e.target.tagName))return;
+  if(e.key.length===1){typed=(typed+e.key.toLowerCase()).slice(-5);if(typed==='cheat'){typed='';openCheat();}}
+});
+let logoTaps=[];
+document.querySelector('.logo').addEventListener('click',()=>{
+  const now=Date.now();logoTaps=logoTaps.filter(t=>now-t<2000);logoTaps.push(now);
+  if(logoTaps.length>=5){logoTaps=[];openCheat();}
+});
+
+document.addEventListener('keydown',e=>{
+  if(document.querySelector('dialog[open]')||/^(TEXTAREA|INPUT)$/.test(e.target.tagName))return;
   if(e.key==='r'||e.key==='R')retry();
   if((e.key==='n'||e.key==='N')&&canPlay(level+1))startLevel(level+1);
 });
@@ -749,7 +916,7 @@ function openLevels(){
     const g=document.createElement('div');g.className='grid';for(let L=from;L<=to;L++)g.appendChild(tile(L));box.appendChild(g);};
   CHAPTERS.forEach(ch=>addChapter(ch.name,ch.start,ch.end));
   const endTo=Math.max(LEVELS.length+3,data.unlocked+2,...Object.keys(data.levels).map(k=>+k+1));
-  const h=document.createElement('div');h.className='chapter';h.textContent='Endless: random weird shapes that spin and roam';box.appendChild(h);
+  const h=document.createElement('div');h.className='chapter';h.textContent='Endless: random weird shapes that spin and roam. From level 127 they speed up, shrink, double up and fade';box.appendChild(h);
   const g=document.createElement('div');g.className='grid';for(let L=LEVELS.length+1;L<=endTo;L++)g.appendChild(tile(L));box.appendChild(g);
   $('dlgLevels').showModal();
   box.querySelector('.tile.current')?.scrollIntoView({block:'center'});
