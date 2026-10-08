@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* ============================================================
+   LIVE PLAYER VIEW SETUP: paste the same values as in player.html.
+   Supabase Dashboard → Project Settings → API.
+   ============================================================ */
+window.KONFORGA_LIVE = {
+  supabaseUrl: "https://jerlyhfuooxpyjxogrbu.supabase.co",       // e.g. "https://abcd1234.supabase.co"
+  supabaseAnonKey: "sb_publishable_rwLCXvFwUEpCubZQn6nGHg_btYIlcjW"    // e.g. "eyJhbGciOi..."
+};
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Konforga — Tournament Reporting Terminal</title>
@@ -756,7 +767,7 @@ input[type=email],input[type=password],input[type=url]{
           <h3 class="group-title">Event</h3>
           <div class="field">
             <label for="cfg-name">Event name</label>
-            <input type="text" id="cfg-name" placeholder="e.g. Regional Qualifier — Hamburg" value="Locals — Store Championship">
+            <input type="text" id="cfg-name" placeholder="e.g. Regional Qualifier — Hamburg">
           </div>
           <div class="field">
             <label for="cfg-format">Format</label>
@@ -841,16 +852,7 @@ input[type=email],input[type=password],input[type=url]{
       <p class="live-intro">Players open a link on their phone, pick their name, and see their table, opponent, results and standings. Every change you make here reaches their screens within a second or two.</p>
       <div class="config-grid">
         <div>
-          <h3 class="group-title">Supabase project</h3>
-          <div class="field">
-            <label for="live-url">Project URL</label>
-            <input type="url" id="live-url" placeholder="https://abcd1234.supabase.co" autocomplete="on" spellcheck="false">
-          </div>
-          <div class="field">
-            <label for="live-key">Anon public key</label>
-            <input type="text" id="live-key" placeholder="eyJhbGciOi…" autocomplete="on" spellcheck="false">
-            <p class="hint">Project Settings → API. This key is meant to be public; your data is protected by the rules in supabase-setup.sql.</p>
-          </div>
+          <h3 class="group-title">Event</h3>
           <div class="field">
             <label for="live-slug">Event code</label>
             <div class="live-inline">
@@ -858,6 +860,10 @@ input[type=email],input[type=password],input[type=url]{
               <button type="button" class="secondary" id="live-slug-suggest">Suggest</button>
             </div>
             <p class="hint">Appears in the player link. Use a new code for each event so old links don't show the new one.</p>
+          </div>
+          <div style="margin-top:14px;">
+            <label class="live-check"><input type="checkbox" id="live-enabled"> Share this event live</label>
+            <label class="live-check"><input type="checkbox" id="live-standings"> Show standings to players <span class="dim">(turn off to hide them, e.g. before top cut)</span></label>
           </div>
         </div>
         <div>
@@ -877,10 +883,6 @@ input[type=email],input[type=password],input[type=url]{
             <div class="live-signed"><span>Signed in as <b id="live-user"></b></span><button type="button" class="secondary small" id="live-signout">Sign out</button></div>
           </div>
           <p class="live-msg" id="live-auth-msg" role="status"></p>
-          <div style="margin-top:14px;">
-            <label class="live-check"><input type="checkbox" id="live-enabled"> Share this event live</label>
-            <label class="live-check"><input type="checkbox" id="live-standings"> Show standings to players <span class="dim">(turn off to hide them, e.g. before top cut)</span></label>
-          </div>
         </div>
       </div>
 
@@ -1193,7 +1195,7 @@ input[type=email],input[type=password],input[type=url]{
    ============================================================ */
 const DEFAULT_STATE = {
   config:{
-    name:"Edison Monthly #x",
+    name:"",
     format:"Edison Format",
     matchStructure:"bo3",
     rounds:0,          // 0 = auto
@@ -3173,18 +3175,24 @@ var LIVE_TABLE = "live_events";
 var LIVE_SB_SRC = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 var LIVE_QR_SRC = "https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js";
 var liveScripts = {};
+var LIVE_CONF = window.KONFORGA_LIVE || {};
 var live = {
   cfg: loadLiveCfg(),
   client:null, clientSig:"", user:null, authSub:null,
   timer:null, retry:null, queued:false, inFlight:false, dirty:false,
   lastOk:0, lastErr:"", qrFor:""
 };
+live.cfg.url = liveCleanUrl(LIVE_CONF.supabaseUrl);
+live.cfg.key = String(LIVE_CONF.supabaseAnonKey || "").trim();
 
 function loadLiveCfg(){
   const d = {url:"", key:"", slug:"", enabled:false, standings:true, base:""};
   try{ return Object.assign(d, JSON.parse(localStorage.getItem(LIVE_KEY) || "{}")); }catch(e){ return d; }
 }
-function saveLiveCfg(){ try{ localStorage.setItem(LIVE_KEY, JSON.stringify(live.cfg)); }catch(e){} }
+function saveLiveCfg(){
+  const c = Object.assign({}, live.cfg); delete c.url; delete c.key; // project info lives in the setup block
+  try{ localStorage.setItem(LIVE_KEY, JSON.stringify(c)); }catch(e){}
+}
 
 function liveLoadScript(src){
   if(!liveScripts[src]){
@@ -3312,7 +3320,7 @@ function liveNetworkish(e){
   return !navigator.onLine || /fetch|network|load failed|timeout/i.test(msg);
 }
 function liveFriendly(e){
-  if(e && e.konforga === "setup") return "Add your Supabase project URL and anon key to start sharing.";
+  if(e && e.konforga === "setup") return "Add your Supabase project URL and anon key in the setup block at the top of index.html.";
   if(e && e.konforga === "auth") return "Sign in to start sharing.";
   if(e && e.konforga === "slug") return "Add an event code to start sharing.";
   if(liveNetworkish(e)) return "No connection to Supabase. Your changes are saved here and will be sent when you're back online.";
@@ -3377,7 +3385,7 @@ function renderLiveStatus(){
 function renderLive(){
   const c = live.cfg;
   const set = (id, v)=>{ const el = liveEl(id); if(document.activeElement !== el) el.value = v; };
-  set("live-url", c.url); set("live-key", c.key); set("live-slug", c.slug);
+  set("live-slug", c.slug);
   set("live-base", c.base || liveDefaultBase());
   liveEl("live-enabled").checked = !!c.enabled;
   liveEl("live-standings").checked = c.standings !== false;
@@ -3417,20 +3425,16 @@ function liveSetAuthMsg(msg, isErr){
 }
 
 function liveFieldChanged(){
-  const before = live.cfg.url + "|" + live.cfg.key;
-  live.cfg.url = liveCleanUrl(liveEl("live-url").value);
-  live.cfg.key = liveEl("live-key").value.trim();
   const slug = liveSlugify(liveEl("live-slug").value);
   if(slug !== live.cfg.slug){ live.cfg.slug = slug; live.lastOk = 0; }
   const base = liveEl("live-base").value.trim();
   live.cfg.base = (base && base !== liveDefaultBase()) ? base : "";
   saveLiveCfg();
-  if(before !== live.cfg.url + "|" + live.cfg.key){ live.user = null; live.client = null; live.clientSig = ""; liveClient().catch(()=>{}).then(renderLive); }
   liveEl("live-slug").value = live.cfg.slug;
   renderLive();
   livePublishSoon();
 }
-["live-url","live-key","live-slug","live-base"].forEach(id=>liveEl(id).addEventListener("change", liveFieldChanged));
+["live-slug","live-base"].forEach(id=>liveEl(id).addEventListener("change", liveFieldChanged));
 
 liveEl("live-slug-suggest").addEventListener("click", ()=>{
   const d = new Date();
