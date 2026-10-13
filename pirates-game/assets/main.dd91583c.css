@@ -1,0 +1,142 @@
+:root{
+  --bg:#D5E2DF; --surface:#C3D5D1; --surface2:#B3CAC5; --ink:#0F2A30; --muted:#3F5F67; --line:#93B0AA;
+  --brass:#8F6E10; --red:#A3302A; --foam:#22705F; --card:#F1EADA; --cardink:#1C2A2D; --back:#183C45;
+  --display:"IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
+  --body:"Alegreya Sans", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D232A; --surface:#14313A; --surface2:#1B3D47; --ink:#E7E2D4; --muted:#9DB5B4; --line:#2A4C55;
+    --brass:#D8B544; --red:#E0645A; --foam:#7FC7B4; --back:#0F2F38;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D232A; --surface:#14313A; --surface2:#1B3D47; --ink:#E7E2D4; --muted:#9DB5B4; --line:#2A4C55;
+  --brass:#D8B544; --red:#E0645A; --foam:#7FC7B4; --back:#0F2F38;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45;min-height:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+input{font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:8px;padding:.55rem .7rem;width:100%}
+.wrap{max-width:1120px;margin:0 auto;padding:1rem}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;line-height:1.1}
+.muted{color:var(--muted)}
+.btn{border:2px solid var(--ink);background:transparent;border-radius:8px;padding:.55rem 1rem;font-weight:700}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.danger.on{background:var(--red);color:var(--card)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.hidden{display:none!important}
+
+/* home */
+.masthead{padding:2.2rem 0 1.4rem}
+.masthead h1{font-size:clamp(2.8rem,9vw,5.2rem);letter-spacing:.01em}
+.masthead p{max-width:34rem;margin:.6rem 0 0;font-size:1.1rem}
+.home-grid{display:grid;gap:1.2rem;grid-template-columns:1fr}
+@media(min-width:820px){.home-grid{grid-template-columns:1.1fr 1fr}}
+.panel{background:var(--surface);border-radius:12px;padding:1.1rem}
+.panel h2{font-size:1.5rem;margin-bottom:.7rem}
+.field{display:grid;gap:.3rem;margin-bottom:.9rem}
+.field label{font-weight:700}
+.openlist{display:grid;gap:.5rem}
+.openitem{display:flex;justify-content:space-between;align-items:center;gap:.6rem;background:var(--bg);border-radius:8px;padding:.6rem .8rem}
+.code{font-family:var(--display);font-size:1.4rem;letter-spacing:.12em}
+.notice{border-left:4px solid var(--red);padding:.5rem .8rem;background:var(--surface);border-radius:4px;margin:.8rem 0}
+details.rules{margin-top:1.2rem}
+details.rules summary{font-weight:700;cursor:pointer}
+details.rules p, details.rules li{max-width:68ch}
+
+/* game */
+.topbar{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;padding:.4rem 0 .8rem;border-bottom:2px solid var(--line)}
+.topbar h1{font-size:1.9rem}
+.status{font-size:1.25rem;font-weight:700;margin:.9rem 0}
+.game-grid{display:grid;gap:1.2rem;grid-template-columns:1fr}
+@media(min-width:900px){.game-grid{grid-template-columns:1fr 300px}}
+.crew{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem}
+.sailor{background:var(--surface);border-radius:10px;padding:.55rem .7rem;border:2px solid transparent}
+.sailor.turn{border-color:var(--brass)}
+.sailor.out{opacity:.65}
+.sailor .nm{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sailor .meta{font-size:.9rem;color:var(--muted)}
+.planks{display:flex;gap:3px;margin-top:.3rem}
+.planks i{display:block;width:22px;height:7px;border-radius:2px;border:1.5px solid var(--muted)}
+.planks i.on{background:var(--red);border-color:var(--red)}
+.tag{display:inline-block;font-size:.8rem;font-weight:800;padding:.05rem .45rem;border-radius:99px;margin-top:.25rem}
+.tag.pirate{background:var(--foam);color:var(--bg)}
+.tag.mutineer{background:var(--red);color:var(--card)}
+
+/* the chest: the one bold element */
+.deckzone{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:.8rem;margin:1.1rem 0;align-items:end}
+.pile{text-align:center}
+.pile .lbl{font-weight:700;margin-top:.4rem}
+.pile .sub{font-size:.9rem;color:var(--muted)}
+.stack{position:relative;height:118px;margin:0 auto;width:96px}
+.stack.big{width:150px;height:150px}
+.back{position:absolute;left:0;bottom:0;width:76px;height:106px;border-radius:8px;background:
+  repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 6px,transparent 6px 12px),var(--back);
+  border:2px solid var(--card);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.stack.big .back{width:96px;height:134px}
+.chestcount{position:absolute;right:-6px;top:-6px;font-family:var(--display);font-size:3.4rem;line-height:1;color:var(--brass)}
+.goal{font-family:var(--display);font-size:1.15rem}
+
+/* role */
+.role{display:flex;gap:1rem;align-items:center;background:var(--surface);border-radius:12px;padding:.8rem 1rem;margin-bottom:1rem}
+.role .face{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:var(--back);color:var(--card);font-family:var(--display);font-size:1.8rem;flex:none}
+.role.pirate .face{background:var(--foam);color:var(--bg)}
+.role.mutineer .face{background:var(--red)}
+.role h3{font-size:1.45rem}
+
+/* cards */
+.hand{display:flex;gap:.7rem;flex-wrap:wrap}
+.card{width:128px;min-height:176px;background:var(--card);color:var(--cardink);border-radius:10px;border:2px solid #c9bfa6;padding:.55rem;text-align:left;display:flex;flex-direction:column;gap:.3rem;transition:transform .12s}
+.card.loot.v1{border-color:#B9952A}
+.card.loot.vm2{border-color:#A3302A}
+.card.sel{transform:translateY(-8px);outline:3px solid var(--brass);outline-offset:2px}
+.card.pick{outline:3px solid var(--foam);outline-offset:2px}
+.card .ct{font-weight:800;font-size:1rem;line-height:1.1}
+.card .cv{font-family:var(--display);font-size:1.6rem;line-height:1}
+.card svg{width:44px;height:44px;margin:.1rem 0}
+.card .tx{font-size:.8rem;line-height:1.25}
+.card[disabled]{cursor:default}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+
+.actions{margin-top:1rem;background:var(--surface);border-radius:12px;padding:.9rem 1rem}
+.actions h3{font-size:1.3rem;margin-bottom:.5rem}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:.45rem .9rem;font-weight:800}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.orderlist{display:grid;gap:.5rem;margin:.6rem 0}
+.orderrow{display:flex;align-items:center;gap:.6rem;background:var(--bg);border-radius:8px;padding:.4rem .6rem}
+.orderrow .pos{font-family:var(--display);font-size:1.3rem;width:1.6rem}
+.orderrow .what{flex:1;font-weight:700}
+.mini{padding:.2rem .6rem;border:2px solid var(--ink);border-radius:6px;background:transparent;font-weight:800}
+
+.log{background:var(--surface);border-radius:12px;padding:.9rem 1rem;max-height:70vh;overflow:auto}
+.log h2{font-size:1.4rem;margin-bottom:.4rem}
+.log ol{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+.log li{font-size:.95rem;border-bottom:1px solid var(--line);padding-bottom:.4rem}
+
+.banner{border-radius:12px;padding:1.1rem;margin:1rem 0;color:var(--card)}
+.banner.pirates{background:var(--foam);color:var(--bg)}
+.banner.mutineers{background:var(--red)}
+.banner h2{font-size:2.2rem}
+.reveal{display:grid;gap:.35rem;margin-top:.6rem}
+.reveal .rv{display:flex;justify-content:space-between;gap:.5rem;background:var(--bg);border-radius:6px;padding:.35rem .6rem;font-size:.95rem}
+.lie{color:var(--red);font-weight:800}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(1rem + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:.6rem 1rem;border-radius:8px;font-weight:700;z-index:9;max-width:90vw}
+.row.nowrap{flex-wrap:nowrap}
+.codeinput{text-transform:uppercase;letter-spacing:.15em}
+.role-btn{width:100%;border:0;text-align:left}
+.sailor .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:.35rem;vertical-align:middle}
+.sailor .dot.on{background:var(--foam)}
+.share{margin:1rem 0}
+.share h2{font-size:1.4rem}
+.share input{font-size:.95rem}
+
+
+/*# sourceMappingURL=main.dd91583c.css.map*/
