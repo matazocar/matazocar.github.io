@@ -101,14 +101,11 @@ details.rules p, details.rules li{max-width:68ch}
 /* cards */
 .hand{display:flex;gap:.7rem;flex-wrap:wrap}
 .card{width:132px;min-height:198px;background:var(--card);color:var(--cardink);border-radius:10px;border:2px solid #c9bfa6;padding:.55rem;text-align:left;display:flex;flex-direction:column;gap:.3rem;transition:transform .12s}
-.card.loot.v1{border-color:#B9952A}
-.card.loot.vm2{border-color:#A3302A}
 .card.sel{transform:translateY(-8px);outline:3px solid var(--brass);outline-offset:2px}
 .card.pick{outline:3px solid var(--foam);outline-offset:2px}
 .card .ct{font-weight:800;font-size:1rem;line-height:1.1;min-height:2.2em;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
 .card .cv{position:absolute;top:.2rem;right:.3rem;background:var(--card);border-radius:6px;padding:.1rem .3rem;font-family:var(--display);font-size:1.5rem;line-height:1}
 .card .art{position:relative;display:grid;place-items:center;background:#E7DDC4;border-radius:7px;padding:.25rem 0;margin:.1rem 0}
-.card.loot.vm2 .art{background:#EBD6CF}
 .card .art svg{width:76px;height:76px;display:block}
 .card .tx{font-size:.8rem;line-height:1.25}
 .card[disabled]{cursor:default}
@@ -312,5 +309,30 @@ body.revealing #game{visibility:hidden}
   @keyframes actionfade{0%,85%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,0)}}
 }
 
+/* ---------- loot cards, colour-coded like the originals ---------- */
+.card.loot{--face:#4C7BC4;--deep:#2F5596;--glow:#7FA6E0;color:#fff;border:3px solid #F1EADA;
+  background:radial-gradient(circle at 50% 42%,var(--glow) 0,var(--face) 45%,var(--deep) 100%);box-shadow:0 0 0 1.5px #2B2118}
+.card.loot.v0{--face:#7B67AE;--deep:#4F3F80;--glow:#A693D4}
+.card.loot.vm2{--face:#C6463B;--deep:#8C2620;--glow:#EE8A63}
+.card.loot .lhead{display:flex;justify-content:space-between;align-items:center}
+.card.loot .lv{font-family:var(--display);font-size:1.45rem;line-height:1;text-shadow:0 1.5px 0 rgba(0,0,0,.35)}
+.card.loot .art{background:transparent;padding:0;margin:0}
+.card.loot .art svg{width:84px;height:84px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
+.card.loot .ct{min-height:0;text-align:center;font-size:.95rem;text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.card.loot .tx{text-align:center;color:#F4F0FF;opacity:.95}
+.card.loot .badge{background:#F1EADA;color:#2B2118}
+.card.loot.sel{outline-color:#F1EADA}
 
-/*# sourceMappingURL=main.29ae5170.css.map*/
+/* reveal cards use the same colours */
+.rcard-face.pos{background:radial-gradient(circle at 50% 40%,#7FA6E0 0,#4C7BC4 50%,#2F5596 100%);border-color:#F1EADA;color:#fff}
+.rcard-face.zero{background:radial-gradient(circle at 50% 40%,#A693D4 0,#7B67AE 50%,#4F3F80 100%);border-color:#F1EADA;color:#fff}
+.rcard-face.neg{background:radial-gradient(circle at 50% 40%,#EE8A63 0,#C6463B 50%,#8C2620 100%);border-color:#F1EADA;color:#fff}
+.rcard-face .rv-val{text-shadow:0 1.5px 0 rgba(0,0,0,.35)}
+
+/* the "I go first!" bubble */
+.bubble.starter{font-family:var(--body);font-weight:800;font-size:.95rem;padding:.12rem .7rem;background:#22705F;color:#fff;border-color:#143F36}
+.bubble.starter::after{background:#22705F;border-color:#143F36}
+.bubble.starter.pop{animation:bubblepop 1.4s ease-out both}
+
+
+/*# sourceMappingURL=main.7ac02467.css.map*/
