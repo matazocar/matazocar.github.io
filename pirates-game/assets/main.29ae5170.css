@@ -257,5 +257,60 @@ body.revealing #game{visibility:hidden}
 .setting-note{margin:0 0 1rem}
 @media(min-width:900px){.game-grid.nolog{grid-template-columns:1fr}}
 
+/* ---------- overboard finale ---------- */
+.ob-scene{display:block;width:100%;max-width:440px;margin:.2rem auto .6rem}
+.ob-walker{transform:translate(60px,21px);animation:obwalk 2.2s cubic-bezier(.45,0,.6,1) .3s both}
+@keyframes obwalk{
+  0%{transform:translate(60px,21px)}
+  70%{transform:translate(194px,16px)}
+  78%{transform:translate(206px,14px) rotate(14deg);opacity:1}
+  92%{opacity:1}
+  100%{transform:translate(214px,108px) rotate(75deg);opacity:0}
+}
+.ob-legs{transform-box:fill-box;transform-origin:50% 0;animation:oblegs .32s ease-in-out .3s 5}
+@keyframes oblegs{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.3)}}
+.ob-splash{opacity:0;transform-origin:210px 92px;animation:obsplash 1.1s ease-out 2.35s both}
+@keyframes obsplash{0%{opacity:0;transform:scale(.2)}20%{opacity:1;transform:scale(1.1)}60%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.05) translateY(-4px)}}
+.scene-done .ob-walker,.scene-done .ob-splash{animation:none;opacity:0}
+.role-cards .rcard{width:84px}
+.role-cards .rcard-inner{height:112px}
+.rc-q{display:grid;place-items:center;height:100%;font-family:var(--display);font-size:2.4rem;color:var(--card)}
+.role-card .rcard-face{gap:.25rem}
+.role-card .rcard-face svg{width:50px;height:50px}
+.role-card .rcard-face.pirate{background:#D7EDE7;border-color:#2F7D6D}
+.role-card .rcard-face.mutineer{background:#F3DAD5;border-color:#A3302A}
+.rc-role{font-family:var(--display);font-size:1.05rem;line-height:1}
+.role-card .rcard-cap{font-size:.85rem;font-weight:700;color:var(--ink)}
+.role-card.fallen .rcard-back{border-color:var(--red)}
+.role-card.fallen .rcard-cap{color:var(--red)}
+.role-card.was-out .rcard-cap{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){
+  .ob-walker,.ob-splash,.ob-legs{animation:none}
+  .ob-walker{transform:translate(194px,16px)}
+}
 
-/*# sourceMappingURL=main.86bc9f6f.css.map*/
+/* ---------- action card pop-up ---------- */
+.actionpop{position:fixed;left:50%;top:calc(4.5rem + env(safe-area-inset-top,0px));z-index:15;pointer-events:none;
+  display:flex;align-items:center;gap:.8rem;background:var(--card);color:var(--cardink);border:3px solid var(--brass);border-radius:16px;
+  padding:.6rem 1rem .6rem .6rem;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:min(92vw,420px);
+  animation:actionpop 2.8s cubic-bezier(.2,1.2,.4,1) both}
+.actionpop .art{display:grid;place-items:center;background:#E7DDC4;border-radius:10px;padding:.3rem;flex:none}
+.actionpop .art svg{width:68px;height:68px;display:block}
+.actionpop .who{font-weight:700;font-size:.9rem}
+.actionpop .what{font-family:var(--display);font-size:1.6rem;line-height:1.05}
+.actionpop .tgt{font-weight:700;font-size:.95rem}
+.actionpop .ob{font-weight:800;color:#A3302A;font-size:.95rem;margin-top:.15rem}
+@keyframes actionpop{
+  0%{transform:translate(-50%,-30px) rotate(-6deg) scale(.6);opacity:0}
+  10%{transform:translate(-50%,0) rotate(2deg) scale(1.06);opacity:1}
+  18%{transform:translate(-50%,0) rotate(0) scale(1)}
+  85%{transform:translate(-50%,0);opacity:1}
+  100%{transform:translate(-50%,-14px);opacity:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .actionpop{animation:actionfade 2.8s linear both}
+  @keyframes actionfade{0%,85%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,0)}}
+}
+
+
+/*# sourceMappingURL=main.29ae5170.css.map*/
