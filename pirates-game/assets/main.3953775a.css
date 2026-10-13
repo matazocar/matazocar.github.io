@@ -85,10 +85,7 @@ details.rules p, details.rules li{max-width:68ch}
 /* The count sits beside the stack, never on top of it. */
 .chestrow{display:flex;align-items:flex-start;justify-content:center;gap:.7rem}
 .chestcount{font-family:var(--display);font-size:3.2rem;line-height:1;color:var(--brass);min-width:1.4ch}
-@media(max-width:560px){
-  .deckzone{grid-template-columns:1fr 1fr}
-  .chestpile{grid-column:1 / -1}
-}
+
 .goal{font-family:var(--display);font-size:1.15rem}
 
 /* role */
@@ -99,7 +96,7 @@ details.rules p, details.rules li{max-width:68ch}
 .role h3{font-size:1.45rem}
 
 /* cards */
-.hand{display:flex;gap:.7rem;flex-wrap:wrap}
+.hand{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center}
 .card{width:132px;min-height:198px;background:var(--card);color:var(--cardink);border-radius:10px;border:2px solid #c9bfa6;padding:.55rem;text-align:left;display:flex;flex-direction:column;gap:.3rem;transition:transform .12s}
 .card.sel{transform:translateY(-8px);outline:3px solid var(--brass);outline-offset:2px}
 .card.pick{outline:3px solid var(--foam);outline-offset:2px}
@@ -334,5 +331,99 @@ body.revealing #game{visibility:hidden}
 .bubble.starter::after{background:#22705F;border-color:#143F36}
 .bubble.starter.pop{animation:bubblepop 1.4s ease-out both}
 
+/* ---------- phones ---------- */
+@media (max-width:560px){
+  body{font-size:16px}
+  .wrap{padding:.5rem .7rem}
+  .topbar{padding:.15rem 0 .45rem;gap:.35rem .6rem;align-items:center}
+  .topbar h1{display:none}
+  .topbar>.row{width:100%;justify-content:flex-end;flex-wrap:nowrap}
+  .topbar>.row .muted{display:none}
+  .topbar .row{gap:.35rem}
+  .topbar .btn{padding:.3rem .55rem;font-size:.85rem;border-width:1.5px}
+  .topbar .code{font-size:1.05rem}
+  .status{font-size:1.02rem;margin:.45rem 0}
+  .crew{grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem .4rem;padding-top:.9rem}
+  .sailor{padding:.35rem .55rem}
+  .sailor .meta:empty{display:none}
+  .bubble{font-size:1rem}
+  .deckzone{grid-template-columns:1.4fr 1fr 1fr;gap:.3rem;margin:.5rem 0}
+  .stack{height:80px;width:62px}
+  .back{width:50px;height:70px}
+  .stack.big{width:92px;height:94px}
+  .stack.big .back{width:62px;height:86px}
+  .chestrow{gap:.3rem}
+  .chestcount{font-size:2.2rem}
+  .pile .lbl{font-size:.92rem;margin-top:.15rem}
+  .pile .sub,.goal{font-size:.85rem}
+  .claimfloat{left:46px;top:-1rem;padding:.25rem .7rem .35rem}
+  .claimfloat .what{font-size:2rem}
+  .role{padding:.45rem .7rem;margin-bottom:.55rem;gap:.7rem}
+  .role .face{width:42px;height:42px;font-size:1.25rem}
+  .role h3{font-size:1.08rem}
+  .role div{font-size:.9rem}
+  /* all three cards side by side */
+  .hand{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem}
+  .card{width:auto;min-height:0;padding:.38rem;gap:.18rem;border-radius:9px}
+  .card .ct{font-size:.8rem;min-height:2.2em}
+  .card .art{padding:.15rem 0}
+  .card .art svg{width:54px;height:54px}
+  .card.loot .art svg{width:58px;height:58px}
+  .card .tx{font-size:.68rem;line-height:1.22}
+  .card .cv,.card.loot .lv{font-size:1.1rem}
+  .card .badge{width:1.2rem;height:1.2rem;font-size:.75rem}
+  .card.sel{transform:translateY(-5px)}
+  /* on your turn the controls stay at the bottom of the screen, within thumb reach */
+  .actions{position:sticky;bottom:0;z-index:5;margin:.7rem -.7rem 0;border-radius:14px 14px 0 0;
+    padding:.7rem .9rem calc(.75rem + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 18px rgba(0,0,0,.18)}
+  .actions h3{font-size:1.1rem;margin-bottom:.3rem}
+  .actions p{font-size:.88rem}
+  .actions .btn{padding:.5rem .8rem}
+  .seg button{padding:.42rem .65rem}
+  .log{max-height:none}
+  .actionpop{top:calc(3.2rem + env(safe-area-inset-top,0px))}
+  .actionpop .art svg{width:52px;height:52px}
+  .actionpop .what{font-size:1.3rem}
+}
 
-/*# sourceMappingURL=main.7ac02467.css.map*/
+/* ---------- empty-deck finale ---------- */
+.dk-scene{position:relative;width:120px;height:130px;margin:.4rem auto .8rem}
+.dk-slot,.dk-card{position:absolute;left:30px;top:10px;width:76px;height:106px;border-radius:9px}
+.dk-slot{border:3px dashed var(--muted);display:grid;place-items:center;opacity:0;animation:dkslot .6s ease-out 1.7s both}
+.dk-slot span{font-family:var(--display);font-size:2.4rem;color:var(--muted)}
+.dk-card{background:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px),var(--back);border:2px solid var(--card);
+  animation:dkfly .55s cubic-bezier(.5,0,.8,.5) both}
+.dk-0{transform:translate(0,0);animation-delay:1.05s}
+.dk-1{transform:translate(-3px,-3px);animation-delay:.75s}
+.dk-2{transform:translate(-6px,-6px);animation-delay:.45s}
+.dk-3{transform:translate(-9px,-9px);animation-delay:.15s}
+@keyframes dkfly{to{transform:translate(160px,-60px) rotate(35deg);opacity:0}}
+@keyframes dkslot{0%{opacity:0;transform:scale(.8)}60%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+.scene-done .dk-card{animation:none;opacity:0}
+.scene-done .dk-slot{animation:none;opacity:1}
+.dk-chest{margin-top:1rem;padding-top:.8rem;border-top:2px dashed var(--line);animation:panelIn .5s ease-out both}
+.dk-chest-title{font-size:1.4rem;margin-bottom:.2rem}
+.dk-chest .reveal-total{font-size:clamp(2.6rem,9vw,3.6rem)}
+.rcard.small{width:44px}
+.rcard.small .rcard-inner{height:62px}
+.rcard.small .rcard-face svg{width:28px;height:28px}
+.rcard.small .rv-val{font-size:1.05rem}
+@media (prefers-reduced-motion:reduce){
+  .dk-card{animation:none;opacity:0}
+  .dk-slot{animation:none;opacity:1}
+  .dk-chest{animation:none}
+}
+
+@media (max-width:560px){
+  .reveal-panel{padding:1rem .8rem .9rem}
+  .reveal-title{font-size:1.8rem}
+  .dk-scene{transform:scale(.75);margin:-.6rem auto -.4rem}
+  .role-cards .rcard{width:66px}
+  .role-cards .rcard-inner{height:90px}
+  .role-card .rcard-face svg{width:38px;height:38px}
+  .rc-role{font-size:.9rem}
+  .ob-scene{max-width:320px}
+}
+
+
+/*# sourceMappingURL=main.3953775a.css.map*/
