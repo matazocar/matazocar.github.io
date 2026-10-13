@@ -100,14 +100,16 @@ details.rules p, details.rules li{max-width:68ch}
 
 /* cards */
 .hand{display:flex;gap:.7rem;flex-wrap:wrap}
-.card{width:128px;min-height:176px;background:var(--card);color:var(--cardink);border-radius:10px;border:2px solid #c9bfa6;padding:.55rem;text-align:left;display:flex;flex-direction:column;gap:.3rem;transition:transform .12s}
+.card{width:132px;min-height:198px;background:var(--card);color:var(--cardink);border-radius:10px;border:2px solid #c9bfa6;padding:.55rem;text-align:left;display:flex;flex-direction:column;gap:.3rem;transition:transform .12s}
 .card.loot.v1{border-color:#B9952A}
 .card.loot.vm2{border-color:#A3302A}
 .card.sel{transform:translateY(-8px);outline:3px solid var(--brass);outline-offset:2px}
 .card.pick{outline:3px solid var(--foam);outline-offset:2px}
-.card .ct{font-weight:800;font-size:1rem;line-height:1.1}
-.card .cv{font-family:var(--display);font-size:1.6rem;line-height:1}
-.card svg{width:44px;height:44px;margin:.1rem 0}
+.card .ct{font-weight:800;font-size:1rem;line-height:1.1;min-height:2.2em;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
+.card .cv{position:absolute;top:.2rem;right:.3rem;background:var(--card);border-radius:6px;padding:.1rem .3rem;font-family:var(--display);font-size:1.5rem;line-height:1}
+.card .art{position:relative;display:grid;place-items:center;background:#E7DDC4;border-radius:7px;padding:.25rem 0;margin:.1rem 0}
+.card.loot.vm2 .art{background:#EBD6CF}
+.card .art svg{width:76px;height:76px;display:block}
 .card .tx{font-size:.8rem;line-height:1.25}
 .card[disabled]{cursor:default}
 @media (prefers-reduced-motion:reduce){.card{transition:none}}
@@ -207,15 +209,15 @@ details.rules p, details.rules li{max-width:68ch}
 .reveal-fill.made{background:var(--foam)}
 .reveal-mark{position:absolute;right:0;top:0;bottom:0;width:3px;background:var(--ink)}
 .reveal-cards{display:flex;flex-wrap:wrap;justify-content:center;gap:.55rem;max-height:46vh;overflow:auto;padding:.3rem}
-.rcard{width:64px;perspective:600px}
-.rcard-inner{position:relative;height:90px;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.3,1.4,.5,1)}
+.rcard{width:70px;perspective:600px}
+.rcard-inner{position:relative;height:100px;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.3,1.4,.5,1)}
 .rcard.flipped .rcard-inner{transform:rotateY(180deg)}
 .rcard-back,.rcard-face{position:absolute;inset:0;border-radius:8px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .rcard-back{background:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px),var(--back);border:2px solid var(--card)}
 .rcard-face{transform:rotateY(180deg);background:var(--card);color:var(--cardink);border:2px solid #c9bfa6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.1rem}
 .rcard-face.pos{border-color:#B9952A}
 .rcard-face.neg{border-color:var(--red);background:#F3DAD5}
-.rcard-face svg{width:30px;height:30px}
+.rcard-face svg{width:46px;height:46px}
 .rv-val{font-family:var(--display);font-size:1.5rem;line-height:1}
 .rcard-cap{font-size:.72rem;line-height:1.2;margin-top:.25rem;color:var(--muted);opacity:0;transition:opacity .3s .3s;overflow-wrap:anywhere}
 .rcard.flipped .rcard-cap{opacity:1}
@@ -247,5 +249,13 @@ details.rules p, details.rules li{max-width:68ch}
 .soundbtn{min-width:2.8rem}
 body.revealing #game{visibility:hidden}
 
+/* captain's voyage settings */
+.setting{margin:0 0 1rem}
+.setting p{margin:.4rem 0 0}
+.check{display:flex;gap:.6rem;align-items:center;font-weight:700;cursor:pointer}
+.check input{width:1.3rem;height:1.3rem;accent-color:var(--foam);flex:none}
+.setting-note{margin:0 0 1rem}
+@media(min-width:900px){.game-grid.nolog{grid-template-columns:1fr}}
 
-/*# sourceMappingURL=main.60f2703f.css.map*/
+
+/*# sourceMappingURL=main.86bc9f6f.css.map*/
