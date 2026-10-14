@@ -425,5 +425,50 @@ body.revealing #game{visibility:hidden}
   .ob-scene{max-width:320px}
 }
 
+/* ---------- modded voyages ---------- */
+.setup{margin:1rem 0}
+.setup h2{font-size:1.6rem;margin-bottom:.6rem}
+.setup h3{font-size:1.25rem;margin:1rem 0 .4rem}
+.setup-choices{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:.8rem}
+.choice{background:var(--bg);border-radius:10px;padding:.9rem 1rem;display:flex;flex-direction:column;gap:.4rem;align-items:flex-start}
+.choice h3{margin:0}
+.choice p{margin:0 0 .3rem}
+.choice.modded{border:2px dashed var(--brass)}
+.modgrid{display:grid;gap:.4rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.modrow{display:flex;align-items:center;gap:.6rem;background:var(--bg);border-radius:8px;padding:.4rem .6rem}
+.modart{display:grid;place-items:center;width:40px;height:40px;flex:none;background:#E7DDC4;border-radius:6px}
+.modart svg{width:34px;height:34px}
+.modname{flex:1;min-width:0;display:flex;flex-direction:column}
+.modname small{color:var(--muted);font-size:.78rem;line-height:1.25}
+.stepper{display:flex;align-items:center;gap:.3rem;flex:none}
+.stepper output{min-width:2ch;text-align:center;font-family:var(--display);font-size:1.3rem}
+.stepper .mini{width:2rem;height:2rem;padding:0;font-size:1.1rem;line-height:1}
+.goalrow{margin-bottom:.2rem}
+.warn{color:var(--red)!important;font-weight:700}
+.decksize{margin:.8rem 0 .4rem}
+.house{margin:-.2rem 0 .7rem;background:var(--surface);border-radius:10px;padding:.5rem .8rem}
+.house summary{font-weight:700;cursor:pointer}
+.house p{margin:.4rem 0}
+.house ul{list-style:none;padding:0;margin:.2rem 0;display:flex;flex-wrap:wrap;gap:.35rem .9rem}
+.house li{display:flex;align-items:center;gap:.3rem;font-size:.9rem}
+.hr-art{display:inline-grid;place-items:center;width:24px;height:24px;background:#E7DDC4;border-radius:4px}
+.hr-art svg{width:20px;height:20px}
+.mini-art{display:inline-grid;place-items:center;width:24px;height:24px;background:#E7DDC4;border-radius:4px;margin-right:.35rem;vertical-align:middle}
+.mini-art svg{width:20px;height:20px}
+.wishbtn{display:inline-flex;align-items:center}
+hr.or{border:0;border-top:2px dashed var(--line);margin:.9rem 0 .6rem}
+.or-head{font-weight:700;margin:0 0 .3rem}
+.swim-note,.mirror-note{background:var(--surface);border-left:4px solid var(--foam);border-radius:4px;padding:.35rem .6rem;margin:.2rem 0 .6rem;font-size:.92rem}
+.mirror-note{margin-top:-.3rem}
+.sailor.swimming{background:linear-gradient(180deg,var(--surface) 60%,rgba(62,140,154,.35))}
+.tag.swimmer{background:#2F7D6D;color:#fff}
+.role.swimmer .face{background:#D7EDE7}
+.role-card .rcard-face.swimmer{background:#D7EDE7;border-color:#2F7D6D}
+.role-card .rcard-face.swimmer .rc-role{color:#1C2A2D}
+@media (max-width:560px){
+  .modgrid{grid-template-columns:1fr}
+  .modrow{padding:.35rem .5rem}
+}
 
-/*# sourceMappingURL=main.3953775a.css.map*/
+
+/*# sourceMappingURL=main.5e4e4a08.css.map*/
