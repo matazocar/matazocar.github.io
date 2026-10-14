@@ -470,5 +470,18 @@ hr.or{border:0;border-top:2px dashed var(--line);margin:.9rem 0 .6rem}
   .modrow{padding:.35rem .5rem}
 }
 
+/* saved rule sets */
+.presets{background:var(--bg);border-radius:10px;padding:.7rem .9rem .9rem;margin-bottom:1rem}
+.presets h3{margin:0 0 .2rem}
+.presets-hint{margin:0 0 .6rem;font-size:.9rem}
+.preset-list{list-style:none;padding:0;margin:.7rem 0;display:grid;gap:.35rem}
+.preset-list li{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;background:var(--surface);border-radius:8px;padding:.35rem .6rem}
+.preset-name{font-weight:700;overflow-wrap:anywhere}
+.preset-list .row{gap:.3rem}
+.mini-btn{border:1.5px solid var(--ink);background:transparent;border-radius:6px;padding:.2rem .55rem;font-weight:700;font-size:.85rem}
+.mini-btn.danger{border-color:var(--red);color:var(--red)}
+.mini-btn.danger.on{background:var(--red);color:var(--card)}
+.import-label{display:block;font-weight:700;margin:.7rem 0 .3rem}
 
-/*# sourceMappingURL=main.5e4e4a08.css.map*/
+
+/*# sourceMappingURL=main.51c1a841.css.map*/
