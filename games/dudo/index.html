@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dudo · online dice with friends</title>
+<meta name="description" content="Play Dudo (Perudo, Liar's Dice) online with friends. Open a table, share the code, pick your house rules.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9efe6; --surface:#f8faf5; --ink:#17302c; --muted:#5b6f69; --line:#c9d5cc;
+  --felt:#1f5a4e; --felt-ink:#f3f7f2;
+  --a1:#c8245a; --a2:#e89b06; --a3:#2b7a5b; --a4:#2d4fa1;
+  --die:#fbf7ee; --die-edge:#d8cfbd; --pip:#22201c; --hit:#e89b06;
+  --danger:#b3243f;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10201d; --surface:#182c28; --ink:#e8efe9; --muted:#9db1aa; --line:#2b443e;
+    --felt:#24695b; --felt-ink:#f3f7f2;
+    --a1:#e0487a; --a2:#f2b134; --a3:#45a37d; --a4:#5c7fd6;
+    --die:#f4efe3; --die-edge:#bfb6a3; --pip:#22201c; --hit:#f2b134; --danger:#ef5f7b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10201d; --surface:#182c28; --ink:#e8efe9; --muted:#9db1aa; --line:#2b443e;
+  --felt:#24695b; --felt-ink:#f3f7f2;
+  --a1:#e0487a; --a2:#f2b134; --a3:#45a37d; --a4:#5c7fd6;
+  --die:#f4efe3; --die-edge:#bfb6a3; --pip:#22201c; --hit:#f2b134; --danger:#ef5f7b;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100%}
+h1,h2,h3{font-family:"Young Serif",Georgia,"Times New Roman",serif;font-weight:400;margin:0;line-height:1.15}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--a4);outline-offset:2px}
+
+/* aguayo band: the one loud thing */
+.band{height:14px;background:
+  linear-gradient(90deg,transparent 0 0) ,
+  repeating-linear-gradient(90deg,var(--a1) 0 18px,var(--a2) 18px 24px,var(--a3) 24px 42px,var(--a4) 42px 48px);
+  position:relative}
+.band::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:4px;background:repeating-linear-gradient(90deg,var(--a2) 0 6px,transparent 6px 12px)}
+
+main{max-width:920px;margin:0 auto;padding:28px 18px 60px}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+
+.btn{border:0;border-radius:12px;padding:12px 18px;font-weight:600;cursor:pointer;background:var(--felt);color:var(--felt-ink);transition:transform .08s}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.btn.loud{background:var(--a1);color:#fff}
+.btn.gold{background:var(--a2);color:#22201c}
+.btn.sm{padding:7px 12px;font-size:.875rem;border-radius:9px}
+
+input.field,select.field{width:100%;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--surface)}
+input.field:focus{border-color:var(--a4);outline:none}
+label.lbl{display:block;font-weight:600;margin:0 0 6px}
+
+/* home */
+.hero{display:grid;gap:30px;grid-template-columns:1.1fr 1fr;align-items:center;margin-top:20px}
+.hero h1{font-size:clamp(3.4rem,10vw,6rem);letter-spacing:-.01em}
+.hero p.lede{font-size:1.15rem;max-width:34ch;margin:10px 0 0}
+.hero-dice{display:flex;gap:10px;margin-top:22px}
+.hero-dice .die{width:54px;height:54px}
+.hero-dice .die:nth-child(2){transform:rotate(-9deg)}
+.hero-dice .die:nth-child(4){transform:rotate(7deg)}
+.panel{background:var(--surface);border-radius:20px;padding:22px;border:1px solid var(--line)}
+.stack>*+*{margin-top:16px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.875rem}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.joinrow{display:flex;gap:10px}
+.joinrow input{text-transform:uppercase;letter-spacing:.3em;font-weight:700;text-align:center}
+.err{color:var(--danger);font-weight:600}
+@media (max-width:700px){.hero{grid-template-columns:1fr}}
+
+/* lobby */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.codebox{display:flex;gap:6px}
+.codebox span{width:46px;height:54px;display:grid;place-items:center;background:var(--die);color:var(--pip);border-radius:11px;box-shadow:inset 0 -4px 0 var(--die-edge);font:700 1.6rem/1 Figtree,sans-serif}
+.lobby{display:grid;grid-template-columns:1fr 1.3fr;gap:20px}
+@media (max-width:760px){.lobby{grid-template-columns:1fr}}
+.plist{list-style:none;padding:0;margin:0}
+.plist li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.plist li:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--a3);flex:none}
+.dot.off{background:var(--line)}
+.tag{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.rule{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.rule:last-child{border-bottom:0}
+.rule input[type=checkbox]{width:20px;height:20px;margin-top:3px;accent-color:var(--felt);flex:none}
+.rule .t{font-weight:600}
+.rule.dis{opacity:.5}
+.base{background:var(--bg);border-radius:14px;padding:12px 14px;font-size:.92rem}
+
+/* table */
+.seats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.seat{flex:1 1 140px;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 12px;min-width:0}
+.seat.turn{border-color:var(--a2);box-shadow:0 0 0 3px color-mix(in srgb,var(--a2) 30%,transparent)}
+.seat.out{opacity:.45}
+.seat .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cups{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.cup{width:14px;height:14px;border-radius:4px;background:var(--felt)}
+.seat .sub{font-size:.8rem;color:var(--muted);margin-top:4px;min-height:1.2em}
+
+.felt{background:var(--felt);color:var(--felt-ink);border-radius:24px;padding:26px 22px;position:relative;overflow:hidden}
+.felt::before{content:"";position:absolute;inset:0 0 auto 0;height:8px;background:repeating-linear-gradient(90deg,var(--a1) 0 18px,var(--a2) 18px 24px,var(--a3) 24px 42px,var(--a4) 42px 48px)}
+.bidline{display:flex;align-items:center;justify-content:center;gap:16px;min-height:110px;flex-wrap:wrap;text-align:center}
+.bidq{font:400 clamp(4rem,14vw,6.5rem)/1 "Young Serif",Georgia,serif}
+.bidx{font-size:2rem;opacity:.7}
+.bidline .die{width:88px;height:88px}
+.bidby{text-align:center;opacity:.85;margin-top:6px}
+.pal{display:inline-block;margin-top:10px;background:var(--a2);color:#22201c;font-weight:700;border-radius:99px;padding:3px 12px;font-size:.85rem}
+
+.die rect{fill:var(--die);stroke:var(--die-edge);stroke-width:3}
+.die circle{fill:var(--pip)}
+.die circle.ace{fill:var(--a1)}
+.die text{fill:var(--pip);font:700 52px Figtree,sans-serif}
+.die.q rect{fill:var(--die);stroke:var(--a2);stroke-dasharray:10 7}
+.die.hit rect{fill:var(--hit);stroke:var(--hit)}
+.die.dim{opacity:.35}
+
+.mine{display:flex;gap:10px;justify-content:center;margin:20px 0 4px;flex-wrap:wrap}
+.mine .die{width:60px;height:60px}
+.mine-lbl{text-align:center;font-size:.85rem;color:var(--muted)}
+
+.controls{margin-top:18px;display:grid;gap:14px}
+.prompt{font-weight:600;text-align:center}
+.picker{display:flex;gap:18px;justify-content:center;align-items:center;flex-wrap:wrap}
+.stepper{display:flex;align-items:center;gap:8px;background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:4px}
+.stepper button{width:40px;height:40px;border:0;border-radius:10px;background:var(--bg);font-size:1.3rem;cursor:pointer}
+.stepper output{min-width:42px;text-align:center;font:400 1.8rem/1 "Young Serif",Georgia,serif}
+.faces{display:flex;gap:6px}
+.faces button{border:0;padding:3px;border-radius:12px;background:transparent;cursor:pointer}
+.faces button .die{width:42px;height:42px;display:block}
+.faces button[aria-pressed=true]{background:var(--a2)}
+.faces button[disabled]{opacity:.3;cursor:not-allowed}
+.acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.acts .btn{min-width:120px}
+.hint{text-align:center;font-size:.875rem;color:var(--muted);min-height:1.3em}
+
+.reveal{display:grid;gap:10px;margin-top:6px}
+.rrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rrow .nm{width:110px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .die{width:36px;height:36px}
+.verdict{font-size:1.15rem;margin-top:14px;text-align:center}
+.rdice{position:relative;display:flex;gap:6px;flex-wrap:wrap;padding:4px}
+.cupcover{position:absolute;inset:-2px;border-radius:14px 14px 8px 8px;background:#5a3520;box-shadow:inset 0 -6px 0 #3e2414,inset 0 6px 0 rgba(255,255,255,.08);opacity:0;pointer-events:none}
+.cupcover::after{content:"";position:absolute;left:10px;right:10px;top:42%;height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--a1) 0 10px,var(--a2) 10px 14px,var(--a3) 14px 24px)}
+.reveal.anim .cupcover{animation:lift .7s cubic-bezier(.5,0,.75,0) both;animation-delay:calc(var(--d) - var(--el))}
+.reveal.anim .rdice .die{animation:pop .35s cubic-bezier(.2,1.6,.4,1) backwards;animation-delay:calc(var(--d) - var(--el))}
+.reveal.anim .rdice .die.hit rect{animation:glow .5s ease-out backwards;animation-delay:calc(var(--h) - var(--el))}
+.reveal.anim .rdice .die.dim{animation:pop .35s cubic-bezier(.2,1.6,.4,1) backwards,fade .5s ease-out backwards;animation-delay:calc(var(--d) - var(--el)),calc(var(--h) - var(--el))}
+.verdict.anim{animation:fadeup .5s ease-out backwards;animation-delay:calc(var(--h) + 300ms - var(--el))}
+.lost .pd.drop{animation:drop .5s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:calc(var(--h) + 700ms - var(--el))}
+@keyframes lift{0%{opacity:1;transform:none}60%{opacity:1}100%{opacity:0;transform:translateY(-46px) rotate(-6deg)}}
+@keyframes pop{from{opacity:0;transform:scale(.5) rotate(-20deg)}}
+@keyframes glow{from{fill:var(--die);stroke:var(--die-edge)}}
+@keyframes fade{from{opacity:1}}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}}
+@keyframes drop{from{opacity:0;transform:translateY(-40px) rotate(30deg)}}
+
+.lost{margin-top:22px;padding-top:16px;border-top:1px dashed color-mix(in srgb,var(--felt-ink) 30%,transparent);display:flex;flex-direction:column;align-items:center;gap:6px}
+.piles{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.pile{position:relative;width:52px;height:52px}
+.pd{position:absolute;width:24px;height:24px}
+.pd .die{width:100%;height:100%;display:block}
+.p0{left:0;top:0;transform:rotate(-4deg)}.p1{left:28px;top:1px;transform:rotate(3deg)}
+.p2{left:1px;top:28px;transform:rotate(2deg)}.p3{left:28px;top:28px;transform:rotate(-3deg)}
+.p4{left:14px;top:11px;transform:rotate(14deg);z-index:1;filter:drop-shadow(0 4px 3px rgba(0,0,0,.45))}
+.lost-lbl{margin:0;font-size:.85rem;opacity:.8}
+
+.log{margin-top:22px;font-size:.9rem;color:var(--muted);list-style:none;padding:0}
+.log li{padding:3px 0}
+.rulesum{margin-top:18px;font-size:.85rem;color:var(--muted)}
+.center{text-align:center}
+.copybox{display:flex;gap:8px;margin-top:10px}
+.copybox input{font-size:.85rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main id="app"></main>
+<script>
+"use strict";
+/* ---------- networking: peer-to-peer through PeerJS ----------
+   The host's browser is the table. Players connect straight to it (WebRTC);
+   PeerJS's free public server is only used to introduce browsers to each other. */
+const PEER_PREFIX = "dudo-table-v1-";
+function mergeInto(o,patch){ for(const k in patch){ if(patch[k]===null) delete o[k]; else o[k]=patch[k]; } }
+function peerOpts(){ return {debug:0, config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]}}; }
+function hostRoom(code,retry){
+  const id = PEER_PREFIX+code.toLowerCase();
+  return new Promise((resolve,reject)=>{
+    const conns=new Map(); let mine={}, cb=null, ecb=null, closed=false, ready=false, tries=0, peer, pend=false;
+    const list=()=>[{peer:'host',presence:mine,sameTab:true}, ...[...conns.values()].map(c=>({peer:c.conn.peer,presence:c.presence}))];
+    const emit=()=>{ pend=false; const L=list(); cb&&cb({peers:L});
+      const out=L.map(x=>({peer:x.peer,presence:x.presence}));
+      for(const c of conns.values()) if(c.conn.open){ try{c.conn.send({t:'peers',peers:out})}catch(e){} } };
+    const schedule=()=>{ if(!pend){ pend=true; setTimeout(emit,25); } };
+    const api={
+      presence(patch){ mergeInto(mine,patch); schedule(); return Promise.resolve(); },
+      onPeers(f,e){ cb=f; ecb=e; schedule(); },
+      leave(){ closed=true; try{peer.destroy()}catch(e){} return Promise.resolve(); }
+    };
+    function start(){
+      peer=new Peer(id,peerOpts());
+      peer.on('open',()=>{ ready=true; resolve(api); });
+      peer.on('connection',conn=>{
+        conn.on('open',()=>{ conns.set(conn.peer,{conn,presence:{}}); schedule(); });
+        conn.on('data',m=>{ const c=conns.get(conn.peer); if(c && m && m.t==='pres' && m.patch && typeof m.patch==='object'){ mergeInto(c.presence,m.patch); schedule(); } });
+        const drop=()=>{ if(conns.get(conn.peer)?.conn===conn){ conns.delete(conn.peer); schedule(); } };
+        conn.on('close',drop); conn.on('error',drop);
+      });
+      peer.on('disconnected',()=>{ if(!closed) setTimeout(()=>{ try{peer.reconnect()}catch(e){} },1000); });
+      peer.on('error',err=>{
+        if(!ready && err.type==='unavailable-id' && retry && tries++<20){ try{peer.destroy()}catch(e){} setTimeout(start,3000); return; }
+        if(!ready){ try{peer.destroy()}catch(e){} reject(err); return; }
+        if(err.type!=='peer-unavailable') ecb&&ecb(err);
+      });
+    }
+    start();
+  });
+}
+function clientRoom(code){
+  const id = PEER_PREFIX+code.toLowerCase();
+  return new Promise((resolve,reject)=>{
+    const peer=new Peer(peerOpts()); let conn=null, mine={}, cb=null, closed=false, ready=false, last=[], timer=null;
+    const deliver=()=>cb&&cb({peers:last});
+    const retry=()=>{ if(closed||timer) return; timer=setTimeout(()=>{ timer=null; connect(); },2500); };
+    const api={
+      presence(patch){ mergeInto(mine,patch); if(conn&&conn.open){ try{conn.send({t:'pres',patch})}catch(e){} } return Promise.resolve(); },
+      onPeers(f){ cb=f; deliver(); },
+      leave(){ closed=true; clearTimeout(timer); try{peer.destroy()}catch(e){} return Promise.resolve(); }
+    };
+    function connect(){
+      if(closed) return;
+      if(peer.disconnected){ try{peer.reconnect()}catch(e){} retry(); return; }
+      const c=peer.connect(id,{reliable:true,serialization:'json'}); conn=c;
+      c.on('open',()=>{ try{c.send({t:'pres',patch:mine})}catch(e){} });
+      c.on('data',m=>{ if(c!==conn) return; if(m && m.t==='peers' && Array.isArray(m.peers)){ last=m.peers.map(x=>({...x,sameTab:x.peer===peer.id})); deliver(); } });
+      c.on('close',()=>{ if(c!==conn) return; last=[]; deliver(); retry(); });
+      c.on('error',()=>{ if(c===conn) retry(); });
+    }
+    peer.on('open',()=>{ ready=true; resolve(api); connect(); });
+    peer.on('disconnected',()=>{ if(!closed) setTimeout(()=>{ try{peer.reconnect()}catch(e){} },1000); });
+    peer.on('error',err=>{
+      if(!ready){ try{peer.destroy()}catch(e){} reject(err); return; }
+      if(err.type==='peer-unavailable'){ last=[]; deliver(); retry(); }
+    });
+  });
+}
+const PeerRooms = { join(code,opts={}){ return opts.host ? hostRoom(code,!!opts.retry) : clientRoom(code); } };
+const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ";
+const DEFAULT_RULES = {dice:5, wild:false, aceBids:false, calzo:false, pal:false, blind:false, paso:false, pasoFull:true, picao:false, sic:false, calzoHalf:false};
+
+const store = {
+  get(k,s){try{const v=(s?sessionStorage:localStorage).getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
+  set(k,v,s){try{(s?sessionStorage:localStorage).setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k,s){try{(s?sessionStorage:localStorage).removeItem(k)}catch(e){}}
+};
+function rnd(n){const a=new Uint32Array(n);crypto.getRandomValues(a);return a}
+function rid(){return [...rnd(3)].map(x=>x.toString(36)).join('').slice(0,14)}
+let pid = store.get('dudo-pid',true); if(!pid){pid='p'+rid(); store.set('dudo-pid',pid,true)}
+function pidFor(code){
+  const k='dudo-pidc-'+code;
+  const id = store.get(k,true) || store.get(k) || ('p'+rid());
+  store.set(k,id,true); store.set(k,id);
+  return id;
+}
+
+const S = {
+  room:null, roomTried:false, named:null, code:null, host:false, pid,
+  name: store.get('dudo-name') || '', st:null, peers:[], myPres:{}, dice:null,
+  err:'', screen:'home', joining:false, ui:{q:1,f:2,key:''}, copyText:'', hostGone:false
+};
+const app = document.getElementById('app');
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean = s => String(s||'').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g,'').trim().slice(0,18);
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- dice drawing ---------- */
+const PIPS={1:[[50,50]],2:[[29,29],[71,71]],3:[[27,27],[50,50],[73,73]],4:[[29,29],[71,29],[29,71],[71,71]],5:[[27,27],[73,27],[50,50],[27,73],[73,73]],6:[[30,25],[70,25],[30,50],[70,50],[30,75],[70,75]]};
+function die(f,cls=''){
+  if(!f) return `<svg class="die q ${cls}" viewBox="0 0 100 100" role="img" aria-label="hidden face"><rect x="4" y="4" width="92" height="92" rx="20"/><text x="50" y="68" text-anchor="middle">?</text></svg>`;
+  return `<svg class="die ${cls}" viewBox="0 0 100 100" role="img" aria-label="${f}"><rect x="4" y="4" width="92" height="92" rx="20"/>${PIPS[f].map(([x,y])=>`<circle class="${f===1?'ace':''}" cx="${x}" cy="${y}" r="${f===1?14:9}"/>`).join('')}</svg>`;
+}
+function roll(n){return [...rnd(n)].map(x=>1+(x%6)).sort().join('')}
+async function hashDice(code,r,s,d){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${code}|${r}|${s}|${d}`));
+  return [...new Uint8Array(buf)].slice(0,12).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ---------- rules ---------- */
+function wildNow(st){return st.rules.wild && !st.pal}
+function totalDice(st){return st.players.reduce((a,p)=>a+Math.max(0,p.n),0)}
+function validBid(st,q,f){
+  const prev = st.bid, wild = wildNow(st), max = totalDice(st);
+  if(!(q>=1)) return 'Bid at least one die.';
+  if(q>max) return `There are only ${max} dice on the table.`;
+  if(wild && f===1 && !st.rules.aceBids) return 'Aces are wild, so you can’t bid on them.';
+  if(prev?.blind){ if(f!==0) return 'The face stays hidden: bid on what’s in the cup.'; return q>prev.q?'':`Raise to at least ${prev.q+1}.`; }
+  if(!prev) return '';
+  if(st.pal){
+    if(f!==prev.f) return 'Palifico: the face can’t change this round.';
+    return q>prev.q ? '' : `Raise to at least ${prev.q+1}.`;
+  }
+  if(wild && st.rules.aceBids){
+    if(prev.f!==1 && f===1){const m=Math.ceil(prev.q/2);return q>=m?'':`To switch to aces, bid at least ${m}.`}
+    if(prev.f===1 && f===1){return q>prev.q?'':`Raise to at least ${prev.q+1} aces.`}
+    if(prev.f===1 && f!==1){const m=prev.q*2+1;return q>=m?'':`To leave aces, bid at least ${m}.`}
+  }
+  if(q>prev.q || (q===prev.q && f>prev.f)) return '';
+  return 'Bid more dice, or the same number of a higher face.';
+}
+function nextAlive(st,idx){
+  const L=st.players.length, d=st.dir===-1?-1:1;
+  for(let i=1;i<=L;i++){const j=((idx+d*i)%L+L)%L;if(st.players[j].n>0) return j}
+  return idx;
+}
+function calzoOpen(st){return !st.rules.calzoHalf || totalDice(st)*2 >= (st.startTotal||0)}
+function pname(st,id){return st.players.find(p=>p.id===id)?.name||'Someone'}
+function addLog(st,t){st.log=[t,...(st.log||[])].slice(0,6)}
+
+/* ---------- presence ---------- */
+function setPres(patch){
+  for(const k in patch){ if(patch[k]===null) delete S.myPres[k]; else S.myPres[k]=patch[k]; }
+  if(S.named) S.named.presence(patch).catch(()=>{});
+}
+function collect(){
+  const m={};
+  for(const p of S.peers){ if(p.sameTab) continue; const pr=p.presence||{}; if(pr.app==='dudo' && pr.pid) m[pr.pid]=pr; }
+  m[S.pid]=S.myPres;
+  return m;
+}
+function online(id){return id===S.pid || S.peers.some(p=>p.presence?.pid===id)}
+function findHost(){return S.peers.find(p=>!p.sameTab && p.presence?.host && p.presence.st?.code===S.code)}
+
+/* ---------- host engine ---------- */
+let busy=false, again=false;
+async function hostProcess(){
+  if(!S.host) return;
+  if(busy){again=true;return}
+  busy=true;
+  try{ do{ again=false; await hostStep(); }while(again) } finally{ busy=false }
+}
+function publish(st){
+  st.v=(st.v||0)+1; S.st=st;
+  store.set('dudo-host-'+st.code, st);
+  setPres({st});
+}
+function stale(st,id,p){
+  const k=st.kicked||{};
+  if(!(id in k)) return false;
+  if(p.j===k[id]) return true;   // the removed session hasn't closed yet
+  delete k[id]; return false;    // a fresh join: welcome back
+}
+function reconnects(st,pm){
+  let ch=false, restart=false;
+  for(const id in pm){
+    if(id===S.pid) continue;
+    const pr=pm[id];
+    if(stale(st,id,pr)) continue;
+    let p=st.players.find(x=>x.id===id);
+    if(!p){
+      // same name on a new device: take over an offline or removed seat
+      const nm=(clean(pr.name)||'').toLowerCase();
+      const old=st.players.find(x=>x.id!==S.pid && x.name.toLowerCase()===nm && (x.removed || !pm[x.id]));
+      if(!old) continue;
+      const oldId=old.id; old.id=id; p=old; ch=true;
+      if(st.kicked) delete st.kicked[oldId];
+      if(!old.removed && old.n>0 && ['rolling','bidding','reveal'].includes(st.phase)) restart=true;
+      if(!old.removed) addLog(st,`${old.name} reconnected.`);
+    }
+    if(p.removed){
+      p.removed=false; p.back=p.removedN||0; ch=true;
+      addLog(st, p.back>0 ? `${p.name} is back and rejoins next round.` : `${p.name} is back.`);
+    }
+  }
+  if(restart && st.players.filter(x=>x.n>0).length>1){
+    st.next={starter:st.turn, pal:!!st.pal}; startRound(st);
+    addLog(st,'The round restarts with fresh dice.');
+  }
+  return ch;
+}
+async function hostStep(){
+  const startV = S.st.v, st = clone(S.st), pm = collect(); let ch=false;
+  if(st.phase==='lobby'){
+    for(const id in pm){
+      const p=pm[id]; const ex=st.players.find(x=>x.id===id); const nm=clean(p.name)||'Player';
+      if(stale(st,id,p)) continue;
+      if(!ex){ st.players.push({id,name:nm,n:0}); ch=true; }
+      else if(ex.name!==nm){ex.name=nm;ch=true}
+    }
+    const before=st.players.length;
+    st.players=st.players.filter(p=>p.id===S.pid || pm[p.id]);
+    if(st.players.length!==before) ch=true;
+  } else {
+    if(st.phase!=='over' && reconnects(st,pm)) ch=true;
+    const alive = st.players.filter(p=>p.n>0);
+    if(st.phase==='rolling'){
+      if(alive.every(p=>pm[p.id]?.commit?.r===st.round)){
+        st.commits={}; alive.forEach(p=>st.commits[p.id]=pm[p.id].commit.h);
+        st.phase='bidding'; ch=true;
+      }
+    }
+    if(st.phase==='bidding'){
+      for(const p of st.players){
+        const a=pm[p.id]?.act;
+        if(a && a.seq>(st.seqs[p.id]||0)){
+          st.seqs[p.id]=a.seq; ch=true;
+          if(a.r===st.round && st.phase==='bidding' && p.n>0){
+            if(st.players[st.turn]?.id===p.id) applyAct(st,p,a);
+          }
+        }
+      }
+    }
+    if(st.phase==='reveal'){
+      const dice={}; let all=true; const bad=[];
+      for(const p of alive){
+        const r=pm[p.id]?.reveal;
+        if(!r || r.r!==st.round){all=false;break}
+        const h=await hashDice(st.code,st.round,r.s,r.d);
+        if(h!==st.commits[p.id] || !/^[1-6]+$/.test(r.d) || r.d.length!==p.n) bad.push(p.name);
+        dice[p.id]=String(r.d).slice(0,6);
+      }
+      if(all){ if(bad.length) addLog(st,`⚠ ${bad.join(', ')}: dice didn’t match what was rolled.`); resolveRound(st,dice); ch=true; }
+    }
+  }
+  if(S.st.v!==startV){again=true;return}
+  if(ch){publish(st); render()}
+}
+function isPasoHand(d,full){
+  const c={}; for(const v of d) c[v]=(c[v]||0)+1;
+  const k=Object.values(c).sort();
+  if(d.length>=2 && k.length===1) return true;
+  return !!full && d.length===5 && k.length===2 && k[0]===2 && k[1]===3;
+}
+function applyAct(st,p,a){
+  const noClaim = !st.claim;
+  if(a.t==='look' && st.blindPending && !st.bid){
+    st.blindPending=false;
+    addLog(st,`${p.name} chose to look at their die.`);
+  } else if(a.t==='bid'){
+    const q=a.q|0;
+    if(a.blind){
+      if(!st.blindPending || st.bid || !(q>=1) || q>totalDice(st)) return;
+      st.bid={q,f:0,blind:true,owner:p.id,by:p.id}; st.blindPending=false;
+      addLog(st,`${p.name} bid ${q} of whatever is in their cup, without looking.`);
+    } else {
+      if(st.blindPending) return;
+      const f = st.bid?.blind ? 0 : (a.f|0);
+      if((!st.bid?.blind && (f<1||f>6)) || validBid(st,q,f)) return;
+      st.bid = st.bid?.blind ? {q,f:0,blind:true,owner:st.bid.owner,by:p.id} : {q,f,by:p.id};
+      addLog(st, f===0 ? `${p.name} bid ${q} of what’s in ${pname(st,st.bid.owner)}’s cup.` : `${p.name} bid ${q} × ${f}${f===1?'s (aces)':'s'}.`);
+    }
+    st.claim=null; st.nBids=(st.nBids||0)+1;
+    st.turn=nextAlive(st,st.turn);
+  } else if(a.t==='paso' && st.rules.paso && st.bid && !st.blindPending && p.n>=2 && !(st.pasoUsed||{})[p.id]){
+    st.claim={t:'paso',by:p.id}; st.pasoUsed={...(st.pasoUsed||{}),[p.id]:true};
+    addLog(st,`${p.name} said paso.`);
+    st.turn=nextAlive(st,st.turn);
+  } else if(a.t==='picao' && st.rules.picao && st.bid && !st.blindPending){
+    const n=(st.picaoN||1)+1; if(p.n<n) return;
+    st.picaoN=n; st.claim={t:'picao',by:p.id,n};
+    st.dir = st.dir===-1 ? 1 : -1;
+    addLog(st,`${p.name} called picao: claims ${n} aces. Play reverses.`);
+    st.turn=nextAlive(st,st.turn);
+  } else if(a.t==='dudo' && st.claim){
+    st.call={t:st.claim.t,by:p.id,target:st.claim.by,n:st.claim.n||0}; st.phase='reveal';
+    addLog(st,`${p.name} doubted ${pname(st,st.claim.by)}’s ${st.claim.t}!`);
+  } else if(a.t==='dudo' && st.bid){
+    st.call={t:'dudo',by:p.id}; st.phase='reveal';
+    addLog(st,`${p.name} called dudo!`);
+  } else if(a.t==='sic' && st.rules.sic && st.bid && st.nBids===1 && noClaim && st.bid.by!==p.id){
+    st.call={t:'sic',by:p.id}; st.phase='reveal';
+    addLog(st,`${p.name} called siciliana!`);
+  } else if(a.t==='calzo' && st.bid && st.rules.calzo && st.bid.by!==p.id && noClaim && calzoOpen(st)){
+    st.call={t:'calzo',by:p.id}; st.phase='reveal';
+    addLog(st,`${p.name} called calzo!`);
+  }
+}
+function resolveRound(st,dice){
+  const {q,by}=st.bid, call=st.call, caller=call.by;
+  const wild = call.t==='sic' ? false : wildNow(st);
+  const f = st.bid.blind ? +((dice[st.bid.owner]||'0')[0]) : st.bid.f;
+  let count=0;
+  for(const id in dice) for(const c of dice[id]){const v=+c; if(v===f || (wild && f!==1 && v===1)) count++}
+  let target, other, delta=-1, ok=null, claimer=null;
+  if(call.t==='paso' || call.t==='picao'){
+    claimer=call.target;
+    const d=[...(dice[claimer]||'')].map(Number);
+    if(call.t==='paso') ok=isPasoHand(d,st.rules.pasoFull);
+    else { count=d.filter(v=>v===1).length; ok = count>=call.n; }
+    target = ok ? caller : claimer; other = ok ? claimer : caller;
+  } else if(call.t==='dudo' || call.t==='sic'){
+    const truth = count>=q;
+    target = truth ? caller : by; other = truth ? by : caller;
+    if(call.t==='sic') delta=-2;
+  } else {
+    target=caller; other=by; delta = count===q ? 1 : -1;
+  }
+  const tp=st.players.find(p=>p.id===target);
+  const before=tp.n; tp.n=Math.max(0,Math.min(st.rules.dice,tp.n+delta));
+  const applied=tp.n-before;
+  const tIdx=st.players.indexOf(tp);
+  let pal=false;
+  const aliveAfter=st.players.filter(p=>p.n>0).length;
+  if(st.rules.pal && delta<0 && tp.n===1 && !tp.palUsed && aliveAfter>2){pal=true; tp.palUsed=true}
+  st.result={dice,count,q,f,t:call.t,caller,bidder:claimer||by,target,delta,applied,wild,ok,n:call.n||0,blind:!!st.bid.blind,owner:st.bid.owner||null};
+  // next round: the player who lost dice, or who won a calzo; if the loser is out, whoever knocked them out
+  const oIdx=st.players.findIndex(p=>p.id===other);
+  const starter = tp.n>0 ? tIdx : (oIdx>=0 && st.players[oIdx].n>0 ? oIdx : nextAlive(st,tIdx));
+  st.next={starter, pal};
+  let msg;
+  if(delta>0) msg = applied>0 ? `${tp.name} won a die back.` : `${tp.name} was right, but already has full dice.`;
+  else msg = `${tp.name} lost ${-applied===2?'two dice':'a die'}.`;
+  if(tp.n===0) msg+=` ${tp.name} is out.`;
+  addLog(st,msg);
+  if(aliveAfter<=1){ st.phase='over'; st.winner=st.players.find(p=>p.n>0)?.id||null; addLog(st,`${pname(st,st.winner)} wins the game.`); }
+  else st.phase='result';
+}
+function startRound(st){
+  st.round++; st.bid=null; st.call=null; st.commits={}; st.result=null; st.claim=null; st.pasoUsed={}; st.picaoN=1; st.nBids=0; st.dir=1;
+  st.players.forEach(x=>{ if(x.back>0){ x.n=x.back; x.back=0; } });
+  st.pal=!!st.next?.pal; st.turn=st.next?.starter ?? st.turn; st.next=null;
+  if(st.players[st.turn]?.n<=0) st.turn=nextAlive(st,st.turn);
+  st.phase='rolling';
+  st.palBy = st.pal ? st.players[st.turn].id : null;
+  st.blindPending = !!(st.pal && st.rules.blind);
+  if(st.pal) addLog(st,`Palifico round for ${st.players[st.turn].name}.`);
+}
+function mutate(fn){ if(!S.host) return; const st=clone(S.st); fn(st); publish(st); render(); hostProcess(); }
+
+/* ---------- client side ---------- */
+let committing=false;
+async function clientReact(){
+  const st=S.st; if(!st||!S.named) return;
+  const p=st.players.find(x=>x.id===S.pid); if(!p||p.n<=0) return;
+  if(!['rolling','bidding','reveal'].includes(st.phase)) return;
+  if(!S.dice || S.dice.r!==st.round || S.dice.code!==st.code){
+    const k=`dudo-d-${st.code}-${S.pid}-${st.round}`; const saved=store.get(k);
+    if(saved) S.dice=saved;
+    else if(st.phase==='rolling'){ S.dice={code:st.code,r:st.round,d:roll(p.n),s:rid()}; store.set(k,S.dice); }
+    else return;
+    render();
+  }
+  if(S.myPres.commit?.r!==st.round && !committing){
+    committing=true;
+    const h=await hashDice(st.code,st.round,S.dice.s,S.dice.d);
+    committing=false;
+    setPres({commit:{r:st.round,h}});
+    if(S.host) hostProcess();
+  }
+  if(st.phase==='reveal' && S.myPres.reveal?.r!==st.round){
+    setPres({reveal:{r:st.round,d:S.dice.d,s:S.dice.s}});
+    if(S.host) hostProcess();
+  }
+}
+function act(t,data={}){
+  if(!S.st) return;
+  setPres({act:{seq:Date.now(),t,r:S.st.round,...data}});
+  if(S.host) hostProcess();
+}
+let hostTimer=null;
+function onRoom(){
+  if(S.host){ hostProcess(); }
+  else {
+    const h=findHost();
+    if(h && S.myPres.j && (h.presence.st.kicked||{})[S.pid]===S.myPres.j){ leaveTable('The host removed you from the table. You can rejoin with the code.', true); return; }
+    if(h){ const st=h.presence.st; if(!S.st || st.v!==S.st.v || st.round!==S.st.round) S.st=st; S.hostGone=false; clearTimeout(hostTimer); hostTimer=null; }
+    else if(S.st && !hostTimer){ hostTimer=setTimeout(()=>{ if(!findHost()){S.hostGone=true;render()} hostTimer=null },4000); }
+  }
+  if(S.st) S.screen='table';
+  clientReact();
+  render();
+}
+
+/* ---------- joining ---------- */
+async function enterRoom(code,opts){
+  const named = await S.room.join(code,opts||{});
+  S.named=named; S.code=code; S.myPres={};
+  named.onPeers(ch=>{S.peers=ch.peers; onRoom()}, ()=>{S.err='Lost connection to the table.'; render()});
+  return named;
+}
+function newCode(){return [...rnd(4)].map(x=>ALPHA[x%ALPHA.length]).join('')}
+async function createTable(){
+  const name=clean(document.getElementById('nm')?.value); if(!name){S.err='Enter your name first.';render();return}
+  S.name=name; store.set('dudo-name',name);
+  S.joining=true; S.err=''; render();
+  try{
+    let code, ok=false;
+    for(let i=0;i<4 && !ok;i++){
+      code=newCode(); S.pid=pidFor(code);
+      try{ await enterRoom(code,{host:true}); ok=true; }
+      catch(e){ if(e?.type!=='unavailable-id') throw e; }
+    }
+    if(!ok) throw new Error('no code');
+    S.host=true;
+    const restored=store.get('dudo-host-'+code);
+    const st=restored || {code,hostPid:S.pid,v:0,phase:'lobby',rules:{...DEFAULT_RULES},players:[{id:S.pid,name,n:0}],round:0,turn:0,bid:null,call:null,pal:false,seqs:{},commits:{},result:null,next:null,log:[],winner:null};
+    setPres({app:'dudo',pid:S.pid,name,host:true,j:Date.now()});
+    publish(st);
+    store.set('dudo-sess',{code,host:true});
+    S.screen='table'; S.joining=false; render();
+  }catch(e){ S.joining=false; S.err='Couldn’t open a table. Try again in a moment.'; render(); }
+}
+async function joinTable(codeArg, asHost){
+  const name=clean(document.getElementById('nm')?.value)||S.name;
+  if(!name){S.err='Enter your name first.';render();return}
+  const code=(codeArg||document.getElementById('jc')?.value||'').toUpperCase().replace(/[^A-Z]/g,'');
+  if(code.length!==4){S.err='Codes are 4 letters.';render();return}
+  S.name=name; store.set('dudo-name',name);
+  S.joining=true; S.err=''; render();
+  try{
+    S.pid=pidFor(code);
+    const saved=store.get('dudo-host-'+code);
+    if(asHost && saved && saved.hostPid===S.pid){
+      await enterRoom(code,{host:true,retry:true});
+      S.host=true; setPres({app:'dudo',pid:S.pid,name,host:true,j:Date.now()}); publish(saved);
+      store.set('dudo-sess',{code,host:true});
+      S.screen='table'; S.joining=false; render(); return;
+    }
+    await enterRoom(code);
+    await new Promise(r=>setTimeout(r,1500));
+    if(S.peers.some(p=>!p.sameTab && p.presence?.pid===S.pid)){ S.pid='p'+rid(); store.set('dudo-pidc-'+code,S.pid,true); }
+    setPres({app:'dudo',pid:S.pid,name,j:Date.now()});
+    store.set('dudo-sess',{code,host:false});
+    setTimeout(async()=>{
+      if(!S.st && S.code===code){
+        S.joining=false; S.err=`No table found with code ${code}. Check the code with the host.`;
+        try{await S.named.leave()}catch(e){} S.named=null; S.code=null; render();
+      }
+    },12000);
+  }catch(e){ S.joining=false; S.err='Couldn’t reach that table. Try again in a moment.'; render(); }
+}
+async function leaveTable(msg,keepSess){
+  try{await S.named?.leave()}catch(e){}
+  if(!keepSess) store.del('dudo-sess');
+  Object.assign(S,{named:null,code:null,host:false,st:null,peers:[],myPres:{},dice:null,screen:'home',err:typeof msg==='string'?msg:'',hostGone:false});
+  render();
+}
+
+/* ---------- views ---------- */
+function vHome(){
+  const sess=store.get('dudo-sess');
+  const pre=(location.hash+location.search).match(/(?:#|[?&]room=)([A-Za-z]{4})(?![A-Za-z])/); if(pre) pre[0]=pre[1];
+  const noRoom = S.roomTried && !S.room;
+  return `
+  <section class="hero">
+    <div>
+      <h1>Dudo</h1>
+      <p class="lede">Shake your cup, bid on everyone’s dice, and doubt the liar.</p>
+      <div class="hero-dice" aria-hidden="true">${die(1)}${die(4)}${die(6)}${die(3)}${die(5)}</div>
+    </div>
+    <div class="panel stack">
+      ${noRoom?`<p class="err">Couldn’t load the connection library. Check your internet connection and reload the page.</p>`:''}
+      ${!S.roomTried?`<p class="muted small">Connecting…</p>`:''}
+      <div><label class="lbl" for="nm">Your name</label><input class="field" id="nm" maxlength="18" autocomplete="nickname" value="${esc(S.name)}" placeholder="e.g. Camila"></div>
+      ${sess?`<button class="btn gold" data-a="rejoin" style="width:100%" ${!S.room||S.joining?'disabled':''}>Rejoin table ${esc(sess.code)}</button>`:''}
+      <button class="btn" data-a="create" style="width:100%" ${!S.room||S.joining?'disabled':''}>Open a new table</button>
+      <div class="or">or join one</div>
+      <div class="joinrow">
+        <input class="field" id="jc" maxlength="4" placeholder="CODE" aria-label="Table code" value="${esc(pre?pre[0].toUpperCase():'')}">
+        <button class="btn ghost" data-a="join" ${!S.room||S.joining?'disabled':''}>Join</button>
+      </div>
+      ${S.joining?`<p class="muted small">Finding the table…</p>`:''}
+      ${S.err?`<p class="err" role="alert">${esc(S.err)}</p>`:''}
+    </div>
+  </section>`;
+}
+function codeTiles(c){return `<div class="codebox" aria-label="Table code ${c}">${[...c].map(x=>`<span>${x}</span>`).join('')}</div>`}
+function ruleRow(key,title,desc,disabled){
+  const st=S.st, on=!!st.rules[key], ro=!S.host||disabled;
+  return `<label class="rule ${disabled?'dis':''}"><input type="checkbox" data-rule="${key}" ${on?'checked':''} ${ro?'disabled':''}><span><span class="t">${title}</span><br><span class="muted small">${desc}</span></span></label>`;
+}
+function vLobby(){
+  const st=S.st;
+  const pl=st.players.map(p=>`<li><span class="dot ${online(p.id)?'':'off'}"></span><span>${esc(p.name)}</span>${p.id===st.hostPid?'<span class="tag">host</span>':''}${p.id===S.pid?'<span class="tag">you</span>':''}${kickBtn(p)}</li>`).join('');
+  return `
+  <div class="top">
+    <div><h2>Table</h2><p class="muted small" style="margin:4px 0 0">Share this code so friends can join.</p></div>
+    ${codeTiles(st.code)}
+  </div>
+  <div class="lobby">
+    <div class="panel">
+      <h3>Players <span class="muted small">(${st.players.length})</span></h3>
+      <ul class="plist" style="margin-top:8px">${pl}</ul>
+      <div style="margin-top:14px">
+        <button class="btn ghost sm" data-a="copy">Copy invite</button>
+        ${S.copyText?`<div class="copybox"><input class="field" readonly id="cpy" value="${esc(S.copyText)}"></div>`:''}
+      </div>
+    </div>
+    <div class="panel">
+      <h3>House rules</h3>
+      <p class="muted small" style="margin:4px 0 12px">${S.host?'You’re the host, so you choose.':'The host is choosing. Changes show up here live.'}</p>
+      <div class="base"><strong>Always on.</strong> Bid more dice, or the same number of a higher face. Call <em>dudo</em> to challenge the last bid. Whoever was wrong loses a die. The loser starts the next round. Last player with dice wins.</div>
+      <div class="rule"><span style="flex:1"><span class="t">Dice per player</span></span>
+        <select class="field" data-rule="dice" style="width:90px" ${S.host?'':'disabled'}>${[3,4,5,6].map(n=>`<option ${st.rules.dice===n?'selected':''}>${n}</option>`).join('')}</select></div>
+      ${ruleRow('wild','Aces are wild','1s count toward every other face.')}
+      ${ruleRow('aceBids','Bidding on aces','Switch to aces by halving the quantity (rounded up); switch back by doubling it plus one.',!st.rules.wild)}
+      ${ruleRow('calzo','Calzo','On your turn, claim the bid is exactly right. Right: win a die back. Wrong: lose one.')}
+      ${ruleRow('calzoHalf','Calzo only with half the dice left','Calzo is allowed only while at least half of the game’s starting dice are still on the table.',!st.rules.calzo)}
+      ${ruleRow('pal','Palifico','When a player first drops to one die, the next round has no wild aces and the face can’t change.')}
+      ${ruleRow('blind','Blind bet (palifico)','Before anyone sees their dice, the palifico player may bid on whatever is in their own cup, like “2 of what I have”. Their die stays hidden from them until the reveal.',!st.rules.pal)}
+      ${ruleRow('sic','Siciliana','Right after the opening bid, the next player can make a special doubt worth two dice. Aces aren’t wild when the cups are lifted.')}
+      ${ruleRow('paso','Paso','Once per round, pass instead of bidding by claiming all your dice show the same face. Aces are their own face here, never wild. The next player can doubt it or keep bidding.')}
+      ${ruleRow('pasoFull','Full house counts for paso','A three of a kind plus a pair (with 5 dice) is also a valid paso.',!st.rules.paso)}
+      ${ruleRow('picao','Picao','Instead of bidding, claim you have 2 aces in your cup and play reverses. The next player can doubt it, keep raising the bid, or call picao again claiming one more ace, which reverses play again.')}
+      ${S.host
+        ? `<button class="btn loud" data-a="start" style="width:100%;margin-top:16px" ${st.players.length<2?'disabled':''}>${st.players.length<2?'Waiting for players…':'Start game'}</button>`
+        : `<p class="center muted" style="margin-top:16px">Waiting for the host to start.</p>`}
+    </div>
+  </div>
+  <p style="margin-top:20px"><button class="btn ghost sm" data-a="leave">Leave table</button></p>`;
+}
+function kickBtn(p){
+  if(!S.host || p.id===S.pid || p.removed) return '';
+  const c=S.confirmKick===p.id;
+  return `<button class="btn ${c?'loud':'ghost'} sm" style="margin-left:auto" data-a="kick" data-id="${esc(p.id)}">${c?'Confirm remove':'Remove'}</button>`;
+}
+function seats(st){
+  return `<div class="seats">${st.players.map((p,i)=>{
+    const turn = st.phase==='bidding' && i===st.turn;
+    const bidder = st.bid?.by===p.id;
+    let sub = p.removed?'Removed':p.back>0?'Back next round':p.n<=0?'Out':'';
+    if(bidder && st.phase==='bidding') sub=`Bid ${st.bid.q} × ${st.bid.f||'?'}`;
+    if(st.claim?.by===p.id && st.phase==='bidding') sub = st.claim.t==='paso' ? 'Paso' : `Picao: ${st.claim.n} aces`;
+    if(turn) sub = p.id===S.pid?'Your turn':'Thinking…';
+    if(!online(p.id) && p.n>0) sub='Offline';
+    return `<div class="seat ${turn?'turn':''} ${p.n<=0?'out':''}">
+      <div class="nm">${esc(p.name)}${p.id===S.pid?' <span class="tag">you</span>':''}</div>
+      <div class="cups" aria-label="${p.n} dice">${'<span class="cup"></span>'.repeat(Math.max(0,p.n))||'&nbsp;'}</div>
+      <div class="sub">${esc(sub)} ${st.phase!=='over'?kickBtn(p):''}</div>
+    </div>`}).join('')}</div>`;
+}
+function rulesSummary(st){
+  const r=st.rules, on=[`${r.dice} dice each`];
+  if(r.wild) on.push('aces wild'); if(r.wild&&r.aceBids) on.push('ace bidding'); if(r.calzo) on.push(r.calzoHalf?'calzo (while half the dice remain)':'calzo'); if(r.pal) on.push('palifico'); if(r.pal&&r.blind) on.push('blind bet'); if(r.sic) on.push('siciliana'); if(r.paso) on.push(r.pasoFull?'paso (with full house)':'paso'); if(r.picao) on.push('picao');
+  return `<p class="rulesum">House rules: ${on.join(', ')}.</p>`;
+}
+function myDiceRow(st, highlightF){
+  const me=st.players.find(p=>p.id===S.pid);
+  if(!me || me.n<=0) return '';
+  if(!S.dice || S.dice.r!==st.round) return `<p class="mine-lbl" style="margin-top:20px">Shaking your cup…</p>`;
+  if(st.blindPending) return `<div class="mine">${[...S.dice.d].map(()=>die(0)).join('')}</div><p class="mine-lbl">Cups stay closed until ${esc(pname(st,st.palBy))} decides on a blind bet.</p>`;
+  if(st.bid?.blind && st.bid.owner===S.pid) return `<div class="mine">${[...S.dice.d].map(()=>die(0)).join('')}</div><p class="mine-lbl">You bid blind, so your die stays under the cup until the reveal.</p>`;
+  return `<div class="mine">${[...S.dice.d].map(c=>die(+c)).join('')}</div><p class="mine-lbl">Your dice. Only you can see them.</p>`;
+}
+function syncUi(st){
+  const key=`${st.round}|${st.turn}|${st.bid?st.bid.q+'x'+st.bid.f:'-'}`;
+  if(S.ui.key===key) return;
+  S.ui.key=key;
+  if(!st.bid){S.ui.q=1;S.ui.f=2;return}
+  if(st.bid.blind){S.ui.f=0;S.ui.q=st.bid.q+1;return}
+  S.ui.f=st.bid.f; S.ui.q=st.bid.q+1;
+  if(S.ui.q>totalDice(st)){ S.ui.q=st.bid.q; if(st.bid.f<6) S.ui.f=st.bid.f+1; }
+}
+function vControls(st){
+  const me=st.players.find(p=>p.id===S.pid);
+  const myTurn = st.phase==='bidding' && st.players[st.turn]?.id===S.pid && me?.n>0;
+  if(!myTurn){
+    const who=st.players[st.turn];
+    let msg = st.phase==='rolling' ? 'Everyone is shaking their cups…'
+      : st.blindPending ? `Waiting for ${esc(who?.name)} to decide on a blind bet…`
+      : `Waiting for ${esc(who?.name)}…`;
+    return `<div class="controls"><p class="prompt muted">${msg}</p></div>`;
+  }
+  syncUi(st);
+  if(st.blindPending){
+    const q=S.ui.q, max=totalDice(st);
+    return `<div class="controls">
+      <p class="prompt">Palifico. Before anyone looks, you can bid on whatever is in your cup.</p>
+      <div class="picker">
+        <div class="stepper"><button data-a="qm" aria-label="Fewer">−</button><output aria-live="polite">${q}</output><button data-a="qp" aria-label="More">+</button></div>
+        <div class="faces">${die(0)}</div>
+      </div>
+      <p class="hint">${q>max?`There are only ${max} dice on the table.`:''}</p>
+      <div class="acts">
+        <button class="btn gold" data-a="blind" ${q>max?'disabled':''}>Bid ${q} of what’s in my cup</button>
+        <button class="btn ghost" data-a="look">Look at my die</button>
+      </div>
+    </div>`;
+  }
+  const {q,f}=S.ui, err=validBid(st,q,f), wild=wildNow(st);
+  const faceBtns = st.bid?.blind ? die(0) : [1,2,3,4,5,6].map(n=>{
+    const dis = (wild && n===1 && !st.rules.aceBids) || (st.pal && st.bid && n!==st.bid.f);
+    return `<button data-a="face" data-f="${n}" aria-pressed="${n===f}" ${dis?'disabled':''} aria-label="Face ${n}">${die(n)}</button>`}).join('');
+  const calzoShut = st.rules.calzo && !calzoOpen(st);
+  const canCalzo = st.rules.calzo && st.bid && st.bid.by!==S.pid && !st.claim && !calzoShut;
+  const canPaso = st.rules.paso && st.bid && me.n>=2 && !(st.pasoUsed||{})[S.pid];
+  const picN = (st.picaoN||1)+1;
+  const canPicao = st.rules.picao && st.bid && me.n>=picN;
+  const canSic = st.rules.sic && st.bid && st.nBids===1 && !st.claim && st.bid.by!==S.pid;
+  const cl = st.claim;
+  const prompt = cl ? `${esc(pname(st,cl.by))} ${cl.t==='paso'?'said paso':`called picao, claiming ${cl.n} aces`}. Keep bidding over ${st.bid.q} × ${st.bid.f||'?'}, or doubt the ${cl.t}.`
+    : st.bid?.blind ? `Bidding on what’s in ${esc(pname(st,st.bid.owner))}’s cup. Raise the quantity or call it.`
+    : st.bid ? 'Your turn. Raise the bid or call it.' : 'You open the bidding.';
+  return `<div class="controls">
+    <p class="prompt">${prompt}</p>
+    <div class="picker">
+      <div class="stepper"><button data-a="qm" aria-label="Fewer">−</button><output aria-live="polite">${q}</output><button data-a="qp" aria-label="More">+</button></div>
+      <div class="faces" role="group" aria-label="Face">${faceBtns}</div>
+    </div>
+    <p class="hint">${esc(err)}</p>
+    <div class="acts">
+      <button class="btn" data-a="bid" ${err?'disabled':''}>Bid ${q} × ${f||'?'}</button>
+      ${st.bid?`<button class="btn loud" data-a="dudo">${cl?`Doubt the ${cl.t}`:'¡Dudo!'}</button>`:''}
+      ${canSic?`<button class="btn loud" data-a="sic">Siciliana</button>`:''}
+      ${canPicao?`<button class="btn ghost" data-a="picao">Picao (${picN} aces)</button>`:''}
+      ${canCalzo?`<button class="btn gold" data-a="calzo">Calzo</button>`:''}
+      ${calzoShut && st.bid?`<span class="hint" style="align-self:center">Calzo is closed: fewer than half the dice remain.</span>`:''}
+      ${canPaso?`<button class="btn ghost" data-a="paso">Paso</button>`:''}
+    </div>
+  </div>`;
+}
+function revealAnim(st){
+  const key=st.code+'-'+st.round;
+  if(S.revKey!==key){ S.revKey=key; S.revStart=Date.now(); }
+  const el=Date.now()-S.revStart;
+  return {el, on: el<6000};
+}
+function lostPiles(st){
+  const lost=Math.max(0,(st.startTotal||0)-totalDice(st));
+  if(!lost) return '';
+  const res=st.result, an = res && (st.phase==='result'||st.phase==='over') ? revealAnim(st) : {on:false,el:0};
+  const fresh = an.on && res.delta<0 ? -res.applied : 0;
+  const hitAt = res ? Object.keys(res.dice).length*260 + 500 : 0;
+  const face=k=>[3,5,2,6,4,1,6,2,5,3][k%10];
+  let html='';
+  for(let i=0;i<lost;i+=5){
+    const n=Math.min(5,lost-i);
+    html+=`<div class="pile">${Array.from({length:n},(_,j)=>{const k=i+j;return `<span class="pd p${j} ${k>=lost-fresh?'drop':''}">${die(face(k))}</span>`}).join('')}</div>`;
+  }
+  return `<div class="lost" style="--el:${an.el}ms;--h:${hitAt}ms"><div class="piles" aria-hidden="true">${html}</div><p class="lost-lbl">${lost} ${lost===1?'die':'dice'} lost</p></div>`;
+}
+function vReveal(st){
+  const res=st.result;
+  if(!res){
+    const waiting=st.players.filter(p=>p.n>0);
+    return `<p class="verdict">Lifting the cups…</p><p class="center muted small">Waiting for ${waiting.length} players to show their dice${S.host?'. If someone has left, remove them above.':'.'}</p>`;
+  }
+  const an=revealAnim(st), shown=st.players.filter(p=>res.dice[p.id]);
+  const hitAt = shown.length*260 + 500;
+  const rows=shown.map((p,i)=>`<div class="rrow"><span class="nm">${esc(p.name)}</span><span class="rdice" style="--d:${i*260}ms">${[...res.dice[p.id]].map((c,j)=>{const v=+c;const hit=res.t==='paso'?(p.id===res.bidder):res.t==='picao'?(p.id===res.bidder&&v===1):(v===res.f||(res.wild&&res.f!==1&&v===1));return `<span style="display:contents;--d:${i*260+250+j*70}ms">${die(v,hit?'hit':'dim')}</span>`}).join('')}<span class="cupcover" style="--d:${i*260}ms"></span></span></div>`).join('');
+  const caller=pname(st,res.caller), bidder=pname(st,res.bidder), tgt=pname(st,res.target);
+  let v;
+  const bl = res.blind ? ` The hidden die in ${esc(pname(st,res.owner))}’s cup was a <strong>${res.f}</strong>.` : '';
+  const lost = n => n===2?'two dice':'a die';
+  if(res.t==='paso') v=`${esc(caller)} doubted ${esc(bidder)}’s paso. ${res.ok?`The paso was real, so ${esc(tgt)} loses a die.`:`It was a bluff, so ${esc(tgt)} loses a die.`}`;
+  else if(res.t==='picao') v=`${esc(caller)} doubted ${esc(bidder)}’s picao of ${res.n} aces. ${esc(bidder)} had <strong>${res.count}</strong>. ${esc(tgt)} loses a die.`;
+  else if(res.t==='sic') v=`${esc(caller)} called siciliana on ${res.q} × ${res.f}, with aces not wild. There ${res.count===1?'was':'were'} <strong>${res.count}</strong>. ${esc(tgt)} loses ${lost(-res.applied)}.`;
+  else if(res.t==='dudo') v=`${esc(caller)} doubted ${esc(bidder)}’s ${res.q} × ${res.f}. There ${res.count===1?'was':'were'} <strong>${res.count}</strong>. ${esc(tgt)} loses a die.`;
+  else v=`${esc(caller)} called calzo on ${res.q} × ${res.f}. There ${res.count===1?'was':'were'} <strong>${res.count}</strong>. ${res.delta>0?(res.applied>0?`${esc(tgt)} wins a die back.`:`Right, but ${esc(tgt)} already has full dice.`):`${esc(tgt)} loses a die.`}`;
+  if(res.t!=='paso'&&res.t!=='picao') v=bl+' '+v;
+  return `<div style="--el:${an.el}ms;--h:${hitAt}ms"><div class="reveal ${an.on?'anim':''}">${rows}</div><p class="verdict ${an.on?'anim':''}">${v}</p></div>`;
+}
+function vTable(){
+  const st=S.st;
+  if(st.phase==='lobby') return vLobby();
+  const me=st.players.find(p=>p.id===S.pid);
+  const watching=!me;
+  let center='';
+  if(st.phase==='rolling'||st.phase==='bidding'){
+    center = st.bid
+      ? `<div class="bidline"><span class="bidq">${st.bid.q}</span><span class="bidx">×</span>${die(st.bid.f)}</div><p class="bidby">${esc(pname(st,st.bid.by))}’s bid${st.dir===-1?'. Play is reversed.':''}</p>`
+      : `<div class="bidline"><h2 style="font-size:2.2rem">${st.phase==='rolling'?'Shaking cups':'Opening bid'}</h2></div><p class="bidby">${esc(st.players[st.turn]?.name)} starts${st.phase==='rolling'?' once everyone has rolled':''}.</p>`;
+    if(st.pal) center+=`<p class="center"><span class="pal">${st.bid?.blind?'Palifico, blind bet: the face is whatever is in '+esc(pname(st,st.bid.owner))+'’s cup':'Palifico: aces aren’t wild, face is fixed after the first bid'}</span></p>`;
+  } else if(st.phase==='reveal'||st.phase==='result'){
+    center = vReveal(st);
+  } else if(st.phase==='over'){
+    center = `<div class="bidline"><h2 style="font-size:2.6rem">${esc(pname(st,st.winner))} wins!</h2></div>${st.result?vReveal(st):''}`;
+  }
+  let below='';
+  if(st.phase==='rolling'||st.phase==='bidding') below = myDiceRow(st) + (watching?`<p class="center muted">The game started before you joined, so you’re watching.</p>`:vControls(st));
+  if(st.phase==='result') below = S.host?`<div class="acts" style="margin-top:18px"><button class="btn" data-a="next">Next round</button></div>`:`<p class="center muted" style="margin-top:18px">Waiting for the host to start the next round.</p>`;
+  if(st.phase==='over') below = S.host?`<div class="acts" style="margin-top:18px"><button class="btn" data-a="again">Back to the lobby</button></div>`:`<p class="center muted" style="margin-top:18px">The host can start a new game.</p>`;
+  return `
+  <div class="top">
+    <div><h2>Round ${st.round}</h2><p class="muted small" style="margin:4px 0 0">${totalDice(st)} dice on the table</p></div>
+    ${codeTiles(st.code)}
+  </div>
+  ${S.hostGone?`<p class="err" role="alert">The host has disconnected. The game will continue when they come back.</p>`:''}
+  ${seats(st)}
+  <div class="felt">${center}${lostPiles(st)}</div>
+  ${below}
+  <ul class="log">${(st.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>
+  ${rulesSummary(st)}
+  <p><button class="btn ghost sm" data-a="leave">Leave table</button></p>`;
+}
+function render(){
+  const ae=document.activeElement, keep = ae && ae.id ? {id:ae.id, s:ae.selectionStart} : null;
+  if(S.screen==='home' || !S.st){
+    if(app.dataset.v==='home' && document.getElementById('nm')){ // avoid clobbering typing
+      const nm=document.getElementById('nm').value, jc=document.getElementById('jc')?.value;
+      app.innerHTML=vHome(); document.getElementById('nm').value=nm; if(jc!=null&&document.getElementById('jc')) document.getElementById('jc').value=jc;
+    } else app.innerHTML=vHome();
+    app.dataset.v='home';
+  } else { app.innerHTML=vTable(); app.dataset.v='table'; }
+  if(keep){const el=document.getElementById(keep.id); if(el){el.focus(); try{el.setSelectionRange(keep.s,keep.s)}catch(e){}}}
+}
+
+/* ---------- events ---------- */
+app.addEventListener('click', async e=>{
+  const b=e.target.closest('[data-a]'); if(!b||b.disabled) return;
+  const a=b.dataset.a, st=S.st;
+  if(a==='create') createTable();
+  else if(a==='join') joinTable();
+  else if(a==='rejoin'){ const s=store.get('dudo-sess'); if(s) joinTable(s.code, s.host); }
+  else if(a==='leave') leaveTable();
+  else if(a==='copy'){
+    const url = location.href.split('#')[0].split('?')[0] + '#' + st.code;
+    const text=`Join my Dudo table! ${url} (code ${st.code})`;
+    try{ await navigator.clipboard.writeText(text); S.copyText=''; b.textContent='Copied'; setTimeout(()=>{b.textContent='Copy invite'},1600); }
+    catch(err){ S.copyText=text; render(); const c=document.getElementById('cpy'); c?.select(); }
+  }
+  else if(a==='start') mutate(s=>{
+    s.players.forEach(p=>{p.n=s.rules.dice; p.palUsed=false});
+    s.startTotal=s.players.length*s.rules.dice;
+    s.round=0; s.log=[]; s.winner=null; s.seqs=s.seqs||{};
+    s.next={starter: rnd(1)[0]%s.players.length, pal:false};
+    addLog(s,'Game on. Good luck!');
+    startRound(s);
+  });
+  else if(a==='next') mutate(s=>startRound(s));
+  else if(a==='again') mutate(s=>{ s.phase='lobby'; s.round=0; s.bid=null; s.call=null; s.result=null; s.winner=null; s.log=[]; s.players=s.players.filter(p=>!p.removed); s.players.forEach(p=>{p.n=0;p.back=0}); });
+  else if(a==='kick'){
+    const id=b.dataset.id;
+    if(S.confirmKick!==id){ S.confirmKick=id; render(); setTimeout(()=>{ if(S.confirmKick===id){S.confirmKick=null;render()} },4000); return; }
+    S.confirmKick=null;
+    mutate(s=>{
+      const p=s.players.find(x=>x.id===id); if(!p) return;
+      s.kicked={...(s.kicked||{}),[id]:collect()[id]?.j||0};
+      if(s.phase==='lobby'){ s.players=s.players.filter(x=>x.id!==id); return; }
+      const wasAlive=p.n>0, wasTurn=s.players[s.turn]?.id===id;
+      p.removedN=p.n; p.n=0; p.removed=true; addLog(s,`The host removed ${p.name}.`);
+      if(s.players.filter(x=>x.n>0).length<=1){ s.phase='over'; s.winner=s.players.find(x=>x.n>0)?.id||null; addLog(s,`${pname(s,s.winner)} wins the game.`); return; }
+      if(wasAlive && ['rolling','bidding','reveal'].includes(s.phase)){
+        const start = wasTurn ? nextAlive(s,s.turn) : s.turn;
+        s.next={starter:start, pal:!!s.pal}; startRound(s);
+        addLog(s,'The round restarts with fresh dice.');
+      } else if(wasTurn) s.turn=nextAlive(s,s.turn);
+    });
+  }
+  else if(a==='qm'){ S.ui.q=Math.max(1,S.ui.q-1); render(); }
+  else if(a==='qp'){ S.ui.q=Math.min(totalDice(st),S.ui.q+1); render(); }
+  else if(a==='face'){ S.ui.f=+b.dataset.f; render(); }
+  else if(a==='bid'){ act('bid',{q:S.ui.q,f:S.ui.f}); }
+  else if(a==='dudo') act('dudo');
+  else if(a==='calzo') act('calzo');
+  else if(a==='paso') act('paso');
+  else if(a==='picao') act('picao');
+  else if(a==='sic') act('sic');
+  else if(a==='look') act('look');
+  else if(a==='blind') act('bid',{q:S.ui.q,blind:true});
+});
+app.addEventListener('change', e=>{
+  const k=e.target.dataset.rule; if(!k||!S.host) return;
+  mutate(s=>{
+    if(k==='dice') s.rules.dice=+e.target.value;
+    else { s.rules[k]=e.target.checked; if(k==='wild' && !e.target.checked) s.rules.aceBids=false; if(k==='pal' && !e.target.checked) s.rules.blind=false; }
+  });
+});
+app.addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  if(e.target.id==='jc') joinTable();
+  else if(e.target.id==='nm' && document.getElementById('jc')?.value) joinTable();
+});
+app.addEventListener('input', e=>{ if(e.target.id==='jc') e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,''); });
+
+/* ---------- boot ---------- */
+render();
+(async()=>{
+  S.room = window.Peer ? PeerRooms : null;
+  S.roomTried=true; render();
+})();
+</script>
+</body>
+</html>
