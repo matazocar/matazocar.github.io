@@ -111,6 +111,10 @@ label.lbl{display:block;font-weight:600;margin:0 0 6px}
 .seat .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cups{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
 .cup{width:14px;height:14px;border-radius:4px;background:var(--felt)}
+.cups.open .die{width:22px;height:22px}
+.oblopts{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.oblopts .btn{text-align:left;font-weight:500;line-height:1.35}
+.oblopts .btn strong{display:block;font-size:1.05rem}
 .seat .sub{font-size:.8rem;color:var(--muted);margin-top:4px;min-height:1.2em}
 
 .felt{background:var(--felt);color:var(--felt-ink);border-radius:24px;padding:26px 22px;position:relative;overflow:hidden}
@@ -263,7 +267,7 @@ function clientRoom(code){
 }
 const PeerRooms = { join(code,opts={}){ return opts.host ? hostRoom(code,!!opts.retry) : clientRoom(code); } };
 const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ";
-const DEFAULT_RULES = {dice:5, wild:false, aceBids:false, calzo:false, pal:false, blind:false, paso:false, pasoFull:true, picao:false, sic:false, calzoHalf:false};
+const DEFAULT_RULES = {dice:5, wild:false, aceBids:false, calzo:false, pal:false, blind:false, paso:false, pasoFull:true, pasoDiff:true, oblTypes:false, picao:false, sic:false, calzoHalf:false};
 
 const store = {
   get(k,s){try{const v=(s?sessionStorage:localStorage).getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
@@ -313,7 +317,7 @@ function validBid(st,q,f){
   if(prev?.blind){ if(f!==0) return 'The face stays hidden: bid on what’s in the cup.'; return q>prev.q?'':`Raise to at least ${prev.q+1}.`; }
   if(!prev) return '';
   if(st.pal){
-    if(f!==prev.f) return 'Palifico: the face can’t change this round.';
+    if(f!==prev.f) return 'Obligar: the face can’t change this round.';
     return q>prev.q ? '' : `Raise to at least ${prev.q+1}.`;
   }
   if(wild && st.rules.aceBids){
@@ -441,15 +445,20 @@ async function hostStep(){
   if(S.st.v!==startV){again=true;return}
   if(ch){publish(st); render()}
 }
-function isPasoHand(d,full){
+function isPasoHand(d,full,diff){
   const c={}; for(const v of d) c[v]=(c[v]||0)+1;
   const k=Object.values(c).sort();
   if(d.length>=2 && k.length===1) return true;
+  if(diff && d.length===5 && k.length===5) return true;
   return !!full && d.length===5 && k.length===2 && k[0]===2 && k[1]===3;
 }
 function applyAct(st,p,a){
   const noClaim = !st.claim;
-  if(a.t==='look' && st.blindPending && !st.bid){
+  if(a.t==='mode' && st.modePending && p.id===st.palBy && !st.bid && ['normal','abierto','cerrado'].includes(a.m)){
+    st.modePending=false; st.oblMode=a.m;
+    addLog(st,`${p.name} chose ${a.m==='normal'?'a regular obligar':'obligar '+a.m}.`);
+  } else if(st.modePending){ return;
+  } else if(a.t==='look' && st.blindPending && !st.bid){
     st.blindPending=false;
     addLog(st,`${p.name} chose to look at their die.`);
   } else if(a.t==='bid'){
@@ -467,11 +476,11 @@ function applyAct(st,p,a){
     }
     st.claim=null; st.nBids=(st.nBids||0)+1;
     st.turn=nextAlive(st,st.turn);
-  } else if(a.t==='paso' && st.rules.paso && st.bid && !st.blindPending && p.n>=2 && !(st.pasoUsed||{})[p.id]){
+  } else if(a.t==='paso' && st.rules.paso && st.bid && !cupsClosed(st) && p.n>=2 && !(st.pasoUsed||{})[p.id]){
     st.claim={t:'paso',by:p.id}; st.pasoUsed={...(st.pasoUsed||{}),[p.id]:true};
     addLog(st,`${p.name} said paso.`);
     st.turn=nextAlive(st,st.turn);
-  } else if(a.t==='picao' && st.rules.picao && st.bid && !st.blindPending){
+  } else if(a.t==='picao' && st.rules.picao && st.bid && !cupsClosed(st)){
     const n=(st.picaoN||1)+1; if(p.n<n) return;
     st.picaoN=n; st.claim={t:'picao',by:p.id,n};
     st.dir = st.dir===-1 ? 1 : -1;
@@ -501,7 +510,7 @@ function resolveRound(st,dice){
   if(call.t==='paso' || call.t==='picao'){
     claimer=call.target;
     const d=[...(dice[claimer]||'')].map(Number);
-    if(call.t==='paso') ok=isPasoHand(d,st.rules.pasoFull);
+    if(call.t==='paso') ok=isPasoHand(d,st.rules.pasoFull,st.rules.pasoDiff);
     else { count=d.filter(v=>v===1).length; ok = count>=call.n; }
     target = ok ? caller : claimer; other = ok ? claimer : caller;
   } else if(call.t==='dudo' || call.t==='sic'){
@@ -539,7 +548,9 @@ function startRound(st){
   st.phase='rolling';
   st.palBy = st.pal ? st.players[st.turn].id : null;
   st.blindPending = !!(st.pal && st.rules.blind);
-  if(st.pal) addLog(st,`Palifico round for ${st.players[st.turn].name}.`);
+  st.modePending = !!(st.pal && st.rules.oblTypes);
+  st.oblMode = 'normal';
+  if(st.pal) addLog(st,`Obligar round for ${st.players[st.turn].name}.`);
 }
 function mutate(fn){ if(!S.host) return; const st=clone(S.st); fn(st); publish(st); render(); hostProcess(); }
 
@@ -562,6 +573,9 @@ async function clientReact(){
     committing=false;
     setPres({commit:{r:st.round,h}});
     if(S.host) hostProcess();
+  }
+  if(st.pal && st.oblMode==='abierto' && !cupsClosed(st) && st.phase==='bidding' && S.myPres.open?.r!==st.round){
+    setPres({open:{r:st.round,d:S.dice.d}});
   }
   if(st.phase==='reveal' && S.myPres.reveal?.r!==st.round){
     setPres({reveal:{r:st.round,d:S.dice.d,s:S.dice.s}});
@@ -657,24 +671,33 @@ function vHome(){
   const sess=store.get('dudo-sess');
   const pre=(location.hash+location.search).match(/(?:#|[?&]room=)([A-Za-z]{4})(?![A-Za-z])/); if(pre) pre[0]=pre[1];
   const noRoom = S.roomTried && !S.room;
+  const invCode = pre ? pre[0].toUpperCase() : '';
+  const invite = !!invCode && !S.homeFull;
+  const dis = !S.room||S.joining ? 'disabled' : '';
   return `
   <section class="hero">
     <div>
       <h1>Dudo</h1>
-      <p class="lede">Shake your cup, bid on everyone’s dice, and doubt the liar.</p>
+      <p class="lede">${invite?`You’re invited to table <strong>${esc(invCode)}</strong>. Enter your name and join.`:'Shake your cup, bid on everyone’s dice, and doubt the liar.'}</p>
       <div class="hero-dice" aria-hidden="true">${die(1)}${die(4)}${die(6)}${die(3)}${die(5)}</div>
     </div>
     <div class="panel stack">
       ${noRoom?`<p class="err">Couldn’t load the connection library. Check your internet connection and reload the page.</p>`:''}
       ${!S.roomTried?`<p class="muted small">Connecting…</p>`:''}
       <div><label class="lbl" for="nm">Your name</label><input class="field" id="nm" maxlength="18" autocomplete="nickname" value="${esc(S.name)}" placeholder="e.g. Camila"></div>
-      ${sess?`<button class="btn gold" data-a="rejoin" style="width:100%" ${!S.room||S.joining?'disabled':''}>Rejoin table ${esc(sess.code)}</button>`:''}
-      <button class="btn" data-a="create" style="width:100%" ${!S.room||S.joining?'disabled':''}>Open a new table</button>
+      ${invite ? `
+      <button class="btn loud" data-a="join" style="width:100%;padding:16px" ${dis}>Join table ${esc(invCode)}</button>
+      <input type="hidden" id="jc" value="${esc(invCode)}">
+      ${sess && sess.code!==invCode?`<button class="btn ghost" data-a="rejoin" style="width:100%" ${dis}>Rejoin table ${esc(sess.code)} instead</button>`:''}
+      <p class="center small" style="margin:6px 0 0"><button class="btn ghost sm" data-a="home">Go to the home screen instead</button></p>
+      ` : `
+      ${sess?`<button class="btn gold" data-a="rejoin" style="width:100%" ${dis}>Rejoin table ${esc(sess.code)}</button>`:''}
+      <button class="btn" data-a="create" style="width:100%" ${dis}>Open a new table</button>
       <div class="or">or join one</div>
       <div class="joinrow">
-        <input class="field" id="jc" maxlength="4" placeholder="CODE" aria-label="Table code" value="${esc(pre?pre[0].toUpperCase():'')}">
-        <button class="btn ghost" data-a="join" ${!S.room||S.joining?'disabled':''}>Join</button>
-      </div>
+        <input class="field" id="jc" maxlength="4" placeholder="CODE" aria-label="Table code" value="">
+        <button class="btn ghost" data-a="join" ${dis}>Join</button>
+      </div>`}
       ${S.joining?`<p class="muted small">Finding the table…</p>`:''}
       ${S.err?`<p class="err" role="alert">${esc(S.err)}</p>`:''}
     </div>
@@ -698,7 +721,7 @@ function vLobby(){
       <h3>Players <span class="muted small">(${st.players.length})</span></h3>
       <ul class="plist" style="margin-top:8px">${pl}</ul>
       <div style="margin-top:14px">
-        <button class="btn ghost sm" data-a="copy">Copy invite</button>
+        <button class="btn ghost sm" data-a="copy">Copy invite link</button>
         ${S.copyText?`<div class="copybox"><input class="field" readonly id="cpy" value="${esc(S.copyText)}"></div>`:''}
       </div>
     </div>
@@ -712,11 +735,13 @@ function vLobby(){
       ${ruleRow('aceBids','Bidding on aces','Switch to aces by halving the quantity (rounded up); switch back by doubling it plus one.',!st.rules.wild)}
       ${ruleRow('calzo','Calzo','On your turn, claim the bid is exactly right. Right: win a die back. Wrong: lose one.')}
       ${ruleRow('calzoHalf','Calzo only with half the dice left','Calzo is allowed only while at least half of the game’s starting dice are still on the table.',!st.rules.calzo)}
-      ${ruleRow('pal','Palifico','When a player first drops to one die, the next round has no wild aces and the face can’t change.')}
-      ${ruleRow('blind','Blind bet (palifico)','Before anyone sees their dice, the palifico player may bid on whatever is in their own cup, like “2 of what I have”. Their die stays hidden from them until the reveal.',!st.rules.pal)}
+      ${ruleRow('pal','Obligar','When a player first drops to one die, the next round has no wild aces and the face can’t change after the first bid.')}
+      ${ruleRow('oblTypes','Obligar abierto & cerrado','The player who reaches obligar chooses the kind of round: regular, abierto (everyone sees the others’ dice but not their own) or cerrado (only they can look at their dice).',!st.rules.pal)}
+      ${ruleRow('blind','Blind bet (obligar)','Before anyone sees their dice, the obligar player may bid on whatever is in their own cup, like “2 of what I have”. Their die stays hidden from them until the reveal.',!st.rules.pal)}
       ${ruleRow('sic','Siciliana','Right after the opening bid, the next player can make a special doubt worth two dice. Aces aren’t wild when the cups are lifted.')}
       ${ruleRow('paso','Paso','Once per round, pass instead of bidding by claiming all your dice show the same face. Aces are their own face here, never wild. The next player can doubt it or keep bidding.')}
       ${ruleRow('pasoFull','Full house counts for paso','A three of a kind plus a pair (with 5 dice) is also a valid paso.',!st.rules.paso)}
+      ${ruleRow('pasoDiff','All different counts for paso','Five dice that all show different faces is also a valid paso.',!st.rules.paso)}
       ${ruleRow('picao','Picao','Instead of bidding, claim you have 2 aces in your cup and play reverses. The next player can doubt it, keep raising the bid, or call picao again claiming one more ace, which reverses play again.')}
       ${S.host
         ? `<button class="btn loud" data-a="start" style="width:100%;margin-top:16px" ${st.players.length<2?'disabled':''}>${st.players.length<2?'Waiting for players…':'Start game'}</button>`
@@ -741,20 +766,30 @@ function seats(st){
     if(!online(p.id) && p.n>0) sub='Offline';
     return `<div class="seat ${turn?'turn':''} ${p.n<=0?'out':''}">
       <div class="nm">${esc(p.name)}${p.id===S.pid?' <span class="tag">you</span>':''}</div>
-      <div class="cups" aria-label="${p.n} dice">${'<span class="cup"></span>'.repeat(Math.max(0,p.n))||'&nbsp;'}</div>
+      ${(()=>{const od=openDiceOf(st,p.id); return od ? `<div class="cups open" aria-label="Dice: ${[...od].join(', ')}">${[...od].map(c=>die(+c)).join('')}</div>` : `<div class="cups" aria-label="${p.n} dice">${'<span class="cup"></span>'.repeat(Math.max(0,p.n))||'&nbsp;'}</div>`})()}
       <div class="sub">${esc(sub)} ${st.phase!=='over'?kickBtn(p):''}</div>
     </div>`}).join('')}</div>`;
 }
 function rulesSummary(st){
   const r=st.rules, on=[`${r.dice} dice each`];
-  if(r.wild) on.push('aces wild'); if(r.wild&&r.aceBids) on.push('ace bidding'); if(r.calzo) on.push(r.calzoHalf?'calzo (while half the dice remain)':'calzo'); if(r.pal) on.push('palifico'); if(r.pal&&r.blind) on.push('blind bet'); if(r.sic) on.push('siciliana'); if(r.paso) on.push(r.pasoFull?'paso (with full house)':'paso'); if(r.picao) on.push('picao');
+  if(r.wild) on.push('aces wild'); if(r.wild&&r.aceBids) on.push('ace bidding'); if(r.calzo) on.push(r.calzoHalf?'calzo (while half the dice remain)':'calzo'); if(r.pal) on.push(r.oblTypes?'obligar (regular, abierto, cerrado)':'obligar'); if(r.pal&&r.blind) on.push('blind bet'); if(r.sic) on.push('siciliana'); if(r.paso){ const h=['all same']; if(r.pasoFull) h.push('full house'); if(r.pasoDiff) h.push('all different'); on.push(`paso (${h.join(', ')})`); } if(r.picao) on.push('picao');
   return `<p class="rulesum">House rules: ${on.join(', ')}.</p>`;
+}
+function oblLbl(st){ return st.oblMode==='abierto'?' abierto':st.oblMode==='cerrado'?' cerrado':''; }
+function cupsClosed(st){ return !!(st.pal && (st.modePending || st.blindPending)); }
+function openDiceOf(st,id){
+  if(!(st.pal && st.oblMode==='abierto' && !cupsClosed(st)) || id===S.pid) return null;
+  const pr=S.peers.find(x=>x.presence?.pid===id)?.presence;
+  return pr?.open?.r===st.round ? pr.open.d : null;
 }
 function myDiceRow(st, highlightF){
   const me=st.players.find(p=>p.id===S.pid);
   if(!me || me.n<=0) return '';
   if(!S.dice || S.dice.r!==st.round) return `<p class="mine-lbl" style="margin-top:20px">Shaking your cup…</p>`;
-  if(st.blindPending) return `<div class="mine">${[...S.dice.d].map(()=>die(0)).join('')}</div><p class="mine-lbl">Cups stay closed until ${esc(pname(st,st.palBy))} decides on a blind bet.</p>`;
+  const hidden = t => `<div class="mine">${[...S.dice.d].map(()=>die(0)).join('')}</div><p class="mine-lbl">${t}</p>`;
+  if(cupsClosed(st)) return hidden(`Cups stay closed until ${esc(pname(st,st.palBy))} decides how to play the obligar.`);
+  if(st.pal && st.oblMode==='abierto' && !(st.bid?.blind && st.bid.owner===S.pid)) return hidden('Obligar abierto: you can see everyone’s dice except your own.');
+  if(st.pal && st.oblMode==='cerrado' && st.palBy!==S.pid) return hidden(`Obligar cerrado: only ${esc(pname(st,st.palBy))} can look at their dice.`);
   if(st.bid?.blind && st.bid.owner===S.pid) return `<div class="mine">${[...S.dice.d].map(()=>die(0)).join('')}</div><p class="mine-lbl">You bid blind, so your die stays under the cup until the reveal.</p>`;
   return `<div class="mine">${[...S.dice.d].map(c=>die(+c)).join('')}</div><p class="mine-lbl">Your dice. Only you can see them.</p>`;
 }
@@ -773,15 +808,26 @@ function vControls(st){
   if(!myTurn){
     const who=st.players[st.turn];
     let msg = st.phase==='rolling' ? 'Everyone is shaking their cups…'
+      : st.modePending ? `Waiting for ${esc(who?.name)} to choose the kind of obligar…`
       : st.blindPending ? `Waiting for ${esc(who?.name)} to decide on a blind bet…`
       : `Waiting for ${esc(who?.name)}…`;
     return `<div class="controls"><p class="prompt muted">${msg}</p></div>`;
   }
   syncUi(st);
+  if(st.modePending){
+    return `<div class="controls">
+      <p class="prompt">You reached obligar. Choose how this round is played.</p>
+      <div class="oblopts">
+        <button class="btn ghost" data-a="mode" data-m="normal"><strong>Regular</strong>Everyone looks at their own dice.</button>
+        <button class="btn ghost" data-a="mode" data-m="abierto"><strong>Abierto</strong>Everyone sees the others’ dice, but not their own.</button>
+        <button class="btn ghost" data-a="mode" data-m="cerrado"><strong>Cerrado</strong>Only you can look at your dice.</button>
+      </div>
+    </div>`;
+  }
   if(st.blindPending){
     const q=S.ui.q, max=totalDice(st);
     return `<div class="controls">
-      <p class="prompt">Palifico. Before anyone looks, you can bid on whatever is in your cup.</p>
+      <p class="prompt">Obligar. Before anyone looks, you can bid on whatever is in your cup.</p>
       <div class="picker">
         <div class="stepper"><button data-a="qm" aria-label="Fewer">−</button><output aria-live="polite">${q}</output><button data-a="qp" aria-label="More">+</button></div>
         <div class="faces">${die(0)}</div>
@@ -789,7 +835,7 @@ function vControls(st){
       <p class="hint">${q>max?`There are only ${max} dice on the table.`:''}</p>
       <div class="acts">
         <button class="btn gold" data-a="blind" ${q>max?'disabled':''}>Bid ${q} of what’s in my cup</button>
-        <button class="btn ghost" data-a="look">Look at my die</button>
+        <button class="btn ghost" data-a="look">${st.oblMode==='abierto'?'Bid normally':'Look at my die'}</button>
       </div>
     </div>`;
   }
@@ -876,7 +922,7 @@ function vTable(){
     center = st.bid
       ? `<div class="bidline"><span class="bidq">${st.bid.q}</span><span class="bidx">×</span>${die(st.bid.f)}</div><p class="bidby">${esc(pname(st,st.bid.by))}’s bid${st.dir===-1?'. Play is reversed.':''}</p>`
       : `<div class="bidline"><h2 style="font-size:2.2rem">${st.phase==='rolling'?'Shaking cups':'Opening bid'}</h2></div><p class="bidby">${esc(st.players[st.turn]?.name)} starts${st.phase==='rolling'?' once everyone has rolled':''}.</p>`;
-    if(st.pal) center+=`<p class="center"><span class="pal">${st.bid?.blind?'Palifico, blind bet: the face is whatever is in '+esc(pname(st,st.bid.owner))+'’s cup':'Palifico: aces aren’t wild, face is fixed after the first bid'}</span></p>`;
+    if(st.pal) center+=`<p class="center"><span class="pal">${st.bid?.blind?'Obligar'+oblLbl(st)+', blind bet: the face is whatever is in '+esc(pname(st,st.bid.owner))+'’s cup':'Obligar'+oblLbl(st)+': aces aren’t wild, face is fixed after the first bid'}</span></p>`;
   } else if(st.phase==='reveal'||st.phase==='result'){
     center = vReveal(st);
   } else if(st.phase==='over'){
@@ -919,10 +965,11 @@ app.addEventListener('click', async e=>{
   else if(a==='join') joinTable();
   else if(a==='rejoin'){ const s=store.get('dudo-sess'); if(s) joinTable(s.code, s.host); }
   else if(a==='leave') leaveTable();
+  else if(a==='home'){ S.homeFull=true; try{history.replaceState(null,'',location.pathname)}catch(e){} render(); }
   else if(a==='copy'){
     const url = location.href.split('#')[0].split('?')[0] + '#' + st.code;
-    const text=`Join my Dudo table! ${url} (code ${st.code})`;
-    try{ await navigator.clipboard.writeText(text); S.copyText=''; b.textContent='Copied'; setTimeout(()=>{b.textContent='Copy invite'},1600); }
+    const text=url;
+    try{ await navigator.clipboard.writeText(text); S.copyText=''; b.textContent='Link copied'; setTimeout(()=>{b.textContent='Copy invite link'},1600); }
     catch(err){ S.copyText=text; render(); const c=document.getElementById('cpy'); c?.select(); }
   }
   else if(a==='start') mutate(s=>{
@@ -963,13 +1010,14 @@ app.addEventListener('click', async e=>{
   else if(a==='picao') act('picao');
   else if(a==='sic') act('sic');
   else if(a==='look') act('look');
+  else if(a==='mode') act('mode',{m:b.dataset.m});
   else if(a==='blind') act('bid',{q:S.ui.q,blind:true});
 });
 app.addEventListener('change', e=>{
   const k=e.target.dataset.rule; if(!k||!S.host) return;
   mutate(s=>{
     if(k==='dice') s.rules.dice=+e.target.value;
-    else { s.rules[k]=e.target.checked; if(k==='wild' && !e.target.checked) s.rules.aceBids=false; if(k==='pal' && !e.target.checked) s.rules.blind=false; }
+    else { s.rules[k]=e.target.checked; if(k==='wild' && !e.target.checked) s.rules.aceBids=false; if(k==='pal' && !e.target.checked){ s.rules.blind=false; s.rules.oblTypes=false; } }
   });
 });
 app.addEventListener('keydown', e=>{
