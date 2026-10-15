@@ -269,7 +269,7 @@ function clientRoom(code){
 }
 const PeerRooms = { join(code,opts={}){ return opts.host ? hostRoom(code,!!opts.retry) : clientRoom(code); } };
 const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ";
-const DEFAULT_RULES = {dice:5, wild:false, aceBids:false, calzo:false, pal:false, blind:false, paso:false, pasoFull:true, pasoDiff:true, oblTypes:false, picao:false, sic:false, calzoHalf:false};
+const DEFAULT_RULES = {dice:5, wild:false, aceBids:false, calzo:false, pal:false, blind:false, paso:false, pasoFull:true, pasoDiff:true, oblTypes:false, falseStart:false, picao:false, sic:false, calzoHalf:false};
 
 const store = {
   get(k,s){try{const v=(s?sessionStorage:localStorage).getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
@@ -302,20 +302,25 @@ function die(f,cls=''){
   if(!f) return `<svg class="die q ${cls}" viewBox="0 0 100 100" role="img" aria-label="hidden face"><rect x="4" y="4" width="92" height="92" rx="20"/><text x="50" y="68" text-anchor="middle">?</text></svg>`;
   return `<svg class="die ${cls}" viewBox="0 0 100 100" role="img" aria-label="${f}"><rect x="4" y="4" width="92" height="92" rx="20"/>${PIPS[f].map(([x,y])=>`<circle class="${f===1?'ace':''}" cx="${x}" cy="${y}" r="${f===1?14:9}"/>`).join('')}</svg>`;
 }
-function roll(n){return [...rnd(n)].map(x=>1+(x%6)).sort().join('')}
+function roll(n){
+  const out=[];
+  while(out.length<n){ for(const x of rnd(n)){ if(x<4294967292 && out.length<n) out.push(1+(x%6)); } }
+  return out.sort().join('');
+}
 async function hashDice(code,r,s,d){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${code}|${r}|${s}|${d}`));
   return [...new Uint8Array(buf)].slice(0,12).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 /* ---------- rules ---------- */
-function wildNow(st){return st.rules.wild && !st.pal}
+function rk(st){return `${st.gid||''}:${st.round}`}
+function wildNow(st){return st.rules.wild && !st.pal && !st.fs}
 function totalDice(st){return st.players.reduce((a,p)=>a+Math.max(0,p.n),0)}
 function validBid(st,q,f){
   const prev = st.bid, wild = wildNow(st), max = totalDice(st);
   if(!(q>=1)) return 'Bid at least one die.';
   if(q>max) return `There are only ${max} dice on the table.`;
-  if(wild && f===1 && !st.rules.aceBids) return 'Aces are wild, so you can’t bid on them.';
+  if(wild && f===1 && !st.rules.aceBids && !(!prev && st.rules.falseStart)) return 'Aces are wild, so you can’t bid on them.';
   if(prev?.blind){ if(f!==0) return 'The face stays hidden: bid on what’s in the cup.'; return q>prev.q?'':`Raise to at least ${prev.q+1}.`; }
   if(!prev) return '';
   if(st.pal){
@@ -416,7 +421,7 @@ async function hostStep(){
     if(st.phase!=='over' && reconnects(st,pm)) ch=true;
     const alive = st.players.filter(p=>p.n>0);
     if(st.phase==='rolling'){
-      if(alive.every(p=>pm[p.id]?.commit?.r===st.round)){
+      if(alive.every(p=>pm[p.id]?.commit?.r===rk(st))){
         st.commits={}; alive.forEach(p=>st.commits[p.id]=pm[p.id].commit.h);
         st.phase='bidding'; ch=true;
       }
@@ -436,7 +441,7 @@ async function hostStep(){
       const dice={}; let all=true; const bad=[];
       for(const p of alive){
         const r=pm[p.id]?.reveal;
-        if(!r || r.r!==st.round){all=false;break}
+        if(!r || r.r!==rk(st)){all=false;break}
         const h=await hashDice(st.code,st.round,r.s,r.d);
         if(h!==st.commits[p.id] || !/^[1-6]+$/.test(r.d) || r.d.length!==p.n) bad.push(p.name);
         dice[p.id]=String(r.d).slice(0,6);
@@ -473,6 +478,7 @@ function applyAct(st,p,a){
       if(st.blindPending) return;
       const f = st.bid?.blind ? 0 : (a.f|0);
       if((!st.bid?.blind && (f<1||f>6)) || validBid(st,q,f)) return;
+      if(!st.bid && f===1 && st.rules.wild && st.rules.falseStart && !st.pal){ st.fs=true; addLog(st,'False start: aces aren’t wild this round.'); }
       st.bid = st.bid?.blind ? {q,f:0,blind:true,owner:st.bid.owner,by:p.id} : {q,f,by:p.id};
       addLog(st, f===0 ? `${p.name} bid ${q} of what’s in ${pname(st,st.bid.owner)}’s cup.` : `${p.name} bid ${q} × ${f}${f===1?'s (aces)':'s'}.`);
     }
@@ -543,7 +549,7 @@ function resolveRound(st,dice){
   else st.phase='result';
 }
 function startRound(st){
-  st.round++; st.bid=null; st.call=null; st.commits={}; st.result=null; st.claim=null; st.pasoUsed={}; st.picaoN=1; st.nBids=0; st.dir=1;
+  st.round++; st.bid=null; st.call=null; st.commits={}; st.result=null; st.fs=false; st.claim=null; st.pasoUsed={}; st.picaoN=1; st.nBids=0; st.dir=1;
   st.players.forEach(x=>{ if(x.back>0){ x.n=x.back; x.back=0; } });
   st.pal=!!st.next?.pal; st.turn=st.next?.starter ?? st.turn; st.next=null;
   if(st.players[st.turn]?.n<=0) st.turn=nextAlive(st,st.turn);
@@ -562,25 +568,29 @@ async function clientReact(){
   const st=S.st; if(!st||!S.named) return;
   const p=st.players.find(x=>x.id===S.pid); if(!p||p.n<=0) return;
   if(!['rolling','bidding','reveal'].includes(st.phase)) return;
-  if(!S.dice || S.dice.r!==st.round || S.dice.code!==st.code){
-    const k=`dudo-d-${st.code}-${S.pid}-${st.round}`; const saved=store.get(k);
-    if(saved) S.dice=saved;
-    else if(st.phase==='rolling'){ S.dice={code:st.code,r:st.round,d:roll(p.n),s:rid()}; store.set(k,S.dice); }
+  if(!S.dice || S.dice.r!==st.round || S.dice.code!==st.code || S.dice.g!==st.gid){
+    const k=`dudo-d-${st.code}-${st.gid}-${S.pid}-${st.round}`; const saved=store.get(k);
+    if(saved && saved.d.length===p.n) S.dice=saved;
+    else if(st.phase==='rolling'){
+      S.dice={code:st.code,g:st.gid,r:st.round,d:roll(p.n),s:rid()};
+      try{ for(let i=localStorage.length-1;i>=0;i--){ const kk=localStorage.key(i); if(kk && kk.startsWith('dudo-d-') && !kk.startsWith(`dudo-d-${st.code}-${st.gid}-`)) localStorage.removeItem(kk); } }catch(e){}
+      store.set(k,S.dice);
+    }
     else return;
     render();
   }
-  if(S.myPres.commit?.r!==st.round && !committing){
+  if(S.myPres.commit?.r!==rk(st) && !committing){
     committing=true;
     const h=await hashDice(st.code,st.round,S.dice.s,S.dice.d);
     committing=false;
-    setPres({commit:{r:st.round,h}});
+    setPres({commit:{r:rk(st),h}});
     if(S.host) hostProcess();
   }
-  if(st.pal && st.oblMode==='abierto' && !cupsClosed(st) && st.phase==='bidding' && S.myPres.open?.r!==st.round){
-    setPres({open:{r:st.round,d:S.dice.d}});
+  if(st.pal && st.oblMode==='abierto' && !cupsClosed(st) && st.phase==='bidding' && S.myPres.open?.r!==rk(st)){
+    setPres({open:{r:rk(st),d:S.dice.d}});
   }
-  if(st.phase==='reveal' && S.myPres.reveal?.r!==st.round){
-    setPres({reveal:{r:st.round,d:S.dice.d,s:S.dice.s}});
+  if(st.phase==='reveal' && S.myPres.reveal?.r!==rk(st)){
+    setPres({reveal:{r:rk(st),d:S.dice.d,s:S.dice.s}});
     if(S.host) hostProcess();
   }
 }
@@ -735,6 +745,7 @@ function vLobby(){
         <select class="field" data-rule="dice" style="width:90px" ${S.host?'':'disabled'}>${[3,4,5,6].map(n=>`<option ${st.rules.dice===n?'selected':''}>${n}</option>`).join('')}</select></div>
       ${ruleRow('wild','Aces are wild','1s count toward every other face.')}
       ${ruleRow('aceBids','Bidding on aces','Switch to aces by halving the quantity (rounded up); switch back by doubling it plus one.',!st.rules.wild)}
+      ${ruleRow('falseStart','False start','If a round opens with a bid on aces, aces aren’t wild for the rest of that round.',!st.rules.wild)}
       ${ruleRow('calzo','Calzo','On your turn, claim the bid is exactly right. Right: win a die back. Wrong: lose one.')}
       ${ruleRow('calzoHalf','Calzo only with half the dice left','Calzo is allowed only while at least half of the game’s starting dice are still on the table.',!st.rules.calzo)}
       ${ruleRow('pal','Obligar','When a player first drops to one die, the next round has no wild aces and the face can’t change after the first bid.')}
@@ -774,7 +785,7 @@ function seats(st){
 }
 function rulesSummary(st){
   const r=st.rules, on=[`${r.dice} dice each`];
-  if(r.wild) on.push('aces wild'); if(r.wild&&r.aceBids) on.push('ace bidding'); if(r.calzo) on.push(r.calzoHalf?'calzo (while half the dice remain)':'calzo'); if(r.pal) on.push(r.oblTypes?'obligar (regular, abierto, cerrado)':'obligar'); if(r.pal&&r.blind) on.push('blind bet'); if(r.sic) on.push('siciliana'); if(r.paso){ const h=['all same']; if(r.pasoFull) h.push('full house'); if(r.pasoDiff) h.push('all different'); on.push(`paso (${h.join(', ')})`); } if(r.picao) on.push('picao');
+  if(r.wild) on.push('aces wild'); if(r.wild&&r.aceBids) on.push('ace bidding'); if(r.wild&&r.falseStart) on.push('false start'); if(r.calzo) on.push(r.calzoHalf?'calzo (while half the dice remain)':'calzo'); if(r.pal) on.push(r.oblTypes?'obligar (regular, abierto, cerrado)':'obligar'); if(r.pal&&r.blind) on.push('blind bet'); if(r.sic) on.push('siciliana'); if(r.paso){ const h=['all same']; if(r.pasoFull) h.push('full house'); if(r.pasoDiff) h.push('all different'); on.push(`paso (${h.join(', ')})`); } if(r.picao) on.push('picao');
   return `<p class="rulesum">House rules: ${on.join(', ')}.</p>`;
 }
 function oblLbl(st){ return st.oblMode==='abierto'?' abierto':st.oblMode==='cerrado'?' cerrado':''; }
@@ -782,12 +793,12 @@ function cupsClosed(st){ return !!(st.pal && (st.modePending || st.blindPending)
 function openDiceOf(st,id){
   if(!(st.pal && st.oblMode==='abierto' && !cupsClosed(st)) || id===S.pid) return null;
   const pr=S.peers.find(x=>x.presence?.pid===id)?.presence;
-  return pr?.open?.r===st.round ? pr.open.d : null;
+  return pr?.open?.r===rk(st) ? pr.open.d : null;
 }
 function myDiceRow(st, highlightF){
   const me=st.players.find(p=>p.id===S.pid);
   if(!me || me.n<=0) return '';
-  if(!S.dice || S.dice.r!==st.round) return `<p class="mine-lbl" style="margin-top:20px">Shaking your cup…</p>`;
+  if(!S.dice || S.dice.r!==st.round || S.dice.g!==st.gid) return `<p class="mine-lbl" style="margin-top:20px">Shaking your cup…</p>`;
   const hidden = t => `<div class="mine">${[...S.dice.d].map(()=>die(0)).join('')}</div><p class="mine-lbl">${t}</p>`;
   if(cupsClosed(st)) return hidden(`Cups stay closed until ${esc(pname(st,st.palBy))} decides how to play the obligar.`);
   if(st.pal && st.oblMode==='abierto' && !(st.bid?.blind && st.bid.owner===S.pid)) return hidden('Obligar abierto: you can see everyone’s dice except your own.');
@@ -843,7 +854,7 @@ function vControls(st){
   }
   const {q,f}=S.ui, err=validBid(st,q,f), wild=wildNow(st);
   const faceBtns = st.bid?.blind ? die(0) : [1,2,3,4,5,6].map(n=>{
-    const dis = (wild && n===1 && !st.rules.aceBids) || (st.pal && st.bid && n!==st.bid.f);
+    const dis = (wild && n===1 && !st.rules.aceBids && !(!st.bid && st.rules.falseStart)) || (st.pal && st.bid && n!==st.bid.f);
     return `<button data-a="face" data-f="${n}" aria-pressed="${n===f}" ${dis?'disabled':''} aria-label="Face ${n}">${die(n)}</button>`}).join('');
   const calzoShut = st.rules.calzo && !calzoOpen(st);
   const canCalzo = st.rules.calzo && st.bid && st.bid.by!==S.pid && !st.claim && !calzoShut;
@@ -924,6 +935,7 @@ function vTable(){
     center = st.bid
       ? `<div class="bidline"><span class="bidq">${st.bid.q}</span><span class="bidx">×</span>${die(st.bid.f)}</div><p class="bidby">${esc(pname(st,st.bid.by))}’s bid${st.dir===-1?'. Play is reversed.':''}</p>`
       : `<div class="bidline"><h2 style="font-size:2.2rem">${st.phase==='rolling'?'Shaking cups':'Opening bid'}</h2></div><p class="bidby">${esc(st.players[st.turn]?.name)} starts${st.phase==='rolling'?' once everyone has rolled':''}.</p>`;
+    if(st.fs) center+=`<p class="center"><span class="pal">False start: aces aren’t wild this round</span></p>`;
     if(st.pal) center+=`<p class="center"><span class="pal">${st.bid?.blind?'Obligar'+oblLbl(st)+', blind bet: the face is whatever is in '+esc(pname(st,st.bid.owner))+'’s cup':'Obligar'+oblLbl(st)+': aces aren’t wild, face is fixed after the first bid'}</span></p>`;
   } else if(st.phase==='reveal'||st.phase==='result'){
     center = vReveal(st);
@@ -979,7 +991,7 @@ app.addEventListener('click', async e=>{
   else if(a==='start') mutate(s=>{
     s.players.forEach(p=>{p.n=s.rules.dice; p.palUsed=false});
     s.startTotal=s.players.length*s.rules.dice;
-    s.round=0; s.log=[]; s.winner=null; s.seqs=s.seqs||{};
+    s.round=0; s.log=[]; s.winner=null; s.seqs=s.seqs||{}; s.gid=rid();
     s.next={starter: rnd(1)[0]%s.players.length, pal:false};
     addLog(s,'Game on. Good luck!');
     startRound(s);
@@ -1021,7 +1033,7 @@ app.addEventListener('change', e=>{
   const k=e.target.dataset.rule; if(!k||!S.host) return;
   mutate(s=>{
     if(k==='dice') s.rules.dice=+e.target.value;
-    else { s.rules[k]=e.target.checked; if(k==='wild' && !e.target.checked) s.rules.aceBids=false; if(k==='pal' && !e.target.checked){ s.rules.blind=false; s.rules.oblTypes=false; } }
+    else { s.rules[k]=e.target.checked; if(k==='wild' && !e.target.checked){ s.rules.aceBids=false; s.rules.falseStart=false; } if(k==='pal' && !e.target.checked){ s.rules.blind=false; s.rules.oblTypes=false; } }
   });
 });
 app.addEventListener('keydown', e=>{
@@ -1077,15 +1089,29 @@ const Sound = {
   // the cup slammed upside down on the table: a low thud plus a woody clack, then the dice settling
   knock(ctx,dest,t,pan,pitch){
     const out=this.panned(ctx,dest,pan);
-    const o=ctx.createOscillator(), og=ctx.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(pitch*2.2,t); o.frequency.exponentialRampToValueAtTime(pitch,t+0.06);
-    og.gain.setValueAtTime(0.0001,t); og.gain.exponentialRampToValueAtTime(0.9,t+0.004); og.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
-    o.connect(og); og.connect(out); o.start(t); o.stop(t+0.25);
-    const src=ctx.createBufferSource(); src.buffer=this.noiseFor(ctx);
-    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=pitch*9; bp.Q.value=1.5;
-    const ng=ctx.createGain(); ng.gain.setValueAtTime(0.0001,t); ng.gain.exponentialRampToValueAtTime(0.7,t+0.002); ng.gain.exponentialRampToValueAtTime(0.0001,t+0.07);
-    src.connect(bp); bp.connect(ng); ng.connect(out); src.start(t,Math.random()*0.3,0.1);
-    for(let j=0;j<4;j++) this.tick(ctx,out,t+0.03+j*0.025+Math.random()*0.02,2200+Math.random()*1500,0.08/(j+1));
+    const env=(g,peak,dec)=>{ g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+0.002); g.gain.exponentialRampToValueAtTime(0.0001,t+dec); };
+    // 1. the crack of the cup's rim striking wood
+    const n1=ctx.createBufferSource(); n1.buffer=this.noiseFor(ctx);
+    const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800;
+    const g1=ctx.createGain(); env(g1,1.0,0.018);
+    n1.connect(hp); hp.connect(g1); g1.connect(out); n1.start(t,Math.random()*0.3,0.04);
+    // 2. the punch: a fast pitch drop, slightly overdriven
+    const o=ctx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(pitch*3.2,t); o.frequency.exponentialRampToValueAtTime(pitch,t+0.035);
+    const sh=ctx.createWaveShaper(); const c=new Float32Array(256); for(let i=0;i<256;i++){const x=i/128-1;c[i]=Math.tanh(2.5*x);} sh.curve=c;
+    const g2=ctx.createGain(); env(g2,1.2,0.26);
+    o.connect(sh); sh.connect(g2); g2.connect(out); o.start(t); o.stop(t+0.3);
+    // 3. the table body ringing underneath
+    const n3=ctx.createBufferSource(); n3.buffer=this.noiseFor(ctx);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=320; lp.Q.value=3;
+    const g3=ctx.createGain(); env(g3,1.6,0.16);
+    n3.connect(lp); lp.connect(g3); g3.connect(out); n3.start(t,Math.random()*0.3,0.2);
+    // 4. a woody mid knock
+    const o2=ctx.createOscillator(); o2.type='triangle'; o2.frequency.value=pitch*5.3;
+    const g4=ctx.createGain(); env(g4,0.35,0.06);
+    o2.connect(g4); g4.connect(out); o2.start(t); o2.stop(t+0.08);
+    // 5. the dice jumping inside the cup from the impact
+    for(let j=0;j<5;j++) this.tick(ctx,out,t+0.02+j*0.022+Math.random()*0.015,2000+Math.random()*1600,0.25/(j+1));
   },
   render(ctx,dest,t){
     const master=ctx.createGain(); master.gain.value=0.5;
