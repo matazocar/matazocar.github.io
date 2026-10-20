@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cara de Caca</title>
+<meta name="description" content="Cara de Caca: el juego de cartas para jugar en línea con amigos. Deshazte de tus cartas antes que los demás.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💩</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --table:#E2D9EB; --table-edge:#CBBEDA; --panel:#F3EEF8; --ink:#271D30; --muted:#655873;
+  --card:#FFFDF7; --card-ink:#1F1A24; --card-red:#C02E38; --card-line:#D9D0C2;
+  --back1:#6E4126; --back2:#A0663A; --accent:#D99A12; --accent-soft:#F6E2AE; --accent-ink:#2A1E05;
+  --line:#BBAECB; --shadow:rgba(39,29,48,.18);
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --table:#241A2E; --table-edge:#170F1E; --panel:#30243C; --ink:#F2EBF7; --muted:#B5A7C4;
+    --card:#FBF6EB; --card-ink:#1F1A24; --card-red:#C02E38; --card-line:#D9D0C2;
+    --back1:#5E371F; --back2:#94592F; --accent:#F2B632; --accent-soft:#4A3A1A; --accent-ink:#2A1E05;
+    --line:#4B3B5A; --shadow:rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; min-height:100vh; background:var(--table); color:var(--ink);
+  font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px; line-height:1.45;
+  --cw:clamp(46px,12vw,74px); --cw-s:clamp(28px,7vw,40px);
+}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Header */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px clamp(12px,3vw,28px);max-width:1100px;margin:0 auto}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{margin:0;font-size:clamp(28px,6vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1}
+.brand .poo{font-size:clamp(24px,5vw,36px);display:inline-block;transform:rotate(-8deg)}
+.tbtn{border:1.5px solid var(--line);background:var(--panel);padding:7px 14px;border-radius:999px;cursor:pointer;font-weight:600;font-size:15px}
+.tbtn:hover{border-color:var(--ink)}
+.tbtn.lang{background:var(--ink);color:var(--table);border-color:var(--ink)}
+
+main{max-width:1100px;margin:0 auto;padding:0 clamp(10px,3vw,28px) 32px}
+
+/* Setup */
+.setup{max-width:560px;margin:6vh auto 0;text-align:center}
+.setup p.lead{font-size:clamp(18px,3.2vw,22px);margin:0 0 28px;color:var(--ink)}
+.setup h2{font-size:17px;font-weight:600;margin:0 0 12px;color:var(--muted)}
+.seg{display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:28px}
+.seg button{width:56px;height:56px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel);font-size:22px;font-weight:800;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.big{background:var(--accent);color:var(--accent-ink);border:0;border-radius:14px;padding:14px 30px;font-size:19px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 var(--back1)}
+.big:hover{filter:brightness(1.05)}
+.big:active{transform:translateY(2px);box-shadow:0 1px 0 var(--back1)}
+.big:disabled,.ghost:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.ghost{background:transparent;border:1.5px solid var(--ink);border-radius:14px;padding:12px 20px;font-size:17px;font-weight:600;cursor:pointer}
+
+/* Cards */
+.card{
+  width:var(--cw);aspect-ratio:5/7;border-radius:calc(var(--cw)*.1);
+  background:var(--card);color:var(--card-ink);border:1px solid var(--card-line);
+  position:relative;flex:none;padding:0;box-shadow:0 2px 4px var(--shadow);
+  display:block;user-select:none;-webkit-user-select:none;
+}
+.card.red{color:var(--card-red)}
+.card .corner{position:absolute;top:5%;left:9%;font-weight:800;font-size:calc(var(--cw)*.24);line-height:.95;text-align:center}
+.card .pip{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--cw)*.46);padding-top:12%}
+.card.joker .jk{position:absolute;top:6%;left:8%;writing-mode:vertical-rl;font-weight:800;font-size:calc(var(--cw)*.15);letter-spacing:.08em}
+.card.joker .pip{color:var(--accent);-webkit-text-stroke:1px var(--card-ink)}
+.card.back{
+  background:
+    radial-gradient(circle at 50% 50%,var(--back2) 22%,transparent 23%) 0 0/calc(var(--cw)*.2) calc(var(--cw)*.2),
+    var(--back1);
+  border:3px solid var(--card);
+}
+.card.small{--cw:var(--cw-s)}
+button.card{cursor:pointer;transition:transform .12s ease}
+button.card:hover{transform:translateY(-4px)}
+.card.sel{transform:translateY(-12px);box-shadow:0 0 0 3px var(--accent),0 6px 12px var(--shadow)}
+button.card.sel:hover{transform:translateY(-12px)}
+.card.nope{filter:saturate(.3) brightness(.82);opacity:.75}
+.card.swapsel{box-shadow:0 0 0 3px var(--accent),0 6px 12px var(--shadow);transform:translateY(-6px)}
+
+/* Opponents */
+.opps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.opp{background:var(--panel);border:1.5px solid var(--line);border-radius:16px;padding:10px 12px;transition:border-color .2s}
+.opp.is-turn{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.opp.is-out{opacity:.55}
+.opp header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:6px}
+.opp header b{font-size:17px}
+.opp header span{font-size:13px;color:var(--muted)}
+.opp-row{display:flex;align-items:center;gap:10px}
+.handcount{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--muted)}
+.slots{display:flex;gap:4px}
+.slot{position:relative;width:var(--cw);aspect-ratio:5/7}
+.slot>.card{position:absolute;left:0;top:0}
+.slot>.card.up{top:14%}
+.slots.small .slot{width:var(--cw-s)}
+.slot.empty{border:1.5px dashed var(--line);border-radius:6px;opacity:.5}
+
+/* Center */
+.center{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;padding:18px 10px;margin:4px 0 14px;border-radius:24px;background:var(--table-edge)}
+.pile{position:relative;width:calc(var(--cw)*1.6);height:calc(var(--cw)*1.75);margin:0 auto}
+.pile .card{position:absolute;left:50%;top:50%;--cw:clamp(56px,14vw,84px)}
+.pile .empty-pile{position:absolute;inset:8%;border:2px dashed var(--line);border-radius:12px;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:6px}
+.pile.burn .card{animation:burn .55s ease-in forwards}
+@keyframes burn{to{opacity:0;transform:translate(-50%,-80%) scale(.6) rotate(20deg)}}
+.req{justify-self:end;text-align:right}
+.req .chip{display:inline-block;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:clamp(15px,3vw,19px);padding:6px 14px;border-radius:999px}
+.req .chip.press{background:var(--card-red);color:#fff}
+.req small,.meta small{display:block;color:var(--muted);font-size:13px;margin-top:6px}
+.meta{font-size:14px;color:var(--muted)}
+.meta div{margin:2px 0}
+
+/* Status + log */
+.status{font-size:clamp(16px,3vw,19px);font-weight:600;min-height:1.5em;margin:0 0 10px;text-align:center}
+.log{list-style:none;margin:0 auto 16px;padding:0;max-width:640px;font-size:14px;color:var(--muted);text-align:center}
+.log li:first-child{color:var(--ink);font-weight:600}
+
+/* Me */
+.me{background:var(--panel);border:1.5px solid var(--line);border-radius:20px;padding:14px clamp(10px,2.5vw,20px) 18px}
+.me.is-turn{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.me-grid{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:end}
+.zone h3{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--muted)}
+.hand{display:flex;flex-wrap:wrap;gap:6px;padding-top:14px;min-height:calc(var(--cw)*1.4 + 14px)}
+.hand .none{color:var(--muted);font-size:14px;align-self:center}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+@media (max-width:560px){
+  .me-grid{grid-template-columns:1fr}
+  .center{grid-template-columns:1fr 1fr;grid-template-areas:"pile pile" "meta req"}
+  .center .pile{grid-area:pile}.center .meta{grid-area:meta}.center .req{grid-area:req}
+  .actions>*{flex:1}
+}
+
+/* Overlay + dialog */
+.overlay{position:fixed;inset:0;background:rgba(20,12,26,.6);display:grid;place-items:center;padding:20px;z-index:20}
+.over{background:var(--panel);color:var(--ink);border-radius:24px;padding:28px clamp(18px,4vw,36px);max-width:440px;width:100%;text-align:center}
+.over .poo-big{font-size:72px;line-height:1;display:block;margin-bottom:8px;animation:drop .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes drop{from{transform:translateY(-60px) rotate(-30deg);opacity:0}}
+.over h2{margin:0 0 6px;font-size:clamp(26px,6vw,34px);letter-spacing:-.02em;line-height:1.1}
+.over ol{text-align:left;margin:18px auto 24px;padding-left:1.6em;max-width:260px}
+.over ol li{margin:4px 0}
+.over ol li.loser{font-weight:800;color:var(--card-red)}
+dialog{border:0;border-radius:22px;padding:0;max-width:640px;width:calc(100% - 24px);background:var(--panel);color:var(--ink);box-shadow:0 20px 60px var(--shadow)}
+dialog::backdrop{background:rgba(20,12,26,.6)}
+.rules{padding:24px clamp(18px,4vw,32px) 28px;max-height:82vh;overflow:auto}
+.rules h2{margin:0 0 4px;font-size:30px;letter-spacing:-.02em}
+.rules h3{margin:22px 0 6px;font-size:19px}
+.rules p,.rules li{max-width:68ch}
+.rules ul{padding-left:1.2em}
+.rules li{margin:4px 0}
+.rules .note{background:var(--accent-soft);border-radius:12px;padding:10px 14px;font-size:15px}
+.rules-close{position:sticky;top:0;float:right}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Home + lobby */
+.home{max-width:460px;margin:5vh auto 0;text-align:center}
+.home p.lead{font-size:clamp(18px,3.2vw,22px);margin:0 0 26px}
+.field{display:block;text-align:left;margin:0 0 14px}
+.field span{display:block;font-size:15px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;font:inherit;font-size:19px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+.field input:focus{outline:3px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.home .big{width:100%}
+.or{margin:30px 0 14px;color:var(--muted);font-size:15px;display:flex;align-items:center;gap:12px}
+.or::before,.or::after{content:"";flex:1;height:1.5px;background:var(--line)}
+.joinrow{display:flex;gap:8px}
+.joinrow input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.18em;font-weight:800;text-align:center}
+.joinrow .ghost{flex:none}
+.msg{margin:12px 0 0;font-weight:600;color:var(--card-red);min-height:1.4em}
+.lobby{max-width:520px;margin:3vh auto 0}
+.codebox{background:var(--panel);border:1.5px solid var(--line);border-radius:20px;padding:18px 20px;text-align:center;margin-bottom:18px}
+.codebox small{display:block;color:var(--muted);font-size:14px}
+.code{font-size:clamp(40px,11vw,64px);font-weight:800;letter-spacing:.14em;line-height:1.1;margin:4px 0 10px;padding-left:.14em}
+.codebox p{margin:0 0 12px;color:var(--muted);font-size:15px}
+.linkrow{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.linkrow code{font-size:13px;background:var(--table-edge);padding:6px 10px;border-radius:8px;max-width:100%;overflow-x:auto;white-space:nowrap}
+.seats{list-style:none;margin:0 0 18px;padding:0}
+.seats li{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:var(--panel);border:1.5px solid var(--line);margin-bottom:8px;font-size:18px;font-weight:600}
+.seats li .tag{font-size:13px;font-weight:600;color:var(--muted);border:1.5px solid var(--line);border-radius:999px;padding:1px 9px}
+.seats li .grow{flex:1}
+.seats li.emptyseat{background:transparent;border-style:dashed;color:var(--muted);font-weight:400;font-size:16px}
+.mini{border:0;background:transparent;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:14px;padding:4px}
+.lobby .actions{justify-content:center;margin-top:0}
+.waitnote{text-align:center;color:var(--muted);font-size:17px;margin:6px 0 0}
+.netnote{text-align:center;color:var(--muted);font-size:14px;margin:18px 0 0}
+.center-card{max-width:440px;margin:10vh auto 0;text-align:center;background:var(--panel);border:1.5px solid var(--line);border-radius:22px;padding:26px 22px}
+.center-card p{font-size:18px;margin:0 0 18px}
+.opp header b .bot{font-weight:400;font-size:14px}
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>Cara de Caca</h1><span class="poo" aria-hidden="true">💩</span></div>
+  <button class="tbtn" data-a="rules" id="btnRules">Reglas</button>
+  <button class="tbtn" data-a="home" id="btnHome" hidden>Inicio</button>
+  <button class="tbtn lang" data-a="lang" id="btnLang">English</button>
+</header>
+<main id="app"></main>
+<div id="overlay"></div>
+<dialog id="rulesDlg"><div class="rules" id="rulesBody"></div></dialog>
+<!-- PeerJS: peer-to-peer connections so friends can join the host's game -->
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   Text
+   ========================================================= */
+function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+const T = {
+es:{
+  htmlLang:"es-CL", langBtn:"English", langAria:"Cambiar a inglés",
+  rules:"Reglas", home:"Inicio", close:"Cerrar",
+  lead:"Deshazte de tus cartas antes que los demás. El último con cartas queda como Cara de Caca.",
+  yourName:"Tu nombre", namePh:"Ej: Cami",
+  createRoom:"Crear sala", invited:"¿Te invitaron?", codePh:"CÓDIGO", join:"Unirse",
+  needName:"Escribe tu nombre primero.", needCode:"Escribe el código de la sala.",
+  roomCode:"Código de la sala",
+  shareHint:"Pásales este código o el enlace a tus amigos. Los puestos vacíos se pueden llenar con bots.",
+  copyLink:"Copiar enlace", copied:"¡Copiado!",
+  opening:"Abriendo la sala en línea…",
+  offline:"No se pudo abrir la sala en línea, pero puedes jugar contra bots.",
+  retry:"Reintentar",
+  seats:n=>`Jugadores (${n} de 5)`, emptySeat:"Puesto libre",
+  tagHost:"anfitrión", tagBot:"bot", tagYou:"tú", tagReady:"listo",
+  addBot:"Agregar bot", remove:"Sacar", deal:"Repartir",
+  needTwo:"Se necesitan al menos 2 jugadores para repartir.",
+  waitingHost:h=>`Esperando a que ${h} reparta…`, roomOf:h=>`Sala de ${h}`,
+  joining:"Conectando con la sala…",
+  err:{notFound:"No encontramos esa sala. Revisa el código o pídele al anfitrión que la vuelva a abrir.",
+       full:"La sala está llena (máximo 5 jugadores).",
+       started:"Esa partida ya empezó. Espera a la próxima.",
+       hostLeft:"El anfitrión cerró la sala.",
+       connLost:"Se perdió la conexión con la sala.",
+       noLib:"No se pudo cargar la conexión en línea. Revisa tu internet."},
+  backHome:"Volver al inicio", leaveConfirm:"¿Salir de la sala? Se termina la partida para ti.",
+  hostLeaveConfirm:"¿Cerrar la sala? La partida se termina para todos.",
+  you:"Tú", hand:"Tu mano", tableCards:"Tus cartas en la mesa",
+  inHand:n=>`${n} en mano`, place:n=>`${n}° lugar`,
+  pileCount:n=>n===1?"1 carta en el montón":`${n} cartas en el montón`, pileEmpty:"Montón vacío",
+  burned:n=>`Quemadas: ${n}`, aside:n=>`Sin repartir: ${n}`,
+  dir:d=>d===1?"Sentido: ↻ horario":"Sentido: ↺ antihorario",
+  reqAny:"Cualquier carta", reqMin:v=>`${v} o más`, reqMax:"7 o menos", reqLabel:"Lo que se puede jugar",
+  play:"Jugar", take:"Tomar el montón", ready:"Estoy listo",
+  swapHint:"Antes de empezar: toca una carta de tu mano y otra de tus boca arriba para intercambiarlas. Cuando estés conforme, aprieta «Estoy listo».",
+  waitReady:"Esperando a que los demás terminen de intercambiar…",
+  yourTurn:"Te toca. Elige una o más cartas del mismo valor.",
+  yourTurnUp:"Se acabó tu mano: ahora juegas tus cartas boca arriba.",
+  yourTurnDown:"Te toca a ciegas: da vuelta una de tus cartas boca abajo.",
+  noMove:"No tienes jugada. Te toca tomar el montón.",
+  waiting:w=>`Juega ${w}…`,
+  youOut:pl=>`¡Bacán! Terminaste en el ${pl}° lugar. Veamos quién queda como Cara de Caca…`,
+  emptyHand:"Sin cartas en la mano",
+  overLose:"Quedaste como Cara de Caca", overWin:"Se acabó la partida",
+  overSub:w=>`${w} quedó como Cara de Caca.`, overSubMe:"Fuiste el último con cartas. Le pasa a cualquiera.",
+  again:"Otra partida", toLobby:"Volver a la sala", waitHostNext:"Esperando a que el anfitrión reparta otra…",
+  log:{
+    start:p=>p.me?"Empiezas tú.":`Empieza ${p.who}.`,
+    played:p=>(p.me?"Jugaste ":`${p.who} jugó `)+p.cards+(p.blind?" a ciegas":"")+".",
+    reset:p=>p.me?"El 2 resetea el montón. Vuelves a jugar.":`El 2 resetea el montón. ${p.who} vuelve a jugar.`,
+    burn10:"¡El 10 quemó el montón!",
+    burn4:p=>"¡Cuatro iguales! Se quema el montón"+(p.me?" y vuelves a jugar.":` y ${p.who} vuelve a jugar.`),
+    joker:"El Joker resetea el montón.",
+    reverse:"La J invierte el sentido.",
+    pressure:"Baja presión: el siguiente debe jugar 7 o menos.",
+    took:p=>p.me?`Tomaste el montón (${p.n} cartas).`:`${p.who} tomó el montón (${p.n} cartas).`,
+    blindFail:p=>p.me?`Diste vuelta ${p.card} y no sirve. Te llevas el montón.`:`${p.who} dio vuelta ${p.card} y no le sirve. Se lleva el montón.`,
+    out:p=>p.me?`¡Te quedaste sin cartas! ${p.place}° lugar.`:`${p.who} se quedó sin cartas: ${p.place}° lugar.`,
+    loser:p=>p.me?"Quedaste como Cara de Caca. 💩":`${p.who} quedó como Cara de Caca. 💩`,
+    left:p=>`${p.who} se desconectó. Un bot sigue jugando por ${p.who}.`
+  },
+  rulesHTML:`
+<h2>Reglas del juego</h2>
+<p>Deshazte de tus cartas antes que los demás. El último en quedarse con cartas es la Cara de Caca de la partida.</p>
+<h3>Jugar con amigos</h3>
+<p>Quien crea la sala es el anfitrión: su navegador reparte y lleva la partida. Los demás entran con el código o el enlace. Si alguien se desconecta, un bot sigue jugando por esa persona. Si el anfitrión cierra la página, la partida se termina.</p>
+<h3>Reparto</h3>
+<p>De 2 a 5 jugadores, con una baraja de 54 cartas (52 más 2 Jokers). Cada jugador recibe 9 cartas: 3 boca abajo (nadie las ve, ni tú), 3 boca arriba (visibles para todos) y 3 en la mano. Antes de empezar puedes intercambiar cartas entre tu mano y tus boca arriba.</p>
+<h3>Orden de juego</h3>
+<p>Primero juegas las cartas de tu mano. Cuando se acaban, juegas las boca arriba. Cuando esas también se acaban, juegas las boca abajo, a ciegas.</p>
+<h3>Cómo jugar</h3>
+<p>En tu turno, juega una carta igual o mayor que la del montón. Puedes jugar varias del mismo valor a la vez. El orden va del 3 (la más baja) al As (la más alta).</p>
+<h3>Cartas especiales</h3>
+<ul>
+<li><b>2, comodín:</b> se juega sobre cualquier carta, resetea el montón y el turno sigue siendo tuyo.</li>
+<li><b>7, baja presión:</b> el siguiente jugador debe jugar un 7 o menos.</li>
+<li><b>10, quema:</b> quema el montón al instante. Nadie puede tomarlo.</li>
+<li><b>J, invierte:</b> invierte el sentido de la partida.</li>
+<li><b>Joker:</b> la carta más poderosa. Se juega sobre cualquier cosa y resetea el montón.</li>
+<li><b>Cuatro iguales:</b> si juntas cuatro cartas del mismo valor, entre tu jugada y el montón, se queman todas y el turno sigue siendo tuyo.</li>
+</ul>
+<h3>Tomar el montón</h3>
+<p>Si no puedes o no quieres jugar una carta válida, tomas todo el montón y pasa a tu mano.</p>
+<h3>Cartas boca abajo</h3>
+<p>Al jugar a ciegas revelas la carta. Si es válida, sigue el juego. Si no, tomas el montón entero.</p>
+<h3>Ganar y perder</h3>
+<p>Los jugadores se van quedando sin cartas y ganan en ese orden. El último en quedarse con cartas pierde.</p>
+<h3>Lo que la página no aclara</h3>
+<p class="note">Así lo resolvimos aquí: no se roba del mazo (las cartas que sobran del reparto quedan fuera); después de un 10 o un Joker el turno pasa al siguiente; el 10 sigue la regla normal de valor, así que no se puede jugar sobre un 7 ni sobre una figura; quien empieza se elige al azar; tras tomar el montón, el turno pasa al siguiente.</p>
+<p>Basado en las reglas de caradecaca.cl.</p>`
+},
+en:{
+  htmlLang:"en", langBtn:"Español", langAria:"Switch to Spanish",
+  rules:"Rules", home:"Home", close:"Close",
+  lead:"Get rid of your cards before everyone else. The last one holding cards is the Cara de Caca (poop face).",
+  yourName:"Your name", namePh:"E.g. Sam",
+  createRoom:"Create room", invited:"Got invited?", codePh:"CODE", join:"Join",
+  needName:"Enter your name first.", needCode:"Enter the room code.",
+  roomCode:"Room code",
+  shareHint:"Send this code or the link to your friends. Empty seats can be filled with bots.",
+  copyLink:"Copy link", copied:"Copied!",
+  opening:"Opening the online room…",
+  offline:"Couldn’t open the online room, but you can still play against bots.",
+  retry:"Try again",
+  seats:n=>`Players (${n} of 5)`, emptySeat:"Open seat",
+  tagHost:"host", tagBot:"bot", tagYou:"you", tagReady:"ready",
+  addBot:"Add bot", remove:"Remove", deal:"Deal",
+  needTwo:"You need at least 2 players to deal.",
+  waitingHost:h=>`Waiting for ${h} to deal…`, roomOf:h=>`${h}’s room`,
+  joining:"Connecting to the room…",
+  err:{notFound:"We couldn’t find that room. Check the code or ask the host to open it again.",
+       full:"The room is full (5 players max).",
+       started:"That game has already started. Wait for the next one.",
+       hostLeft:"The host closed the room.",
+       connLost:"The connection to the room was lost.",
+       noLib:"The online connection couldn’t load. Check your internet."},
+  backHome:"Back to home", leaveConfirm:"Leave the room? The game ends for you.",
+  hostLeaveConfirm:"Close the room? The game ends for everyone.",
+  you:"You", hand:"Your hand", tableCards:"Your table cards",
+  inHand:n=>`${n} in hand`, place:n=>ordinal(n)+" place",
+  pileCount:n=>n===1?"1 card in the pile":`${n} cards in the pile`, pileEmpty:"Empty pile",
+  burned:n=>`Burned: ${n}`, aside:n=>`Not dealt: ${n}`,
+  dir:d=>d===1?"Direction: ↻ clockwise":"Direction: ↺ counterclockwise",
+  reqAny:"Any card", reqMin:v=>`${v} or higher`, reqMax:"7 or lower", reqLabel:"What you can play",
+  play:"Play", take:"Take the pile", ready:"I’m ready",
+  swapHint:"Before you start: tap one card in your hand and one face-up card to swap them. When you’re happy, press “I’m ready”.",
+  waitReady:"Waiting for the others to finish swapping…",
+  yourTurn:"Your turn. Pick one or more cards of the same value.",
+  yourTurnUp:"Your hand is empty: now you play your face-up cards.",
+  yourTurnDown:"Blind turn: flip over one of your face-down cards.",
+  noMove:"You can’t play anything. Take the pile.",
+  waiting:w=>`${w} is playing…`,
+  youOut:pl=>`Nice! You finished in ${ordinal(pl)} place. Let’s see who ends up as the Cara de Caca…`,
+  emptyHand:"No cards in hand",
+  overLose:"You’re the Cara de Caca", overWin:"Game over",
+  overSub:w=>`${w} is the Cara de Caca.`, overSubMe:"You were the last one holding cards. It happens to everyone.",
+  again:"Play again", toLobby:"Back to the room", waitHostNext:"Waiting for the host to deal again…",
+  log:{
+    start:p=>p.me?"You go first.":`${p.who} goes first.`,
+    played:p=>(p.me?"You played ":`${p.who} played `)+p.cards+(p.blind?" blind":"")+".",
+    reset:p=>p.me?"The 2 resets the pile. You play again.":`The 2 resets the pile. ${p.who} plays again.`,
+    burn10:"The 10 burned the pile!",
+    burn4:p=>"Four of a kind! The pile burns"+(p.me?" and you play again.":` and ${p.who} plays again.`),
+    joker:"The Joker resets the pile.",
+    reverse:"The J reverses the direction.",
+    pressure:"Low pressure: the next player must play 7 or lower.",
+    took:p=>p.me?`You took the pile (${p.n} cards).`:`${p.who} took the pile (${p.n} cards).`,
+    blindFail:p=>p.me?`You flipped ${p.card} and it doesn’t work. You take the pile.`:`${p.who} flipped ${p.card} and it doesn’t work. They take the pile.`,
+    out:p=>p.me?`You’re out of cards! ${ordinal(p.place)} place.`:`${p.who} is out of cards: ${ordinal(p.place)} place.`,
+    loser:p=>p.me?"You’re the Cara de Caca. 💩":`${p.who} is the Cara de Caca. 💩`,
+    left:p=>`${p.who} disconnected. A bot keeps playing for them.`
+  },
+  rulesHTML:`
+<h2>How to play</h2>
+<p>Get rid of your cards before everyone else. The last player still holding cards is the Cara de Caca (poop face) of the game.</p>
+<h3>Playing with friends</h3>
+<p>Whoever creates the room is the host: their browser deals and runs the game. Everyone else joins with the code or the link. If someone disconnects, a bot keeps playing for them. If the host closes the page, the game ends.</p>
+<h3>Deal</h3>
+<p>2 to 5 players, with a 54-card deck (52 plus 2 Jokers). Each player gets 9 cards: 3 face down (nobody sees them, not even you), 3 face up (visible to everyone) and 3 in hand. Before starting, you can swap cards between your hand and your face-up cards.</p>
+<h3>Order of play</h3>
+<p>First you play the cards in your hand. When they run out, you play your face-up cards. When those run out too, you play your face-down cards, blind.</p>
+<h3>Your turn</h3>
+<p>Play a card equal to or higher than the top of the pile. You can play several cards of the same value at once. Cards rank from 3 (lowest) to Ace (highest).</p>
+<h3>Special cards</h3>
+<ul>
+<li><b>2, wild:</b> plays on any card, resets the pile, and it’s still your turn.</li>
+<li><b>7, low pressure:</b> the next player must play a 7 or lower.</li>
+<li><b>10, burn:</b> burns the pile instantly. Nobody can take it.</li>
+<li><b>J, reverse:</b> reverses the direction of play.</li>
+<li><b>Joker:</b> the most powerful card. Plays on anything and resets the pile.</li>
+<li><b>Four of a kind:</b> if four cards of the same value come together, between your play and the pile, they all burn and it’s still your turn.</li>
+</ul>
+<h3>Taking the pile</h3>
+<p>If you can’t or don’t want to play a valid card, you take the whole pile into your hand.</p>
+<h3>Face-down cards</h3>
+<p>When you play blind, you reveal the card as you play it. If it’s valid, play goes on. If not, you take the whole pile.</p>
+<h3>Winning and losing</h3>
+<p>Players run out of cards and win in that order. The last one holding cards loses.</p>
+<h3>What the source doesn’t say</h3>
+<p class="note">Here’s how this version handles it: nobody draws from the deck (cards left over after the deal stay out); after a 10 or a Joker, the turn passes to the next player; the 10 follows the normal value rule, so it can’t go on a 7 or a face card; the first player is chosen at random; after taking the pile, the turn passes.</p>
+<p>Based on the rules at caradecaca.cl.</p>`
+}};
+
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
+let lang=store.get("cdc-lang")==="en"?"en":"es";
+const t=()=>T[lang];
+
+/* =========================================================
+   Cards + rules engine (runs on the host only)
+   ========================================================= */
+const SYM={s:"♠",h:"♥",d:"♦",c:"♣"};
+const JOKER=15;
+function rankLabel(r){return r===JOKER?"Joker":({11:"J",12:"Q",13:"K",14:"A"}[r]||String(r));}
+function cardText(c){return c.r===JOKER?"Joker":rankLabel(c.r)+SYM[c.s];}
+function sortKey(c){return c.r===2?15.5:c.r===JOKER?16:c.r===10?14.5:c.r;}
+function bySort(a,b){return sortKey(a)-sortKey(b)||a.id-b.id;}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function newDeck(){
+  const d=[];let id=0;
+  for(const s of ["s","h","d","c"])for(let r=2;r<=14;r++)d.push({id:id++,r,s});
+  d.push({id:id++,r:JOKER,s:null},{id:id++,r:JOKER,s:null});
+  return shuffle(d);
+}
+function reqOf(pile){
+  if(!pile.length)return{t:"any"};
+  const top=pile[pile.length-1];
+  if(top.r===2||top.r===JOKER)return{t:"any"};
+  if(top.r===7)return{t:"max",v:7};
+  return{t:"min",v:top.r};
+}
+function canPlay(c,req){
+  if(c.r===2||c.r===JOKER)return true;
+  if(req.t==="any")return true;
+  if(req.t==="min")return c.r>=req.v;
+  return c.r<=7;
+}
+const total=p=>p.hand.length+p.up.length+p.down.length;
+const source=p=>p.hand.length?"hand":p.up.length?"up":p.down.length?"down":null;
+
+const BOTS=["Coté","Pancho","Feña","Javi","Nacho","Trini","Rorro","Cata"];
+let G=null;          // authoritative game state (host only)
+let gameToken=0;
+
+function lobbyPlayer(name,kind,conn){return{name,kind,conn:conn||null,hand:[],up:[],down:[],out:false,ready:false};}
+function newLobby(hostName){
+  G={phase:"lobby",players:[lobbyPlayer(hostName,"human",null)],pile:[],burned:0,aside:0,dir:1,turn:0,finish:[],loser:null,log:[]};
+}
+function addBot(){
+  if(G.phase!=="lobby"||G.players.length>=5)return;
+  const used=new Set(G.players.map(p=>p.name.toLowerCase()));
+  const name=shuffle(BOTS.slice()).find(n=>!used.has(n.toLowerCase()))||"Bot";
+  G.players.push(lobbyPlayer(name,"bot"));sync();
+}
+function removeSeat(i){
+  if(G.phase!=="lobby"||i===0||!G.players[i]||G.players[i].kind!=="bot")return;
+  G.players.splice(i,1);sync();
+}
+function addLog(k,p){G.log.unshift({k,p:p||{}});if(G.log.length>6)G.log.length=6;}
+function strength(c){return c.r===JOKER?100:c.r===2?95:c.r===10?90:c.r;}
+function botSwap(p){const all=p.hand.concat(p.up).sort((a,b)=>strength(b)-strength(a));p.up=all.slice(0,3);p.hand=all.slice(3).sort(bySort);}
+
+function deal(){
+  if(G.players.length<2)return;
+  gameToken++;
+  const deck=newDeck();
+  Object.assign(G,{phase:"swap",pile:[],burned:0,dir:1,turn:0,finish:[],loser:null,log:[]});
+  for(const p of G.players){
+    p.down=deck.splice(0,3);p.up=deck.splice(0,3);p.hand=deck.splice(0,3).sort(bySort);p.out=false;
+    p.ready=p.kind==="bot";if(p.kind==="bot")botSwap(p);
+  }
+  G.aside=deck.length;
+  checkAllReady()||sync();
+}
+function checkAllReady(){
+  if(G.phase==="swap"&&G.players.every(p=>p.ready)){
+    G.phase="play";G.turn=Math.floor(Math.random()*G.players.length);
+    addLog("start",{pi:G.turn});startTurn();return true;
+  }
+  return false;
+}
+function burn(){G.burned+=G.pile.length;G.pile=[];}
+function removeCards(p,src,cards){const ids=new Set(cards.map(c=>c.id));p[src]=p[src].filter(c=>!ids.has(c.id));}
+function doPlay(pi,cards,blind){
+  G.pile.push(...cards);
+  addLog("played",{pi,cards:cards.map(cardText).join(" "),blind});
+  const r=cards[0].r;
+  let run=0;for(let i=G.pile.length-1;i>=0&&G.pile[i].r===r;i--)run++;
+  let again=false;
+  if(run>=4){burn();again=true;addLog("burn4",{pi});}
+  else if(r===10){burn();addLog("burn10");}
+  else if(r===2){again=true;addLog("reset",{pi});}
+  else if(r===JOKER){addLog("joker");}
+  else if(r===11){G.dir*=-1;addLog("reverse");}
+  else if(r===7){addLog("pressure");}
+  afterMove(pi,again);
+}
+function pickUp(pi){const p=G.players[pi];p.hand.push(...G.pile);p.hand.sort(bySort);G.pile=[];afterMove(pi,false);}
+function takePile(pi){addLog("took",{pi,n:G.pile.length});pickUp(pi);}
+function playBlind(pi,idx){
+  const p=G.players[pi];
+  const c=p.down.splice(idx,1)[0];
+  if(canPlay(c,reqOf(G.pile)))doPlay(pi,[c],true);
+  else{addLog("blindFail",{pi,card:cardText(c)});G.pile.push(c);pickUp(pi);}
+}
+function nextIdx(from){
+  const n=G.players.length;let i=from;
+  for(let k=0;k<n;k++){i=(i+G.dir+n)%n;if(!G.players[i].out)return i;}
+  return from;
+}
+function afterMove(pi,again){
+  const p=G.players[pi];
+  if(!p.out&&total(p)===0){p.out=true;G.finish.push(pi);addLog("out",{pi,place:G.finish.length});}
+  const active=G.players.map((q,i)=>i).filter(i=>!G.players[i].out);
+  if(active.length<=1){
+    if(active.length===1){G.loser=active[0];addLog("loser",{pi:active[0]});}
+    G.phase="over";sync();return;
+  }
+  G.turn=(again&&!p.out)?pi:nextIdx(pi);
+  startTurn();
+}
+function startTurn(){
+  sync();
+  const p=G.players[G.turn];
+  if(p.kind==="bot"&&G.phase==="play"){
+    const tok=gameToken;
+    const humansLeft=G.players.some(q=>q.kind==="human"&&!q.out);
+    setTimeout(()=>{if(G&&tok===gameToken&&G.phase==="play"&&G.players[G.turn].kind==="bot")botMove();},humansLeft?850:320);
+  }
+}
+function botMove(){
+  const pi=G.turn,p=G.players[pi],src=source(p),req=reqOf(G.pile);
+  if(src==="down"){playBlind(pi,Math.floor(Math.random()*p.down.length));return;}
+  const playable=p[src].filter(c=>canPlay(c,req));
+  if(!playable.length){takePile(pi);return;}
+  const normal=playable.filter(c=>c.r!==2&&c.r!==10&&c.r!==JOKER);
+  let rank;
+  if(normal.length&&!(G.pile.length>=7&&playable.some(c=>c.r===10))){
+    const ranks=[...new Set(normal.map(c=>c.r))].sort((a,b)=>a-b);
+    // Usually dump the lowest card, but sometimes mix it up so play never loops forever
+    rank=(ranks.length>1&&Math.random()<0.3)?ranks[1+Math.floor(Math.random()*(ranks.length-1))]:ranks[0];
+  }else{
+    const has=r=>playable.some(c=>c.r===r);
+    rank=(has(10)&&G.pile.length>=3)?10:has(2)?2:has(10)?10:has(JOKER)?JOKER:playable[0].r;
+  }
+  let cards=p[src].filter(c=>c.r===rank);
+  if(rank===2||rank===JOKER)cards=cards.slice(0,1);
+  removeCards(p,src,cards);
+  doPlay(pi,cards,false);
+}
+
+/* Actions coming from a seat (the host itself or a guest) */
+function canAct(seat){return G&&G.phase==="play"&&G.turn===seat&&!G.players[seat].out&&G.players[seat].kind==="human";}
+function applyAct(seat,m){
+  const p=G.players[seat];if(!p||!m)return;
+  if(m.a==="swap"){
+    if(G.phase!=="swap"||p.ready)return;
+    const hi=p.hand.findIndex(c=>c.id===m.h),ui=p.up.findIndex(c=>c.id===m.u);
+    if(hi<0||ui<0)return;
+    const tmp=p.hand[hi];p.hand[hi]=p.up[ui];p.up[ui]=tmp;p.hand.sort(bySort);sync();
+  }else if(m.a==="ready"){
+    if(G.phase!=="swap"||p.ready)return;
+    p.ready=true;checkAllReady()||sync();
+  }else if(m.a==="play"){
+    if(!canAct(seat))return;
+    const src=source(p);if(src==="down"||!Array.isArray(m.ids))return;
+    const ids=new Set(m.ids);const cards=p[src].filter(c=>ids.has(c.id));
+    if(!cards.length||cards.length!==ids.size||!cards.every(c=>c.r===cards[0].r)||!canPlay(cards[0],reqOf(G.pile)))return;
+    removeCards(p,src,cards);doPlay(seat,cards,false);
+  }else if(m.a==="take"){
+    if(!canAct(seat)||!G.pile.length||source(p)==="down")return;
+    takePile(seat);
+  }else if(m.a==="blind"){
+    if(!canAct(seat)||source(p)!=="down")return;
+    const idx=m.idx|0;if(idx<0||idx>=p.down.length)return;
+    playBlind(seat,idx);
+  }
+}
+
+/* What one seat is allowed to see */
+function viewFor(seat){
+  return{
+    phase:G.phase,mySeat:seat,code:NET.code,net:NET.status,
+    players:G.players.map((p,i)=>({name:p.name,bot:p.kind==="bot",hand:i===seat?p.hand:null,handCount:p.hand.length,up:p.up,down:p.down.length,out:p.out,ready:p.ready})),
+    pileTop:G.pile.slice(-3),pileCount:G.pile.length,req:reqOf(G.pile),
+    burned:G.burned,aside:G.aside,dir:G.dir,turn:G.turn,finish:G.finish,loser:G.loser,log:G.log
+  };
+}
+
+/* =========================================================
+   Networking (PeerJS / WebRTC)
+   The host's browser is the server. Guests only send actions
+   and receive the view of their own seat.
+   ========================================================= */
+const PREFIX="caradecaca-cl-";
+const CODE_CHARS="ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const NET={role:null,peer:null,conn:null,code:null,status:"idle",error:null,leaving:false,joinTimer:null};
+let V=null; // the view this browser is rendering
+
+function genCode(){let s="";for(let i=0;i<5;i++)s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];return s;}
+function cleanName(s){s=String(s||"").replace(/\s+/g," ").trim().slice(0,16);return s;}
+function cleanCode(s){return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5);}
+function safeSend(conn,msg){try{if(conn&&conn.open)conn.send(msg);}catch(e){}}
+
+function sync(){
+  if(NET.role!=="host"||!G)return;
+  V=viewFor(0);pruneSelection();render();
+  G.players.forEach((p,i)=>{if(i>0&&p.kind==="human"&&p.conn)safeSend(p.conn,{type:"state",view:viewFor(i)});});
+}
+
+function createRoom(name){
+  NET.role="host";NET.leaving=false;NET.code=null;
+  newLobby(name);UI.screen="room";
+  openHostPeer();
+  sync();
+}
+function openHostPeer(){
+  if(typeof window.Peer!=="function"){NET.status="offline";return;}
+  const code=genCode();
+  NET.status="opening";
+  let peer;
+  try{peer=new window.Peer(PREFIX+code,{debug:0});}catch(e){NET.status="offline";return;}
+  NET.peer=peer;
+  peer.on("open",()=>{if(NET.peer!==peer)return;NET.code=code;NET.status="open";sync();});
+  peer.on("connection",conn=>{
+    conn.on("data",m=>onHostMsg(conn,m));
+    conn.on("close",()=>onGuestGone(conn));
+    conn.on("error",()=>onGuestGone(conn));
+  });
+  peer.on("disconnected",()=>{if(NET.peer===peer&&!NET.leaving){try{peer.reconnect();}catch(e){}}});
+  peer.on("error",err=>{
+    if(NET.peer!==peer)return;
+    if(err&&err.type==="unavailable-id"){try{peer.destroy();}catch(e){}openHostPeer();sync();return;}
+    if(NET.status==="opening"){NET.status="offline";try{peer.destroy();}catch(e){}NET.peer=null;sync();}
+  });
+}
+function onHostMsg(conn,m){
+  if(!G||!m||typeof m!=="object")return;
+  if(m.type==="join"){
+    if(G.players.some(p=>p.conn===conn))return;
+    let reason=null;
+    if(G.phase!=="lobby")reason="started";else if(G.players.length>=5)reason="full";
+    if(reason){safeSend(conn,{type:"reject",reason});setTimeout(()=>{try{conn.close();}catch(e){}},400);return;}
+    let name=cleanName(m.name)||"Jugador";
+    const used=new Set(G.players.map(p=>p.name.toLowerCase()));
+    if(used.has(name.toLowerCase())){let k=2;while(used.has((name+" "+k).toLowerCase()))k++;name=name+" "+k;}
+    G.players.push(lobbyPlayer(name,"human",conn));sync();
+    return;
+  }
+  if(m.type==="act"){
+    const seat=G.players.findIndex(p=>p.conn===conn);
+    if(seat>0)applyAct(seat,m);
+  }
+}
+function onGuestGone(conn){
+  if(!G)return;
+  const seat=G.players.findIndex(p=>p.conn===conn);if(seat<0)return;
+  const p=G.players[seat];p.conn=null;
+  if(G.phase==="lobby"){G.players.splice(seat,1);sync();return;}
+  if(p.kind==="bot")return;
+  p.kind="bot";
+  if(G.phase==="over"){sync();return;}
+  addLog("left",{pi:seat});
+  if(G.phase==="swap"){if(!p.ready){botSwap(p);p.ready=true;}checkAllReady()||sync();return;}
+  if(G.phase==="play"&&G.turn===seat&&!p.out)startTurn();else sync();
+}
+
+function joinRoom(code,name){
+  NET.role="guest";NET.leaving=false;NET.code=code;NET.status="joining";NET.error=null;V=null;UI.screen="room";
+  render();
+  if(typeof window.Peer!=="function"){guestFail("noLib");return;}
+  let peer;
+  try{peer=new window.Peer({debug:0});}catch(e){guestFail("noLib");return;}
+  NET.peer=peer;
+  clearTimeout(NET.joinTimer);
+  NET.joinTimer=setTimeout(()=>{if(NET.peer===peer&&!V)guestFail("notFound");},15000);
+  peer.on("open",()=>{
+    if(NET.peer!==peer)return;
+    const conn=peer.connect(PREFIX+code,{reliable:true,serialization:"json"});
+    NET.conn=conn;
+    conn.on("open",()=>safeSend(conn,{type:"join",name}));
+    conn.on("data",m=>onGuestMsg(m));
+    conn.on("close",()=>{if(NET.conn===conn&&!NET.leaving&&NET.status!=="error")guestFail(V?"hostLeft":"notFound");});
+    conn.on("error",()=>{if(NET.conn===conn&&!NET.leaving&&NET.status!=="error")guestFail("connLost");});
+  });
+  peer.on("error",err=>{
+    if(NET.peer!==peer||NET.leaving)return;
+    guestFail(err&&err.type==="peer-unavailable"?(V?"hostLeft":"notFound"):(V?"connLost":"notFound"));
+  });
+}
+function onGuestMsg(m){
+  if(!m||typeof m!=="object")return;
+  if(m.type==="state"&&m.view){
+    clearTimeout(NET.joinTimer);
+    V=m.view;NET.status="in";
+    pruneSelection();render();
+  }else if(m.type==="reject"){guestFail(m.reason==="full"?"full":"started");}
+}
+function guestFail(key){
+  clearTimeout(NET.joinTimer);
+  NET.status="error";NET.error=key;
+  const peer=NET.peer;NET.peer=null;NET.conn=null;
+  try{peer&&peer.destroy();}catch(e){}
+  render();
+}
+function leaveRoom(){
+  NET.leaving=true;gameToken++;clearTimeout(NET.joinTimer);
+  if(NET.role==="host"&&G)G.players.forEach(p=>{try{p.conn&&p.conn.close();}catch(e){}});
+  try{NET.peer&&NET.peer.destroy();}catch(e){}
+  Object.assign(NET,{role:null,peer:null,conn:null,code:null,status:"idle",error:null});
+  G=null;V=null;UI.screen="home";UI.selected=[];UI.swapSel=null;UI.msg=null;
+  try{history.replaceState(null,"",location.pathname);}catch(e){}
+  render();
+}
+
+/* Send one of my actions to whoever runs the game */
+function act(m){
+  if(NET.role==="host")applyAct(0,m);
+  else safeSend(NET.conn,Object.assign({type:"act"},m));
+}
+
+/* =========================================================
+   UI
+   ========================================================= */
+const params=new URLSearchParams(location.search);
+const UI={screen:"home",name:store.get("cdc-name")||"",code:cleanCode(params.get("sala")||""),msg:null,selected:[],swapSel:null,copied:false};
+const app=document.getElementById("app");
+
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function me(){return V&&V.players[V.mySeat];}
+function nameOf(i){return V.players[i]?V.players[i].name:"?";}
+function myCanAct(){const m=me();return V&&V.phase==="play"&&V.turn===V.mySeat&&m&&!m.out;}
+function mySource(){const m=me();if(!m)return null;return m.hand.length?"hand":m.up.length?"up":m.down?"down":null;}
+function pruneSelection(){
+  if(!myCanAct()){UI.selected=[];}
+  else{const src=mySource();const pool=src==="hand"?me().hand:src==="up"?me().up:[];const ids=new Set(pool.map(c=>c.id));UI.selected=UI.selected.filter(id=>ids.has(id));}
+  if(!V||V.phase!=="swap")UI.swapSel=null;
+}
+function logText(e){
+  const f=t().log[e.k];if(typeof f!=="function")return f||"";
+  const p=Object.assign({},e.p);
+  if(p.pi!==undefined){p.who=nameOf(p.pi);p.me=p.pi===V.mySeat;}
+  return f(p);
+}
+function cardHTML(c,o){
+  o=o||{};
+  const cls=["card"];if(o.small)cls.push("small");if(o.extra)cls.push(o.extra);
+  const tag=o.zone?"button":"div";
+  let attrs=o.zone?` type="button" data-a="card" data-zone="${o.zone}"`+(c?` data-id="${c.id}"`:"")+(o.idx!==undefined?` data-idx="${o.idx}"`:""):"";
+  if(o.style)attrs+=` style="${o.style}"`;
+  if(o.back){cls.push("back");return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="${lang==="es"?"Carta boca abajo":"Face-down card"}"></${tag}>`;}
+  if(c.r===JOKER){cls.push("joker");return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="Joker"><span class="jk">JOKER</span><span class="pip">★</span></${tag}>`;}
+  if(c.s==="h"||c.s==="d")cls.push("red");
+  const rl=rankLabel(c.r),sy=SYM[c.s];
+  return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="${rl} ${sy}"><span class="corner">${rl}<br>${sy}</span><span class="pip">${sy}</span></${tag}>`;
+}
+function slotsHTML(p,o){
+  o=o||{};const n=Math.max(3,p.down,p.up.length);let h=`<div class="slots${o.small?" small":""}">`;
+  for(let i=0;i<n;i++){
+    const hasD=i<p.down,u=p.up[i];
+    if(!hasD&&!u){h+=`<div class="slot empty"></div>`;continue;}
+    h+=`<div class="slot">`;
+    if(hasD)h+=cardHTML(null,{back:true,small:o.small,zone:o.downZone?"down":null,idx:o.downZone?i:undefined});
+    if(u)h+=cardHTML(u,{small:o.small,zone:o.upZone?"up":null,extra:"up"+(o.upClass?o.upClass(u):"")});
+    h+=`</div>`;
+  }
+  return h+`</div>`;
+}
+
+function render(){
+  const L=t();
+  document.documentElement.lang=L.htmlLang;
+  document.getElementById("btnRules").textContent=L.rules;
+  const hb=document.getElementById("btnHome");hb.textContent=L.home;hb.hidden=UI.screen==="home";
+  const lb=document.getElementById("btnLang");lb.textContent=L.langBtn;lb.setAttribute("aria-label",L.langAria);
+  document.getElementById("rulesBody").innerHTML=`<button class="tbtn rules-close" data-a="closeRules">${L.close}</button>`+L.rulesHTML;
+  document.getElementById("overlay").innerHTML="";
+
+  if(UI.screen==="home"){renderHome();return;}
+  if(NET.role==="guest"&&NET.status==="error"){
+    app.innerHTML=`<section class="center-card"><p>${esc(L.err[NET.error]||L.err.connLost)}</p><button class="big" data-a="leave">${L.backHome}</button></section>`;return;
+  }
+  if(!V){app.innerHTML=`<section class="center-card"><p>${L.joining}</p></section>`;return;}
+  if(V.phase==="lobby"){renderLobby();return;}
+  renderTable();
+}
+
+function renderHome(){
+  const L=t();
+  app.innerHTML=`<section class="home">
+    <p class="lead">${L.lead}</p>
+    <label class="field"><span>${L.yourName}</span><input id="inName" maxlength="16" autocomplete="nickname" placeholder="${esc(L.namePh)}" value="${esc(UI.name)}"></label>
+    <button class="big" data-a="create">${L.createRoom}</button>
+    <div class="or">${L.invited}</div>
+    <div class="joinrow field"><input id="inCode" maxlength="5" inputmode="text" autocapitalize="characters" aria-label="${esc(L.roomCode)}" placeholder="${esc(L.codePh)}" value="${esc(UI.code)}"><button class="ghost" data-a="join">${L.join}</button></div>
+    <p class="msg" role="alert">${UI.msg?esc(L[UI.msg]):""}</p>
+  </section>`;
+}
+
+function inviteLink(){return location.origin+location.pathname+"?sala="+V.code;}
+function renderLobby(){
+  const L=t();const isHost=NET.role==="host";
+  let top;
+  if(isHost){
+    if(V.net==="open"&&V.code){
+      top=`<div class="codebox"><small>${L.roomCode}</small><div class="code">${esc(V.code)}</div><p>${L.shareHint}</p>
+        <div class="linkrow"><code>${esc(inviteLink())}</code><button class="tbtn" data-a="copy">${UI.copied?L.copied:L.copyLink}</button></div></div>`;
+    }else if(V.net==="opening"){top=`<div class="codebox"><p style="margin:6px 0">${L.opening}</p></div>`;}
+    else{top=`<div class="codebox"><p>${L.offline}</p><button class="tbtn" data-a="retryNet">${L.retry}</button></div>`;}
+  }else{
+    top=`<div class="codebox"><small>${esc(L.roomOf(nameOf(0)))}</small><div class="code">${esc(V.code||"")}</div><p class="waitnote">${esc(L.waitingHost(nameOf(0)))}</p></div>`;
+  }
+  let seats=`<h3 style="margin:0 0 8px;font-size:15px;color:var(--muted)">${L.seats(V.players.length)}</h3><ul class="seats">`;
+  V.players.forEach((p,i)=>{
+    const tags=[];if(i===0)tags.push(L.tagHost);if(p.bot)tags.push(L.tagBot);if(i===V.mySeat)tags.push(L.tagYou);
+    seats+=`<li><span class="grow">${esc(p.name)}</span>${tags.map(x=>`<span class="tag">${esc(x)}</span>`).join("")}${isHost&&p.bot?`<button class="mini" data-a="removeSeat" data-i="${i}">${L.remove}</button>`:""}</li>`;
+  });
+  for(let k=V.players.length;k<5;k++)seats+=`<li class="emptyseat">${L.emptySeat}</li>`;
+  seats+=`</ul>`;
+  let actions="";
+  if(isHost){
+    actions=`<div class="actions"><button class="ghost" data-a="addBot" ${V.players.length>=5?"disabled":""}>${L.addBot}</button><button class="big" data-a="deal" ${V.players.length<2?"disabled":""}>${L.deal}</button></div>`;
+    if(V.players.length<2)actions+=`<p class="netnote">${L.needTwo}</p>`;
+  }
+  app.innerHTML=`<section class="lobby">${top}${seats}${actions}</section>`;
+}
+
+function renderTable(){
+  const L=t();const my=V.mySeat,m=me(),n=V.players.length;
+  const order=[];for(let k=1;k<n;k++)order.push((my+k)%n);
+
+  let opps=`<section class="opps">`;
+  for(const i of order){
+    const p=V.players[i];
+    const turn=V.phase==="play"&&V.turn===i;
+    const placeIdx=V.finish.indexOf(i);
+    const tag=placeIdx>=0?L.place(placeIdx+1):(V.loser===i?"💩":(V.phase==="swap"&&p.ready&&!p.bot?L.tagReady:L.inHand(p.handCount)));
+    opps+=`<article class="opp${turn?" is-turn":""}${p.out?" is-out":""}"><header><b>${esc(p.name)}${p.bot?' <span class="bot">🤖</span>':""}</b><span>${esc(tag)}</span></header>
+      <div class="opp-row">${slotsHTML(p,{small:true})}</div></article>`;
+  }
+  opps+=`</section>`;
+
+  const req=V.req;
+  const reqTxt=req.t==="any"?L.reqAny:req.t==="max"?L.reqMax:L.reqMin(rankLabel(req.v));
+  let pile=`<div class="pile">`;
+  if(!V.pileCount)pile+=`<div class="empty-pile">${L.pileEmpty}</div>`;
+  const top=V.pileTop;
+  top.forEach((c,i)=>{const rot=((c.id*37)%15)-7;const off=(i-(top.length-1))*6;
+    pile+=cardHTML(c,{style:`transform:translate(calc(-50% + ${off}px),-50%) rotate(${rot}deg)`});});
+  pile+=`</div>`;
+  const center=`<section class="center">
+    <div class="meta"><div>${V.pileCount?L.pileCount(V.pileCount):L.pileEmpty}</div><div>${L.burned(V.burned)}</div><div>${L.aside(V.aside)}</div><div>${L.dir(V.dir)}</div></div>
+    ${pile}
+    <div class="req"><small>${L.reqLabel}</small><span class="chip${req.t==="max"?" press":""}">${reqTxt}</span></div>
+  </section>`;
+
+  const src=mySource();const myTurn=myCanAct();
+  let status="";
+  if(V.phase==="swap")status=m.ready?L.waitReady:L.swapHint;
+  else if(V.phase==="play"){
+    if(m.out)status=L.youOut(V.finish.indexOf(my)+1);
+    else if(myTurn){
+      if(src==="down")status=L.yourTurnDown;
+      else{const pool=src==="hand"?m.hand:m.up;const any=pool.some(c=>canPlay(c,req));status=!any?L.noMove:src==="up"?L.yourTurnUp:L.yourTurn;}
+    }else status=L.waiting(nameOf(V.turn));
+  }
+  const log=`<ul class="log" aria-live="polite">${V.log.map(e=>`<li>${esc(logText(e))}</li>`).join("")}</ul>`;
+
+  const swapping=V.phase==="swap"&&!m.ready;
+  const handZone=swapping||(myTurn&&src==="hand");
+  let hand=`<div class="hand">`;
+  if(!m.hand.length)hand+=`<span class="none">${L.emptyHand}</span>`;
+  for(const c of m.hand){
+    let extra="";
+    if(swapping&&UI.swapSel&&UI.swapSel.id===c.id)extra="swapsel";
+    else if(myTurn&&src==="hand"){if(UI.selected.includes(c.id))extra="sel";else if(!canPlay(c,req))extra="nope";}
+    hand+=cardHTML(c,{zone:handZone?"hand":null,extra});
+  }
+  hand+=`</div>`;
+  const upClass=u=>{
+    if(swapping&&UI.swapSel&&UI.swapSel.id===u.id)return" swapsel";
+    if(myTurn&&src==="up"){if(UI.selected.includes(u.id))return" sel";if(!canPlay(u,req))return" nope";}
+    return "";
+  };
+  const tableCards=slotsHTML(m,{upZone:swapping||(myTurn&&src==="up"),downZone:myTurn&&src==="down",upClass});
+  let actions="";
+  if(V.phase==="swap"){if(!m.ready)actions=`<button class="big" data-a="ready">${L.ready}</button>`;}
+  else if(V.phase==="play"&&!m.out){
+    const pool=src==="hand"?m.hand:src==="up"?m.up:[];
+    const sel=pool.filter(c=>UI.selected.includes(c.id));
+    const canGo=myTurn&&sel.length&&canPlay(sel[0],req);
+    actions=`<button class="big" data-a="play" ${canGo?"":"disabled"}>${L.play}</button>
+      <button class="ghost" data-a="take" ${myTurn&&V.pileCount&&src!=="down"?"":"disabled"}>${L.take}</button>`;
+  }
+  const meHTML=`<section class="me${myTurn?" is-turn":""}">
+    <div class="me-grid">
+      <div class="zone"><h3>${L.tableCards}</h3>${tableCards}</div>
+      <div class="zone"><h3>${esc(m.name)} · ${L.hand}</h3>${hand}</div>
+    </div>
+    ${actions?`<div class="actions">${actions}</div>`:""}
+  </section>`;
+
+  app.innerHTML=opps+center+`<p class="status" role="status">${esc(status)}</p>`+log+meHTML;
+
+  if(V.phase==="over"){
+    const lost=V.loser===my;
+    const order2=V.finish.map(i=>`<li>${esc(nameOf(i))}</li>`).join("")+(V.loser!==null&&V.loser!==undefined?`<li class="loser">${esc(nameOf(V.loser))} 💩</li>`:"");
+    const btns=NET.role==="host"
+      ?`<button class="big" data-a="deal">${L.again}</button><button class="ghost" data-a="toLobby">${L.toLobby}</button>`
+      :`<p class="waitnote" style="width:100%">${L.waitHostNext}</p>`;
+    document.getElementById("overlay").innerHTML=`<div class="overlay"><div class="over" role="dialog" aria-modal="true">
+      <span class="poo-big" aria-hidden="true">💩</span>
+      <h2>${lost?L.overLose:L.overWin}</h2>
+      <p>${lost?L.overSubMe:esc(L.overSub(nameOf(V.loser)))}</p>
+      <ol>${order2}</ol>
+      <div class="actions" style="justify-content:center">${btns}</div>
+    </div></div>`;
+  }
+}
+
+/* Card taps */
+function onCardClick(zone,el){
+  const m=me();if(!m)return;
+  if(V.phase==="swap"){
+    if(m.ready||(zone!=="hand"&&zone!=="up"))return;
+    const id=+el.dataset.id;
+    if(UI.swapSel&&UI.swapSel.zone!==zone){
+      const h=UI.swapSel.zone==="hand"?UI.swapSel.id:id,u=UI.swapSel.zone==="up"?UI.swapSel.id:id;
+      UI.swapSel=null;act({a:"swap",h,u});render();
+    }else if(UI.swapSel&&UI.swapSel.id===id){UI.swapSel=null;render();}
+    else{UI.swapSel={zone,id};render();}
+    return;
+  }
+  if(!myCanAct())return;
+  const src=mySource();
+  if(src==="down"&&zone==="down"){act({a:"blind",idx:+el.dataset.idx});return;}
+  if(zone!==src)return;
+  const id=+el.dataset.id;const pool=src==="hand"?m.hand:m.up;const card=pool.find(c=>c.id===id);if(!card)return;
+  if(UI.selected.includes(id))UI.selected=UI.selected.filter(x=>x!==id);
+  else{const cur=pool.filter(c=>UI.selected.includes(c.id));if(cur.length&&cur[0].r!==card.r)UI.selected=[id];else UI.selected.push(id);}
+  render();
+}
+
+document.addEventListener("input",e=>{
+  if(e.target.id==="inName"){UI.name=e.target.value;}
+  if(e.target.id==="inCode"){const v=cleanCode(e.target.value);if(v!==e.target.value)e.target.value=v;UI.code=v;}
+});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  if(e.target.id==="inCode"){e.preventDefault();doJoin();}
+  else if(e.target.id==="inName"){e.preventDefault();UI.code?doJoin():doCreate();}
+});
+function doCreate(){
+  const name=cleanName(UI.name);if(!name){UI.msg="needName";render();focusSoon("inName");return;}
+  store.set("cdc-name",name);UI.msg=null;createRoom(name);
+}
+function doJoin(){
+  const name=cleanName(UI.name);if(!name){UI.msg="needName";render();focusSoon("inName");return;}
+  const code=cleanCode(UI.code);if(code.length!==5){UI.msg="needCode";render();focusSoon("inCode");return;}
+  store.set("cdc-name",name);UI.msg=null;joinRoom(code,name);
+}
+function focusSoon(id){const el=document.getElementById(id);if(el)el.focus();}
+
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-a]");if(!el||el.disabled)return;
+  const a=el.dataset.a;
+  switch(a){
+    case "lang":lang=lang==="es"?"en":"es";store.set("cdc-lang",lang);render();break;
+    case "rules":{const d=document.getElementById("rulesDlg");if(d.showModal)d.showModal();else d.setAttribute("open","");break;}
+    case "closeRules":{const d=document.getElementById("rulesDlg");if(d.close)d.close();else d.removeAttribute("open");break;}
+    case "home":{
+      const busy=(NET.role==="host"&&G&&G.players.some(p=>p.kind==="human"&&p.conn))||(NET.role==="guest"&&NET.status==="in");
+      if(busy&&!window.confirm(NET.role==="host"?t().hostLeaveConfirm:t().leaveConfirm))break;
+      leaveRoom();break;}
+    case "leave":leaveRoom();break;
+    case "create":doCreate();break;
+    case "join":doJoin();break;
+    case "copy":{
+      const link=inviteLink();
+      const done=()=>{UI.copied=true;render();setTimeout(()=>{UI.copied=false;if(V&&V.phase==="lobby")render();},1800);};
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(link).then(done,()=>window.prompt("",link));
+      else window.prompt("",link);
+      break;}
+    case "retryNet":if(NET.role==="host"){openHostPeer();sync();}break;
+    case "addBot":if(NET.role==="host")addBot();break;
+    case "removeSeat":if(NET.role==="host")removeSeat(+el.dataset.i);break;
+    case "deal":if(NET.role==="host")deal();break;
+    case "toLobby":
+      if(NET.role==="host"){gameToken++;G.phase="lobby";G.players=G.players.filter((p,i)=>i===0||p.kind==="bot"||p.conn);G.players.forEach(p=>{p.hand=[];p.up=[];p.down=[];p.out=false;p.ready=false;});G.pile=[];G.log=[];G.finish=[];G.loser=null;sync();}
+      break;
+    case "ready":act({a:"ready"});break;
+    case "card":onCardClick(el.dataset.zone,el);break;
+    case "play":{
+      const m=me();const src=mySource();const pool=src==="hand"?m.hand:src==="up"?m.up:[];
+      const ids=pool.filter(c=>UI.selected.includes(c.id)).map(c=>c.id);
+      if(ids.length){UI.selected=[];act({a:"play",ids});}
+      break;}
+    case "take":act({a:"take"});break;
+  }
+});
+document.getElementById("rulesDlg").addEventListener("click",e=>{if(e.target.id==="rulesDlg")e.target.close();});
+window.addEventListener("beforeunload",()=>{try{NET.peer&&NET.peer.destroy();}catch(e){}});
+
+window.__cdc={get G(){return G;},get V(){return V;},get NET(){return NET;},botMove,applyAct};
+render();
+if(UI.code)setTimeout(()=>focusSoon(UI.name?"inCode":"inName"),0);
+})();
+
+</script>
+</body>
+</html>
