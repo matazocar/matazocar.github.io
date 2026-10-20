@@ -158,8 +158,31 @@ dialog::backdrop{background:rgba(20,12,26,.6)}
 .rules p,.rules li{max-width:68ch}
 .rules ul{padding-left:1.2em}
 .rules li{margin:4px 0}
-.rules .note{background:var(--accent-soft);border-radius:12px;padding:10px 14px;font-size:15px}
+.rules h2{font-size:28px}
+.rules h3{margin:18px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rules p,.rules ul{margin:0}
+.rules .goal{font-size:18px;margin-top:4px}
+.rules .rfx{list-style:none;padding:0;display:grid;gap:8px;margin-top:6px}
+.rules .rfx li{display:flex;align-items:center;gap:10px;margin:0}
+.rules .rfx .seal{width:28px;height:28px;flex:none}
+.rules .rfx b{margin-right:6px}
+.rules .small{margin-top:18px;font-size:13px;color:var(--muted)}
+@media (max-width:560px){.rules{font-size:15px;line-height:1.4;padding-top:18px}.rules h2{font-size:24px}.rules .goal{font-size:16px}.rules h3{margin-top:14px}.rules ul{padding-left:1.1em}.rules .rfx{gap:6px}}
+.opt{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 18px;cursor:pointer}
+.opt input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none;cursor:inherit}
+.opt b{display:block;font-size:16px}
+.opt small{color:var(--muted);font-size:14px}
+.opt.locked{cursor:default;opacity:.85}
 .rules-close{position:sticky;top:0;float:right}
+/* Deal animation */
+.deal-layer{position:fixed;inset:0;pointer-events:none;z-index:15;overflow:hidden}
+.deal-fly{position:fixed!important;left:0;top:0;margin:0;will-change:transform,opacity;box-shadow:0 6px 14px var(--shadow)}
+.deal-deck{position:fixed;width:clamp(56px,14vw,84px);aspect-ratio:5/7;transform:translate(-50%,-50%);transition:opacity .35s ease,transform .35s ease}
+.deal-deck .card{position:absolute;inset:0;--cw:clamp(56px,14vw,84px)}
+.deal-deck.gone{opacity:0;transform:translate(-50%,-50%) scale(.85)}
+.predeal{visibility:hidden}
+.card.flipin{animation:flipin .2s ease-out}
+@keyframes flipin{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* Home + lobby */
@@ -195,6 +218,44 @@ dialog::backdrop{background:rgba(20,12,26,.6)}
 .center-card{max-width:440px;margin:10vh auto 0;text-align:center;background:var(--panel);border:1.5px solid var(--line);border-radius:22px;padding:26px 22px}
 .center-card p{font-size:18px;margin:0 0 18px}
 .opp header b .bot{font-weight:400;font-size:14px}
+/* Special-card cheat sheet */
+.fxbar{display:flex;gap:8px;overflow-x:auto;padding:6px 4px 10px;margin:0 -4px 4px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.fxbar::-webkit-scrollbar{display:none}
+.fx{--c:var(--accent);flex:none;scroll-snap-align:start;display:flex;align-items:center;gap:10px;
+  border:0;background:var(--panel);border-radius:14px;padding:6px 14px 6px 6px;cursor:pointer;text-align:left;line-height:1.1;
+  box-shadow:inset 0 0 0 1.5px var(--line),0 2px 0 var(--table-edge);transition:background .2s,box-shadow .2s,transform .12s}
+.fx:hover{box-shadow:inset 0 0 0 2px var(--c),0 2px 0 var(--table-edge)}
+.fx:active{transform:translateY(1px)}
+.fxtxt{display:flex;flex-direction:column;gap:2px}
+.fxtxt b{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.fxtxt small{font-size:12.5px;font-weight:600;color:var(--muted)}
+/* mini card with a sticker seal */
+.fxcard{position:relative;width:32px;height:44px;flex:none;border-radius:6px;background:var(--card);border:1px solid var(--card-line);
+  box-shadow:0 1.5px 0 var(--card-line);transform:rotate(-5deg);margin-right:6px}
+.fxcard .rk{position:absolute;top:3px;left:5px;font-weight:800;font-size:15px;line-height:1;color:var(--c);letter-spacing:-.04em}
+.fxcard .seal{position:absolute;right:-9px;bottom:-5px;width:24px;height:24px}
+.fx.hot{background:color-mix(in srgb,var(--c) 22%,var(--panel));box-shadow:inset 0 0 0 2px var(--c),0 2px 0 var(--c)}
+.fx.hot .fxtxt small{color:var(--ink)}
+.fx.hot .fxcard{animation:wiggle .6s ease-in-out 2}
+@keyframes wiggle{0%,100%{transform:rotate(-5deg)}30%{transform:rotate(7deg) scale(1.08)}60%{transform:rotate(-9deg)}}
+.fx[aria-expanded="true"]{box-shadow:inset 0 0 0 2.5px var(--c),0 2px 0 var(--c)}
+/* the seal itself (used on chips, the detail panel and real cards) */
+.seal{display:grid;place-items:center;border-radius:50%;background:var(--c);color:#fff;box-shadow:0 0 0 2px var(--card),0 1px 3px rgba(0,0,0,.25)}
+.seal svg{width:62%;height:62%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.seal svg .solid{fill:currentColor;stroke:none}
+.seal svg .hole{fill:var(--c);stroke:currentColor;stroke-width:1.8}
+.seal.jk{background:radial-gradient(circle at 35% 30%,#FFE58A,var(--c) 70%);color:#3A2600}
+.fxdetail{--c:var(--accent);display:flex;gap:12px;align-items:flex-start;background:color-mix(in srgb,var(--c) 12%,var(--panel));
+  border-left:5px solid var(--c);border-radius:12px;padding:12px 16px;margin:0 0 12px;font-size:15px;max-width:68ch}
+.fxdetail .seal{width:34px;height:34px;flex:none;margin-top:2px}
+.fxdetail b{display:block;font-size:17px;margin-bottom:2px}
+.fxdetail p{margin:0}
+@media (min-width:900px){.fxbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:820px;margin:0 auto 6px;overflow:visible;-webkit-mask-image:none;mask-image:none}.fxdetail{margin-left:auto;margin-right:auto}}
+.card .seal.badge{position:absolute;right:6%;bottom:5%;width:calc(var(--cw)*.32);height:calc(var(--cw)*.32);box-shadow:0 0 0 calc(var(--cw)*.03) var(--card)}
+.card .seal.badge svg{stroke-width:2.8}
+.card.small .seal.badge{width:calc(var(--cw)*.4);height:calc(var(--cw)*.4)}
+
 </style>
 
 </head>
@@ -234,7 +295,7 @@ es:{
   retry:"Reintentar",
   seats:n=>`Jugadores (${n} de 5)`, emptySeat:"Puesto libre",
   tagHost:"anfitrión", tagBot:"bot", tagYou:"tú", tagReady:"listo",
-  addBot:"Agregar bot", remove:"Sacar", deal:"Repartir",
+  addBot:"Agregar bot", optVol:"Se puede tomar el montón a propósito", optVolSub:"Aunque tengas una carta para jugar.", remove:"Sacar", deal:"Repartir",
   needTwo:"Se necesitan al menos 2 jugadores para repartir.",
   waitingHost:h=>`Esperando a que ${h} reparta…`, roomOf:h=>`Sala de ${h}`,
   joining:"Conectando con la sala…",
@@ -280,35 +341,39 @@ es:{
     loser:p=>p.me?"Quedaste como Cara de Caca. 💩":`${p.who} quedó como Cara de Caca. 💩`,
     left:p=>`${p.who} se desconectó. Un bot sigue jugando por ${p.who}.`
   },
-  rulesHTML:`
-<h2>Reglas del juego</h2>
-<p>Deshazte de tus cartas antes que los demás. El último en quedarse con cartas es la Cara de Caca de la partida.</p>
-<h3>Jugar con amigos</h3>
-<p>Quien crea la sala es el anfitrión: su navegador reparte y lleva la partida. Los demás entran con el código o el enlace. Si alguien se desconecta, un bot sigue jugando por esa persona. Si el anfitrión cierra la página, la partida se termina.</p>
-<h3>Reparto</h3>
-<p>De 2 a 5 jugadores, con una baraja de 54 cartas (52 más 2 Jokers). Cada jugador recibe 9 cartas: 3 boca abajo (nadie las ve, ni tú), 3 boca arriba (visibles para todos) y 3 en la mano. Antes de empezar puedes intercambiar cartas entre tu mano y tus boca arriba.</p>
-<h3>Orden de juego</h3>
-<p>Primero juegas las cartas de tu mano. Cuando se acaban, juegas las boca arriba. Cuando esas también se acaban, juegas las boca abajo, a ciegas.</p>
-<h3>Cómo jugar</h3>
-<p>En tu turno, juega una carta igual o mayor que la del montón. Puedes jugar varias del mismo valor a la vez. El orden va del 3 (la más baja) al As (la más alta).</p>
-<h3>Cartas especiales</h3>
+  fxLabel:"Cartas especiales: toca una para ver la regla",
+  fxName:{"2":"Comodín","7":"Baja presión","10":"Quema","J":"Invierte","jk":"Joker","four":"Cuatro iguales"},
+  fx:{
+    "2":["Resetea y repites","2, comodín:","Se juega sobre cualquier carta, resetea el montón y vuelves a jugar."],
+    "7":["El siguiente: 7 o menos","7, baja presión:","El siguiente jugador debe jugar un 7 o menos (o un 2 o un Joker)."],
+    "10":["Quema el montón","10, quema:","Quema el montón al instante y nadie puede tomarlo. Sigue la regla normal de valor, así que no va sobre un 7 ni sobre una figura."],
+    "J":["Invierte el sentido","J, invierte:","Cambia el sentido de la partida."],
+    "jk":["Va sobre todo y resetea","Joker:","La carta más poderosa. Se juega sobre cualquier cosa y resetea el montón. Después juega el siguiente."],
+    "four":["Se queman y repites","Cuatro iguales:","Si se juntan cuatro cartas del mismo valor entre tu jugada y el montón, se queman todas y vuelves a jugar."]
+  },
+  rulesHTML:o=>`
+<h2>Reglas rápidas</h2>
+<p class="goal">Quédate sin cartas. El último con cartas es la <b>Cara de Caca</b>.</p>
+<h3>Tu turno</h3>
 <ul>
-<li><b>2, comodín:</b> se juega sobre cualquier carta, resetea el montón y el turno sigue siendo tuyo.</li>
-<li><b>7, baja presión:</b> el siguiente jugador debe jugar un 7 o menos.</li>
-<li><b>10, quema:</b> quema el montón al instante. Nadie puede tomarlo.</li>
-<li><b>J, invierte:</b> invierte el sentido de la partida.</li>
-<li><b>Joker:</b> la carta más poderosa. Se juega sobre cualquier cosa y resetea el montón.</li>
-<li><b>Cuatro iguales:</b> si juntas cuatro cartas del mismo valor, entre tu jugada y el montón, se queman todas y el turno sigue siendo tuyo.</li>
+<li>Juega una carta <b>igual o mayor</b> que la del montón. Va del 3 (la más baja) al As.</li>
+<li>Puedes jugar varias del mismo valor juntas.</li>
+<li>${o.volTake?"Si no puedes jugar, o no quieres, te llevas el montón.":"Si no puedes jugar, te llevas el montón. (En esta sala no se puede tomar a propósito.)"}</li>
 </ul>
-<h3>Tomar el montón</h3>
-<p>Si no puedes o no quieres jugar una carta válida, tomas todo el montón y pasa a tu mano.</p>
-<h3>Cartas boca abajo</h3>
-<p>Al jugar a ciegas revelas la carta. Si es válida, sigue el juego. Si no, tomas el montón entero.</p>
-<h3>Ganar y perder</h3>
-<p>Los jugadores se van quedando sin cartas y ganan en ese orden. El último en quedarse con cartas pierde.</p>
-<h3>Lo que la página no aclara</h3>
-<p class="note">Así lo resolvimos aquí: no se roba del mazo (las cartas que sobran del reparto quedan fuera); después de un 10 o un Joker el turno pasa al siguiente; el 10 sigue la regla normal de valor, así que no se puede jugar sobre un 7 ni sobre una figura; quien empieza se elige al azar; tras tomar el montón, el turno pasa al siguiente.</p>
-<p>Basado en las reglas de caradecaca.cl.</p>`
+<h3>Especiales</h3>
+<ul class="rfx">
+<li>${seal("2")}<span><b>2</b> Va sobre todo. Resetea y juegas de nuevo.</span></li>
+<li>${seal("7")}<span><b>7</b> El siguiente juega 7 o menos.</span></li>
+<li>${seal("10")}<span><b>10</b> Quema el montón. No va sobre 7 ni figuras.</span></li>
+<li>${seal("J")}<span><b>J</b> Invierte el sentido.</span></li>
+<li>${seal("jk")}<span><b>Joker</b> Va sobre todo y resetea.</span></li>
+<li>${seal("four")}<span><b>4 iguales</b> Se queman y juegas de nuevo.</span></li>
+</ul>
+<h3>Orden</h3>
+<p>Mano → boca arriba → boca abajo, a ciegas. Si la carta a ciegas no sirve, te llevas el montón.</p>
+<h3>Al empezar</h3>
+<p>Cada uno recibe 3 cartas boca abajo, 3 boca arriba y 3 en la mano. Puedes cambiar las de tu mano por las boca arriba.</p>
+<p class="small">En línea, el navegador del anfitrión lleva la partida. Si alguien se desconecta, sigue un bot. Basado en caradecaca.cl.</p>`
 },
 en:{
   htmlLang:"en", langBtn:"Español", langAria:"Switch to Spanish",
@@ -325,7 +390,7 @@ en:{
   retry:"Try again",
   seats:n=>`Players (${n} of 5)`, emptySeat:"Open seat",
   tagHost:"host", tagBot:"bot", tagYou:"you", tagReady:"ready",
-  addBot:"Add bot", remove:"Remove", deal:"Deal",
+  addBot:"Add bot", optVol:"Players may take the pile on purpose", optVolSub:"Even when they have a card they could play.", remove:"Remove", deal:"Deal",
   needTwo:"You need at least 2 players to deal.",
   waitingHost:h=>`Waiting for ${h} to deal…`, roomOf:h=>`${h}’s room`,
   joining:"Connecting to the room…",
@@ -371,35 +436,39 @@ en:{
     loser:p=>p.me?"You’re the Cara de Caca. 💩":`${p.who} is the Cara de Caca. 💩`,
     left:p=>`${p.who} disconnected. A bot keeps playing for them.`
   },
-  rulesHTML:`
-<h2>How to play</h2>
-<p>Get rid of your cards before everyone else. The last player still holding cards is the Cara de Caca (poop face) of the game.</p>
-<h3>Playing with friends</h3>
-<p>Whoever creates the room is the host: their browser deals and runs the game. Everyone else joins with the code or the link. If someone disconnects, a bot keeps playing for them. If the host closes the page, the game ends.</p>
-<h3>Deal</h3>
-<p>2 to 5 players, with a 54-card deck (52 plus 2 Jokers). Each player gets 9 cards: 3 face down (nobody sees them, not even you), 3 face up (visible to everyone) and 3 in hand. Before starting, you can swap cards between your hand and your face-up cards.</p>
-<h3>Order of play</h3>
-<p>First you play the cards in your hand. When they run out, you play your face-up cards. When those run out too, you play your face-down cards, blind.</p>
+  fxLabel:"Special cards: tap one to see the rule",
+  fxName:{"2":"Wild","7":"Low pressure","10":"Burn","J":"Reverse","jk":"Joker","four":"Four of a kind"},
+  fx:{
+    "2":["Reset, play again","2, wild:","Plays on any card, resets the pile, and you play again."],
+    "7":["Next: 7 or lower","7, low pressure:","The next player must play a 7 or lower (or a 2 or a Joker)."],
+    "10":["Burns the pile","10, burn:","Burns the pile instantly and nobody can take it. It follows the normal value rule, so it can’t go on a 7 or a face card."],
+    "J":["Reverses direction","J, reverse:","Reverses the direction of play."],
+    "jk":["Beats all, resets","Joker:","The most powerful card. Plays on anything and resets the pile. Then the next player goes."],
+    "four":["Burn, play again","Four of a kind:","If four cards of the same value come together between your play and the pile, they all burn and you play again."]
+  },
+  rulesHTML:o=>`
+<h2>Quick rules</h2>
+<p class="goal">Get rid of your cards. The last one holding cards is the <b>Cara de Caca</b>.</p>
 <h3>Your turn</h3>
-<p>Play a card equal to or higher than the top of the pile. You can play several cards of the same value at once. Cards rank from 3 (lowest) to Ace (highest).</p>
-<h3>Special cards</h3>
 <ul>
-<li><b>2, wild:</b> plays on any card, resets the pile, and it’s still your turn.</li>
-<li><b>7, low pressure:</b> the next player must play a 7 or lower.</li>
-<li><b>10, burn:</b> burns the pile instantly. Nobody can take it.</li>
-<li><b>J, reverse:</b> reverses the direction of play.</li>
-<li><b>Joker:</b> the most powerful card. Plays on anything and resets the pile.</li>
-<li><b>Four of a kind:</b> if four cards of the same value come together, between your play and the pile, they all burn and it’s still your turn.</li>
+<li>Play a card <b>equal or higher</b> than the top of the pile. 3 is lowest, Ace is highest.</li>
+<li>You can play several of the same value together.</li>
+<li>${o.volTake?"If you can’t play, or don’t want to, you take the pile.":"If you can’t play, you take the pile. (This room doesn’t allow taking it on purpose.)"}</li>
 </ul>
-<h3>Taking the pile</h3>
-<p>If you can’t or don’t want to play a valid card, you take the whole pile into your hand.</p>
-<h3>Face-down cards</h3>
-<p>When you play blind, you reveal the card as you play it. If it’s valid, play goes on. If not, you take the whole pile.</p>
-<h3>Winning and losing</h3>
-<p>Players run out of cards and win in that order. The last one holding cards loses.</p>
-<h3>What the source doesn’t say</h3>
-<p class="note">Here’s how this version handles it: nobody draws from the deck (cards left over after the deal stay out); after a 10 or a Joker, the turn passes to the next player; the 10 follows the normal value rule, so it can’t go on a 7 or a face card; the first player is chosen at random; after taking the pile, the turn passes.</p>
-<p>Based on the rules at caradecaca.cl.</p>`
+<h3>Specials</h3>
+<ul class="rfx">
+<li>${seal("2")}<span><b>2</b> Goes on anything. Resets, and you play again.</span></li>
+<li>${seal("7")}<span><b>7</b> Next player plays 7 or lower.</span></li>
+<li>${seal("10")}<span><b>10</b> Burns the pile. Can’t go on a 7 or face card.</span></li>
+<li>${seal("J")}<span><b>J</b> Reverses direction.</span></li>
+<li>${seal("jk")}<span><b>Joker</b> Goes on anything and resets.</span></li>
+<li>${seal("four")}<span><b>4 of a kind</b> They burn, and you play again.</span></li>
+</ul>
+<h3>Order</h3>
+<p>Hand → face up → face down, blind. If the blind card doesn’t work, you take the pile.</p>
+<h3>Setup</h3>
+<p>Everyone gets 3 cards face down, 3 face up and 3 in hand. You can swap hand cards with your face-up cards.</p>
+<p class="small">Online, the host’s browser runs the game. If someone disconnects, a bot takes over. Based on caradecaca.cl.</p>`
 }};
 
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
@@ -444,7 +513,7 @@ let gameToken=0;
 
 function lobbyPlayer(name,kind,conn){return{name,kind,conn:conn||null,hand:[],up:[],down:[],out:false,ready:false};}
 function newLobby(hostName){
-  G={phase:"lobby",players:[lobbyPlayer(hostName,"human",null)],pile:[],burned:0,aside:0,dir:1,turn:0,finish:[],loser:null,log:[]};
+  G={phase:"lobby",opts:{volTake:store.get("cdc-voltake")!=="0"},players:[lobbyPlayer(hostName,"human",null)],pile:[],burned:0,aside:0,dir:1,turn:0,finish:[],loser:null,log:[]};
 }
 function addBot(){
   if(G.phase!=="lobby"||G.players.length>=5)return;
@@ -469,7 +538,7 @@ function deal(){
     p.down=deck.splice(0,3);p.up=deck.splice(0,3);p.hand=deck.splice(0,3).sort(bySort);p.out=false;
     p.ready=p.kind==="bot";if(p.kind==="bot")botSwap(p);
   }
-  G.aside=deck.length;
+  G.aside=deck.length;G.dealId=(G.dealId||0)+1;
   checkAllReady()||sync();
 }
 function checkAllReady(){
@@ -569,6 +638,7 @@ function applyAct(seat,m){
     removeCards(p,src,cards);doPlay(seat,cards,false);
   }else if(m.a==="take"){
     if(!canAct(seat)||!G.pile.length||source(p)==="down")return;
+    if(!G.opts.volTake&&p[source(p)].some(c=>canPlay(c,reqOf(G.pile))))return;
     takePile(seat);
   }else if(m.a==="blind"){
     if(!canAct(seat)||source(p)!=="down")return;
@@ -580,10 +650,10 @@ function applyAct(seat,m){
 /* What one seat is allowed to see */
 function viewFor(seat){
   return{
-    phase:G.phase,mySeat:seat,code:NET.code,net:NET.status,
+    phase:G.phase,mySeat:seat,code:NET.code,net:NET.status,opts:G.opts,
     players:G.players.map((p,i)=>({name:p.name,bot:p.kind==="bot",hand:i===seat?p.hand:null,handCount:p.hand.length,up:p.up,down:p.down.length,out:p.out,ready:p.ready})),
     pileTop:G.pile.slice(-3),pileCount:G.pile.length,req:reqOf(G.pile),
-    burned:G.burned,aside:G.aside,dir:G.dir,turn:G.turn,finish:G.finish,loser:G.loser,log:G.log
+    dealId:G.dealId||0,burned:G.burned,aside:G.aside,dir:G.dir,turn:G.turn,finish:G.finish,loser:G.loser,log:G.log
   };
 }
 
@@ -704,6 +774,7 @@ function guestFail(key){
   render();
 }
 function leaveRoom(){
+  stopDeal();
   NET.leaving=true;gameToken++;clearTimeout(NET.joinTimer);
   if(NET.role==="host"&&G)G.players.forEach(p=>{try{p.conn&&p.conn.close();}catch(e){}});
   try{NET.peer&&NET.peer.destroy();}catch(e){}
@@ -723,7 +794,7 @@ function act(m){
    UI
    ========================================================= */
 const params=new URLSearchParams(location.search);
-const UI={screen:"home",name:store.get("cdc-name")||"",code:cleanCode(params.get("sala")||""),msg:null,selected:[],swapSel:null,copied:false};
+const UI={screen:"home",name:store.get("cdc-name")||"",code:cleanCode(params.get("sala")||""),msg:null,selected:[],swapSel:null,copied:false,tip:null};
 const app=document.getElementById("app");
 
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
@@ -748,11 +819,120 @@ function cardHTML(c,o){
   const tag=o.zone?"button":"div";
   let attrs=o.zone?` type="button" data-a="card" data-zone="${o.zone}"`+(c?` data-id="${c.id}"`:"")+(o.idx!==undefined?` data-idx="${o.idx}"`:""):"";
   if(o.style)attrs+=` style="${o.style}"`;
+  if(o.deal)attrs+=` data-deal="${o.deal}"`;
   if(o.back){cls.push("back");return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="${lang==="es"?"Carta boca abajo":"Face-down card"}"></${tag}>`;}
   if(c.r===JOKER){cls.push("joker");return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="Joker"><span class="jk">JOKER</span><span class="pip">★</span></${tag}>`;}
   if(c.s==="h"||c.s==="d")cls.push("red");
   const rl=rankLabel(c.r),sy=SYM[c.s];
-  return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="${rl} ${sy}"><span class="corner">${rl}<br>${sy}</span><span class="pip">${sy}</span></${tag}>`;
+  const badge=BADGE[c.r]?seal(BADGE[c.r],"badge"):"";
+  return `<${tag} class="${cls.join(" ")}"${attrs} aria-label="${rl} ${sy}"><span class="corner">${rl}<br>${sy}</span><span class="pip">${sy}</span>${badge}</${tag}>`;
+}
+/* Special-card identity: one color + one icon each */
+const FX_COLOR={"2":"#14998A","7":"#2F6FDB","10":"#E2531F","J":"#8A4FD6","jk":"#E3A41A","four":"#D2367A"};
+const FX_ICON={
+  "2":'<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.8 3.8v4.6h-4.6"/>',
+  "7":'<path d="M12 3.5v11"/><path d="M6.5 9.5 12 15l5.5-5.5"/><path d="M5 20h14"/>',
+  "10":'<path class="solid" d="M12 1.8c1 3.6 6.2 6 6.2 12a6.2 6.2 0 0 1-12.4 0c0-3 1.6-4.8 3.3-6.3.1 2 1 3.3 2.4 3.8-.6-3.4-.3-6.4.5-9.5z"/>',
+  "J":'<path d="M4 8h14"/><path d="M14.5 4 18.5 8l-4 4"/><path d="M20 16H6"/><path d="M9.5 12l-4 4 4 4"/>',
+  "jk":'<path class="solid" d="M12 2.6l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z"/>',
+  "four":'<text x="12" y="19" text-anchor="middle" font-size="20" font-weight="800" fill="currentColor" stroke="none" font-family="system-ui,sans-serif">4</text>'
+};
+const FX_RANK={"2":"2","7":"7","10":"10","J":"J","jk":"★","four":"4×"};
+const BADGE={2:"2",7:"7",10:"10",11:"J"};
+const FX_ORDER=["2","7","10","J","jk","four"];
+function seal(k,cls){
+  return `<span class="seal${k==="jk"?" jk":""}${cls?" "+cls:""}" style="--c:${FX_COLOR[k]}" aria-hidden="true"><svg viewBox="0 0 24 24">${FX_ICON[k]}</svg></span>`;
+}
+const FX_FROM_LOG={reset:"2",pressure:"7",burn10:"10",reverse:"J",joker:"jk",burn4:"four"};
+/* Which specials just happened (or are still in force) */
+function hotFx(){
+  const hot=new Set();
+  for(const e of V.log){
+    if(e.k==="played"||e.k==="took"||e.k==="blindFail"||e.k==="start")break;
+    if(FX_FROM_LOG[e.k])hot.add(FX_FROM_LOG[e.k]);
+  }
+  if(V.req&&V.req.t==="max")hot.add("7");
+  return hot;
+}
+function fxBarHTML(){
+  const L=t();const hot=V.phase==="play"?hotFx():new Set();
+  let h=`<div class="fxbar" role="group" aria-label="${esc(L.fxLabel)}">`;
+  for(const k of FX_ORDER){
+    h+=`<button type="button" class="fx${hot.has(k)?" hot":""}" style="--c:${FX_COLOR[k]}" data-a="fx" data-k="${k}" aria-expanded="${UI.tip===k}" title="${esc(L.fx[k][2])}">`+
+       `<span class="fxcard" aria-hidden="true"><span class="rk">${FX_RANK[k]}</span>${seal(k)}</span>`+
+       `<span class="fxtxt"><b>${esc(L.fxName[k])}</b><small>${esc(L.fx[k][0])}</small></span></button>`;
+  }
+  h+=`</div>`;
+  if(UI.tip&&L.fx[UI.tip])h+=`<div class="fxdetail" style="--c:${FX_COLOR[UI.tip]}">${seal(UI.tip)}<p><b>${esc(L.fxName[UI.tip])}</b>${esc(L.fx[UI.tip][2])}</p></div>`;
+  return h;
+}
+/* ---------- Deal animation ----------
+   Cards are dealt round-robin like at a real table, starting left of the
+   host: 3 rounds face down, 3 face up, then 3 into each hand. */
+let dealLayer=null,dealTimer=null;
+function dealPlan(){
+  const n=V.players.length,my=V.mySeat,order=[],plan=[];
+  for(let k=1;k<=n;k++)order.push(k%n);
+  for(let round=0;round<9;round++){
+    const zone=round<3?"d":round<6?"u":"h",i=round%3;
+    for(const st of order){
+      if(zone==="h"&&st!==my)plan.push({key:`s${st}-h`,kind:"count"});
+      else plan.push({key:`s${st}-${zone}${i}`,kind:zone==="d"?"back":"face"});
+    }
+  }
+  return plan;
+}
+function stopDeal(){
+  clearTimeout(dealTimer);
+  if(dealLayer){dealLayer.remove();dealLayer=null;}
+  UI.dealing=false;
+  document.querySelectorAll(".predeal").forEach(el=>el.classList.remove("predeal"));
+}
+function runDeal(){
+  if(!UI.dealing)return;
+  const pileEl=app.querySelector(".pile");if(!pileEl){stopDeal();return;}
+  const pr=pileEl.getBoundingClientRect();
+  const cx=pr.left+pr.width/2,cy=pr.top+pr.height/2;
+  dealLayer=document.createElement("div");dealLayer.className="deal-layer";dealLayer.setAttribute("aria-hidden","true");
+  const deck=document.createElement("div");deck.className="deal-deck";deck.style.left=cx+"px";deck.style.top=cy+"px";
+  deck.innerHTML=[0,1,2].map(k=>`<div class="card back" style="transform:translate(${-k*2}px,${-k*2}px)"></div>`).join("");
+  dealLayer.appendChild(deck);document.body.appendChild(dealLayer);
+  const layer=dealLayer;
+  const anySmall=app.querySelector(".opp .card");const smallW=anySmall?anySmall.getBoundingClientRect().width:36;
+  const plan=dealPlan();
+  const STEP=Math.max(40,Math.min(85,1900/plan.length)),FLY=480;
+  plan.forEach((st,j)=>{
+    const target=app.querySelector(`[data-deal="${st.key}"]`);
+    if(!target){UI.landed.add(st.key);return;}
+    const tr=target.getBoundingClientRect();
+    const w=st.kind==="count"?smallW:tr.width,h=w*1.4;
+    const fl=document.createElement("div");fl.className="card back deal-fly";fl.style.width=w+"px";fl.style.height=h+"px";
+    layer.appendChild(fl);
+    const sx=cx-w/2,sy=cy-h/2;
+    const spin=(j%2?1:-1)*(8+(j*7)%14);
+    const start=`translate(${sx}px,${sy}px) rotate(${spin}deg) scale(.9)`;
+    let frames;
+    if(st.kind==="count"){
+      const tx=tr.left+tr.width/2-w/2,ty=tr.top+tr.height/2-h/2;
+      frames=[{transform:start,opacity:1},{transform:`translate(${tx}px,${ty}px) rotate(0deg) scale(.35)`,opacity:0}];
+    }else{
+      const end=`translate(${tr.left}px,${tr.top}px) rotate(0deg)`;
+      frames=st.kind==="back"
+        ?[{transform:start},{transform:end+" scale(1)"}]
+        :[{transform:start,offset:0},{transform:end+" scaleX(1)",offset:.8},{transform:end+" scaleX(0)",offset:1}];
+    }
+    const anim=fl.animate(frames,{duration:FLY+(st.kind==="face"?120:0),delay:j*STEP,easing:"cubic-bezier(.22,.8,.3,1)",fill:"both"});
+    anim.onfinish=()=>{
+      if(layer!==dealLayer)return;
+      UI.landed.add(st.key);
+      const el=app.querySelector(`[data-deal="${st.key}"]`);
+      if(el){el.classList.remove("predeal");if(st.kind==="face"){el.classList.remove("flipin");void el.offsetWidth;el.classList.add("flipin");}}
+      fl.remove();
+    };
+  });
+  const totalMs=(plan.length-1)*STEP+FLY+160;
+  setTimeout(()=>{if(layer===dealLayer)deck.classList.add("gone");},Math.max(0,totalMs-420));
+  dealTimer=setTimeout(()=>{if(layer===dealLayer)stopDeal();},totalMs+80);
 }
 function slotsHTML(p,o){
   o=o||{};const n=Math.max(3,p.down,p.up.length);let h=`<div class="slots${o.small?" small":""}">`;
@@ -760,8 +940,8 @@ function slotsHTML(p,o){
     const hasD=i<p.down,u=p.up[i];
     if(!hasD&&!u){h+=`<div class="slot empty"></div>`;continue;}
     h+=`<div class="slot">`;
-    if(hasD)h+=cardHTML(null,{back:true,small:o.small,zone:o.downZone?"down":null,idx:o.downZone?i:undefined});
-    if(u)h+=cardHTML(u,{small:o.small,zone:o.upZone?"up":null,extra:"up"+(o.upClass?o.upClass(u):"")});
+    if(hasD)h+=cardHTML(null,{back:true,small:o.small,zone:o.downZone?"down":null,idx:o.downZone?i:undefined,deal:`s${o.seat}-d${i}`});
+    if(u)h+=cardHTML(u,{small:o.small,zone:o.upZone?"up":null,extra:"up"+(o.upClass?o.upClass(u):""),deal:`s${o.seat}-u${i}`});
     h+=`</div>`;
   }
   return h+`</div>`;
@@ -773,7 +953,7 @@ function render(){
   document.getElementById("btnRules").textContent=L.rules;
   const hb=document.getElementById("btnHome");hb.textContent=L.home;hb.hidden=UI.screen==="home";
   const lb=document.getElementById("btnLang");lb.textContent=L.langBtn;lb.setAttribute("aria-label",L.langAria);
-  document.getElementById("rulesBody").innerHTML=`<button class="tbtn rules-close" data-a="closeRules">${L.close}</button>`+L.rulesHTML;
+  document.getElementById("rulesBody").innerHTML=`<button class="tbtn rules-close" data-a="closeRules">${L.close}</button>`+L.rulesHTML((V&&V.opts)||{volTake:true});
   document.getElementById("overlay").innerHTML="";
 
   if(UI.screen==="home"){renderHome();return;}
@@ -817,6 +997,8 @@ function renderLobby(){
   });
   for(let k=V.players.length;k<5;k++)seats+=`<li class="emptyseat">${L.emptySeat}</li>`;
   seats+=`</ul>`;
+  const vol=V.opts?V.opts.volTake:true;
+  seats+=`<label class="opt${isHost?"":" locked"}"><input type="checkbox" id="optVol" ${vol?"checked":""} ${isHost?"":"disabled"}><span><b>${L.optVol}</b><small>${L.optVolSub}</small></span></label>`;
   let actions="";
   if(isHost){
     actions=`<div class="actions"><button class="ghost" data-a="addBot" ${V.players.length>=5?"disabled":""}>${L.addBot}</button><button class="big" data-a="deal" ${V.players.length<2?"disabled":""}>${L.deal}</button></div>`;
@@ -835,8 +1017,8 @@ function renderTable(){
     const turn=V.phase==="play"&&V.turn===i;
     const placeIdx=V.finish.indexOf(i);
     const tag=placeIdx>=0?L.place(placeIdx+1):(V.loser===i?"💩":(V.phase==="swap"&&p.ready&&!p.bot?L.tagReady:L.inHand(p.handCount)));
-    opps+=`<article class="opp${turn?" is-turn":""}${p.out?" is-out":""}"><header><b>${esc(p.name)}${p.bot?' <span class="bot">🤖</span>':""}</b><span>${esc(tag)}</span></header>
-      <div class="opp-row">${slotsHTML(p,{small:true})}</div></article>`;
+    opps+=`<article class="opp${turn?" is-turn":""}${p.out?" is-out":""}"><header><b>${esc(p.name)}${p.bot?' <span class="bot">🤖</span>':""}</b><span data-deal="s${i}-h">${esc(tag)}</span></header>
+      <div class="opp-row">${slotsHTML(p,{small:true,seat:i})}</div></article>`;
   }
   opps+=`</section>`;
 
@@ -870,11 +1052,11 @@ function renderTable(){
   const handZone=swapping||(myTurn&&src==="hand");
   let hand=`<div class="hand">`;
   if(!m.hand.length)hand+=`<span class="none">${L.emptyHand}</span>`;
-  for(const c of m.hand){
+  for(const [hi,c] of m.hand.entries()){
     let extra="";
     if(swapping&&UI.swapSel&&UI.swapSel.id===c.id)extra="swapsel";
     else if(myTurn&&src==="hand"){if(UI.selected.includes(c.id))extra="sel";else if(!canPlay(c,req))extra="nope";}
-    hand+=cardHTML(c,{zone:handZone?"hand":null,extra});
+    hand+=cardHTML(c,{zone:handZone?"hand":null,extra,deal:`s${my}-h${hi}`});
   }
   hand+=`</div>`;
   const upClass=u=>{
@@ -882,7 +1064,7 @@ function renderTable(){
     if(myTurn&&src==="up"){if(UI.selected.includes(u.id))return" sel";if(!canPlay(u,req))return" nope";}
     return "";
   };
-  const tableCards=slotsHTML(m,{upZone:swapping||(myTurn&&src==="up"),downZone:myTurn&&src==="down",upClass});
+  const tableCards=slotsHTML(m,{seat:my,upZone:swapping||(myTurn&&src==="up"),downZone:myTurn&&src==="down",upClass});
   let actions="";
   if(V.phase==="swap"){if(!m.ready)actions=`<button class="big" data-a="ready">${L.ready}</button>`;}
   else if(V.phase==="play"&&!m.out){
@@ -890,7 +1072,7 @@ function renderTable(){
     const sel=pool.filter(c=>UI.selected.includes(c.id));
     const canGo=myTurn&&sel.length&&canPlay(sel[0],req);
     actions=`<button class="big" data-a="play" ${canGo?"":"disabled"}>${L.play}</button>
-      <button class="ghost" data-a="take" ${myTurn&&V.pileCount&&src!=="down"?"":"disabled"}>${L.take}</button>`;
+      <button class="ghost" data-a="take" ${myTurn&&V.pileCount&&src!=="down"&&(!V.opts||V.opts.volTake||!pool.some(c=>canPlay(c,req)))?"":"disabled"}>${L.take}</button>`;
   }
   const meHTML=`<section class="me${myTurn?" is-turn":""}">
     <div class="me-grid">
@@ -900,7 +1082,33 @@ function renderTable(){
     ${actions?`<div class="actions">${actions}</div>`:""}
   </section>`;
 
-  app.innerHTML=opps+center+`<p class="status" role="status">${esc(status)}</p>`+log+meHTML;
+  app.innerHTML=opps+center+fxBarHTML()+`<p class="status" role="status">${esc(status)}</p>`+log+meHTML;
+  /* The special-cards bar scrolls sideways on phones: keep its position across
+     re-renders, and jump to a rule the moment it's triggered */
+  const bar=app.querySelector(".fxbar");
+  if(bar){
+    const hot=[...bar.querySelectorAll(".fx.hot")].map(b=>b.dataset.k).join(",");
+    if(hot&&hot!==UI.lastHot&&bar.scrollWidth>bar.clientWidth){
+      const chip=bar.querySelector(".fx.hot");
+      UI.barScroll=Math.max(0,chip.offsetLeft-bar.offsetLeft-8);
+    }
+    UI.lastHot=hot;
+    bar.scrollLeft=UI.barScroll||0;
+    bar.addEventListener("scroll",()=>{UI.barScroll=bar.scrollLeft;},{passive:true});
+  }
+
+  /* A fresh deal: fly the cards out from the deck */
+  let startDeal=false;
+  if(V.phase==="swap"&&V.dealId&&V.dealId!==UI.dealtId){
+    UI.dealtId=V.dealId;stopDeal();
+    if(!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)&&typeof Element.prototype.animate==="function"){
+      UI.dealing=true;UI.landed=new Set();startDeal=true;
+    }
+  }
+  if(UI.dealing){
+    app.querySelectorAll("[data-deal]").forEach(el=>{if(!/-h$/.test(el.dataset.deal)&&!UI.landed.has(el.dataset.deal))el.classList.add("predeal");});
+  }
+  if(startDeal)requestAnimationFrame(runDeal);
 
   if(V.phase==="over"){
     const lost=V.loser===my;
@@ -944,6 +1152,11 @@ function onCardClick(zone,el){
 document.addEventListener("input",e=>{
   if(e.target.id==="inName"){UI.name=e.target.value;}
   if(e.target.id==="inCode"){const v=cleanCode(e.target.value);if(v!==e.target.value)e.target.value=v;UI.code=v;}
+});
+document.addEventListener("change",e=>{
+  if(e.target.id==="optVol"&&NET.role==="host"&&G&&G.phase==="lobby"){
+    G.opts.volTake=e.target.checked;store.set("cdc-voltake",e.target.checked?"1":"0");sync();
+  }
 });
 document.addEventListener("keydown",e=>{
   if(e.key!=="Enter")return;
@@ -996,12 +1209,13 @@ document.addEventListener("click",e=>{
       if(ids.length){UI.selected=[];act({a:"play",ids});}
       break;}
     case "take":act({a:"take"});break;
+    case "fx":UI.tip=UI.tip===el.dataset.k?null:el.dataset.k;render();break;
   }
 });
 document.getElementById("rulesDlg").addEventListener("click",e=>{if(e.target.id==="rulesDlg")e.target.close();});
 window.addEventListener("beforeunload",()=>{try{NET.peer&&NET.peer.destroy();}catch(e){}});
 
-window.__cdc={get G(){return G;},get V(){return V;},get NET(){return NET;},botMove,applyAct};
+window.__cdc={get G(){return G;},get V(){return V;},get NET(){return NET;},botMove,applyAct,sync};
 render();
 if(UI.code)setTimeout(()=>focusSoon(UI.name?"inCode":"inName"),0);
 })();
