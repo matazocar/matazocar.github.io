@@ -1,0 +1,15 @@
+Moin!;¡Hola! (saludo de Hamburgo);Moin! Wie geht's?
+Tschüss!;¡Chao!;Tschüss, bis morgen!
+Danke;gracias;Danke schön!
+Bitte;por favor / de nada;Einen Kaffee, bitte.
+Entschuldigung;disculpa / perdón;Entschuldigung, wo ist die U-Bahn?
+Ich hätte gern...;Quisiera...;Ich hätte gern ein Brötchen.
+Was kostet das?;¿Cuánto cuesta esto?;Was kostet das Brot?
+Zum Mitnehmen;para llevar;Einen Kaffee zum Mitnehmen, bitte.
+Ich verstehe nicht;No entiendo;Entschuldigung, ich verstehe nicht.
+Noch einmal, bitte;Otra vez, por favor;Noch einmal, bitte. Langsamer.
+Sprechen Sie Englisch?;¿Habla inglés?;Entschuldigung, sprechen Sie Englisch?
+Ich lerne Deutsch;Estoy aprendiendo alemán;Ich lerne Deutsch.
+Wie bitte?;¿Cómo? / ¿Perdón?;Wie bitte? Ich habe das nicht gehört.
+Ja / Nein;sí / no;Ja, gern. / Nein, danke.
+Wie heißt das auf Deutsch?;¿Cómo se dice esto en alemán?;Wie heißt das auf Deutsch?
