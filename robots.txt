@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://matazocar.github.io/sitemap.xml
