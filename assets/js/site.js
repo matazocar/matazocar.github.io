@@ -12,7 +12,7 @@ const SITE = {
   email: "matias.azocar.carvajal@uni-hamburg.de",
   // Leave any of these as "" to hide the button automatically.
   links: {
-    github: "https://github.com/matazocar",
+    github: "",
     arxiv: "https://arxiv.org/search/math?query=Matias+Azocar+Carvajal&searchtype=all&abstracts=show&order=-announced_date_first&size=50",
     googleScholar: "",
     orcid: "",
