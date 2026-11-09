@@ -17,7 +17,7 @@ function formatPublication(pub, i) {
   if (l.journal) links.push(`[<a href="${l.journal}" target="_blank" rel="noopener">journal</a>]`);
   if (l.code) links.push(`[<a href="${l.code}" target="_blank" rel="noopener">code</a>]`);
   if (pub.abstract) {
-    links.push(`[<button class="link-button" onclick="togglePub(${i})" aria-expanded="false" id="pub-toggle-${i}">abstract</button>]`);
+    links.push(`[<button class="link-button" onclick="togglePub(${i})" aria-expanded="false" id="pub-toggle-${i}">show abstract</button>]`);
   }
 
   return `      <article class="pub" id="pub-${i}">
@@ -47,7 +47,7 @@ function togglePub(i) {
   const btn = document.getElementById(`pub-toggle-${i}`);
   const expanded = el.classList.toggle("expanded");
   btn.setAttribute("aria-expanded", expanded ? "true" : "false");
-  btn.textContent = expanded ? "hide abstract" : "abstract";
+  btn.textContent = expanded ? "hide abstract" : "show abstract";
 }
 
 document.addEventListener("DOMContentLoaded", renderPublications);
