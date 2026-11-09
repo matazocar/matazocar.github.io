@@ -304,11 +304,9 @@ function build() {
     const contentHtml = mdToHtml(body);
  
     const tagsHtml = tags.length
-      ? `<span class="meta-sep">&middot;</span><span class="post-tags">${tags
-          .map((t) => `<span class="tag">${escapeHtml(t)}</span>`)
-          .join("")}</span>`
+      ? `<span class="post-tags">. Tags: ${tags.map((t) => escapeHtml(t)).join(", ")}</span>`
       : "";
- 
+
     const page = template
       .replace(/{{TITLE}}/g, () => escapeHtml(title))
       .replace(/{{SLUG}}/g, () => slug)
@@ -364,26 +362,23 @@ function buildPublications() {
   const code = fs.readFileSync(path.join(ROOT, "assets/js/publications.js"), "utf8");
   const pubs = vm.runInNewContext(code + "\n;PUBLICATIONS;");
  
+  // Same formatting as assets/js/render-publications.js: change both together.
   const items = pubs.map((pub, i) => {
-    const status = pub.status === "published" ? "published" : "preprint";
-    const label = status === "published" ? "Published" : "Preprint";
+    const titleEnd = /[.?!]$/.test(pub.title) ? "" : ".";
+    const where = pub.status === "published" && pub.venue ? pub.venue : "Preprint";
     const l = pub.links || {};
     const links = [];
-    if (l.pdf) links.push(`<a href="${l.pdf}" target="_blank" rel="noopener">PDF</a>`);
-    if (l.arxiv) links.push(`<a href="${l.arxiv}" target="_blank" rel="noopener">arXiv</a>`);
-    if (l.journal) links.push(`<a href="${l.journal}" target="_blank" rel="noopener">Journal version</a>`);
-    if (l.code) links.push(`<a href="${l.code}" target="_blank" rel="noopener">Code</a>`);
-    if (pub.abstract) links.push(`<button onclick="togglePub(${i})" aria-expanded="false" id="pub-toggle-${i}">Abstract</button>`);
+    if (l.pdf) links.push(`[<a href="${l.pdf}" target="_blank" rel="noopener">pdf</a>]`);
+    if (l.arxiv) links.push(`[<a href="${l.arxiv}" target="_blank" rel="noopener">arXiv</a>]`);
+    if (l.journal) links.push(`[<a href="${l.journal}" target="_blank" rel="noopener">journal</a>]`);
+    if (l.code) links.push(`[<a href="${l.code}" target="_blank" rel="noopener">code</a>]`);
+    if (pub.abstract) {
+      links.push(`[<button class="link-button" onclick="togglePub(${i})" aria-expanded="false" id="pub-toggle-${i}">abstract</button>]`);
+    }
     return `      <article class="pub" id="pub-${i}">
-        <div class="pub-head">
-          <span class="pub-label"><span class="tag ${status}">${label}</span></span>
-          <span class="pub-year">${pub.year}</span>
-        </div>
-        <h3>${pub.title}</h3>
-        <p class="authors">${pub.authors}</p>
-        ${pub.venue ? `<p class="venue">${pub.venue}</p>` : ""}
+        <p class="cite"><span class="authors">${pub.authors}${/\.$/.test(pub.authors) ? "" : "."}</span> <span class="title">${pub.title}${titleEnd}</span> ${where}, ${pub.year}.</p>
+        ${links.length ? `<p class="pub-links">${links.join(" ")}</p>` : ""}
         ${pub.abstract ? `<p class="abstract">${pub.abstract}</p>` : ""}
-        ${links.length ? `<div class="pub-links">${links.join("")}</div>` : ""}
       </article>`;
   }).join("\n");
  
