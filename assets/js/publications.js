@@ -10,7 +10,7 @@
      - year        (string/number, required)
      - status      ("preprint" | "published")
      - abstract    (string, optional) — short summary, shown when
-                    the reader clicks "Abstract"
+                    the reader clicks "show abstract"
      - links: {
          pdf    -> path to a PDF you've placed in assets/papers/
                    (or any external URL), or "" to hide the button

@@ -373,7 +373,7 @@ function buildPublications() {
     if (l.journal) links.push(`[<a href="${l.journal}" target="_blank" rel="noopener">journal</a>]`);
     if (l.code) links.push(`[<a href="${l.code}" target="_blank" rel="noopener">code</a>]`);
     if (pub.abstract) {
-      links.push(`[<button class="link-button" onclick="togglePub(${i})" aria-expanded="false" id="pub-toggle-${i}">abstract</button>]`);
+      links.push(`[<button class="link-button" onclick="togglePub(${i})" aria-expanded="false" id="pub-toggle-${i}">show abstract</button>]`);
     }
     return `      <article class="pub" id="pub-${i}">
         <p class="cite"><span class="authors">${pub.authors}${/\.$/.test(pub.authors) ? "" : "."}</span> <span class="title">${pub.title}${titleEnd}</span> ${where}, ${pub.year}.</p>

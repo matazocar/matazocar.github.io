@@ -180,7 +180,7 @@ h2 {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--rule);
 }
-h3 { font-size: 1.1rem; margin: 0 0 6px; }
+h3 { font-size: 1.1em; margin: 0 0 6px; }
 
 p { margin: 0 0 1em; }
 
@@ -251,7 +251,6 @@ code, pre { font-family: var(--font-code); }
 .pub-links {
   margin: 2px 0 0;
   text-indent: 0;
-  font-size: 0.95rem;
   color: var(--ink-soft);
 }
 
@@ -272,7 +271,6 @@ code, pre { font-family: var(--font-code); }
   display: none;
   text-indent: 0;
   margin: 8px 0 0;
-  font-size: 0.95rem;
   color: var(--ink-soft);
 }
 .pub.expanded .abstract { display: block; }
@@ -289,7 +287,6 @@ code, pre { font-family: var(--font-code); }
 .post-item:first-child { border-top: 1px solid var(--rule); }
 
 .post-item .post-date {
-  font-size: 0.92rem;
   color: var(--ink-soft);
 }
 
@@ -299,18 +296,16 @@ code, pre { font-family: var(--font-code); }
 .post-item p {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 0.97rem;
 }
 
 /* Single post page */
 .post-meta {
-  font-size: 0.95rem;
   color: var(--ink-soft);
   margin-bottom: 28px;
 }
 
 .post-body h2 { font-size: 1.3rem; margin-top: 36px; }
-.post-body h3 { font-size: 1.08rem; margin-top: 28px; }
+.post-body h3 { font-size: 1.08em; margin-top: 28px; }
 .post-body p { margin: 14px 0; }
 .post-body ul, .post-body ol { padding-left: 1.4em; }
 .post-body code {
@@ -342,7 +337,6 @@ mjx-container[display="true"] {
 }
 
 .back-link {
-  font-size: 0.95rem;
   display: inline-block;
   margin-bottom: 20px;
 }
@@ -354,14 +348,12 @@ mjx-container[display="true"] {
 
 .cv-entry {
   display: grid;
-  grid-template-columns: 110px 1fr;
+  grid-template-columns: 140px 1fr;
   gap: 16px;
   margin-bottom: 14px;
-  font-size: 0.97rem;
 }
 
 .cv-entry .when {
-  font-size: 0.92rem;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
   padding-top: 1px;
