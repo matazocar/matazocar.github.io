@@ -410,7 +410,7 @@ function lastModified(file) {
  
 function buildSitemap(posts) {
   const entries = [{ loc: "/", file: "index.html" }];
-  for (const f of ["aboutme.html","publications.html", "blog.html", "cv.html", "notes.html", "other.html"]) {
+  for (const f of ["aboutme.html","publications.html", "blog.html", "cv.html", "notes.html", "others.html"]) {
     entries.push({ loc: "/" + f, file: f });
   }
   for (const p of posts) {
