@@ -1,0 +1,7 @@
+{
+  "name": "flash-edit",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.80.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:latex", "onLanguage:tex"]
+}
