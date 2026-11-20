@@ -193,6 +193,8 @@ label.lbl{display:block;font-weight:600;margin:0 0 6px}
 .copybox{display:flex;gap:8px;margin-top:10px}
 .copybox input{font-size:.85rem}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+#naughty{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(110,110,110,.4);-webkit-backdrop-filter:grayscale(1) brightness(.85);backdrop-filter:grayscale(1) brightness(.85);overflow:hidden}
+#naughty b{color:#e00000;font:900 clamp(3rem,14vw,12rem)/1 Impact,'Arial Black',Figtree,sans-serif;letter-spacing:.03em;text-align:center;text-shadow:0 .04em 0 rgba(60,0,0,.6)}
 </style>
 </head>
 <body>
@@ -302,14 +304,23 @@ function die(f,cls=''){
   if(!f) return `<svg class="die q ${cls}" viewBox="0 0 100 100" role="img" aria-label="hidden face"><rect x="4" y="4" width="92" height="92" rx="20"/><text x="50" y="68" text-anchor="middle">?</text></svg>`;
   return `<svg class="die ${cls}" viewBox="0 0 100 100" role="img" aria-label="${f}"><rect x="4" y="4" width="92" height="92" rx="20"/>${PIPS[f].map(([x,y])=>`<circle class="${f===1?'ace':''}" cx="${x}" cy="${y}" r="${f===1?14:9}"/>`).join('')}</svg>`;
 }
-function roll(n){
-  const out=[];
-  while(out.length<n){ for(const x of rnd(n)){ if(x<4294967292 && out.length<n) out.push(1+(x%6)); } }
+/* Anti-cheat dice: a player commits to a secret first; the host then publishes a random seed;
+   dice = SHA-256(secret, seed). Nobody can pick or reroll dice, and every reveal is re-derived by the host. */
+async function sha(t){ return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t))); }
+async function hashCommit(code,gid,r,sec){
+  return [...(await sha(`c|${code}|${gid||''}|${r}|${sec}`)).slice(0,12)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function deriveDice(code,gid,r,sec,seed,n){
+  const out=[]; let ctr=0;
+  while(out.length<n){ for(const x of await sha(`d|${code}|${gid||''}|${r}|${sec}|${seed}|${ctr++}`)){ if(x<252 && out.length<n) out.push(1+(x%6)); } }
   return out.sort().join('');
 }
-async function hashDice(code,r,s,d){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${code}|${r}|${s}|${d}`));
-  return [...new Uint8Array(buf)].slice(0,12).map(b=>b.toString(16).padStart(2,'0')).join('');
+async function verifyDice(st,p,m){
+  const sec=String(m.s||'').slice(0,40);
+  if(await hashCommit(st.code,st.gid,st.round,sec)!==st.commits?.[p.id]) return null;
+  const d=await deriveDice(st.code,st.gid,st.round,sec,st.seed,p.n);
+  if(typeof m.d==='string' && m.d!==d) return null;
+  return d;
 }
 
 /* ---------- rules ---------- */
@@ -382,6 +393,7 @@ function reconnects(st,pm){
   for(const id in pm){
     if(id===S.pid) continue;
     const pr=pm[id];
+    if(isBanned(st,id,clean(pr.name)||'Player')){ if(flagNaughty(st,id,pr)) ch=true; continue; }
     if(stale(st,id,pr)) continue;
     let p=st.players.find(x=>x.id===id);
     if(!p){
@@ -405,11 +417,33 @@ function reconnects(st,pm){
   }
   return ch;
 }
+function isBanned(st,id,name){ const b=st.banned||{}; return !!(b[id] || b['n:'+String(name||'').toLowerCase()]); }
+function flagNaughty(st,id,pr){
+  if(id===S.pid || st.naughty?.[id]===pr.j) return false;
+  st.naughty={...(st.naughty||{}),[id]:pr.j}; return true;
+}
+function banCheaters(st,ids,pm){
+  st.naughty={...(st.naughty||{})}; st.kicked={...(st.kicked||{})}; st.banned={...(st.banned||{})};
+  const turnId=st.players[st.turn]?.id; let wasTurn=false;
+  for(const id of ids){
+    const p=st.players.find(x=>x.id===id); if(!p) continue;
+    const j=pm[id]?.j||0;
+    st.naughty[id]=j; st.kicked[id]=j; st.banned[id]=true; st.banned['n:'+p.name.toLowerCase()]=true;
+    if(id===turnId) wasTurn=true;
+    p.removedN=p.n; p.n=0; p.removed=true;
+    addLog(st,`${p.name} was caught cheating and removed.`);
+  }
+  if(st.players.filter(x=>x.n>0).length<=1){ st.phase='over'; st.winner=st.players.find(x=>x.n>0)?.id||null; addLog(st,`${pname(st,st.winner)} wins the game.`); return; }
+  st.next={starter: wasTurn ? nextAlive(st,st.turn) : st.turn, pal:!!st.pal}; startRound(st);
+  addLog(st,'The round restarts with fresh dice.');
+}
 async function hostStep(){
-  const startV = S.st.v, st = clone(S.st), pm = collect(); let ch=false;
+  const startV = S.st.v, st = clone(S.st), pm = collect(); let ch=false; const cheat=new Set();
+  for(const id in pm){ if(id!==S.pid && isBanned(st,id,clean(pm[id].name)||'Player') && flagNaughty(st,id,pm[id])) ch=true; }
   if(st.phase==='lobby'){
     for(const id in pm){
       const p=pm[id]; const ex=st.players.find(x=>x.id===id); const nm=clean(p.name)||'Player';
+      if(isBanned(st,id,nm)){ if(flagNaughty(st,id,p)) ch=true; continue; }
       if(stale(st,id,p)) continue;
       if(!ex){ st.players.push({id,name:nm,n:0}); ch=true; }
       else if(ex.name!==nm){ex.name=nm;ch=true}
@@ -420,9 +454,11 @@ async function hostStep(){
   } else {
     if(st.phase!=='over' && reconnects(st,pm)) ch=true;
     const alive = st.players.filter(p=>p.n>0);
+    if(['rolling','bidding','reveal'].includes(st.phase)) for(const p of alive) if(pm[p.id]?.cheat) cheat.add(p.id);
     if(st.phase==='rolling'){
       if(alive.every(p=>pm[p.id]?.commit?.r===rk(st))){
         st.commits={}; alive.forEach(p=>st.commits[p.id]=pm[p.id].commit.h);
+        st.seed=[...rnd(4)].map(x=>x.toString(36)).join('');
         st.phase='bidding'; ch=true;
       }
     }
@@ -436,18 +472,25 @@ async function hostStep(){
           }
         }
       }
+      if(st.seed) for(const p of alive){
+        const o=pm[p.id]?.open;
+        if(!o || o.r!==rk(st) || st.opened?.[p.id]) continue;
+        const v=await verifyDice(st,p,o);
+        if(v===null) cheat.add(p.id); else { st.opened={...(st.opened||{}),[p.id]:v}; ch=true; }
+      }
     }
-    if(st.phase==='reveal'){
-      const dice={}; let all=true; const bad=[];
+    if(st.phase==='reveal' && st.seed){
+      const dice={}; let all=true;
       for(const p of alive){
         const r=pm[p.id]?.reveal;
-        if(!r || r.r!==rk(st)){all=false;break}
-        const h=await hashDice(st.code,st.round,r.s,r.d);
-        if(h!==st.commits[p.id] || !/^[1-6]+$/.test(r.d) || r.d.length!==p.n) bad.push(p.name);
-        dice[p.id]=String(r.d).slice(0,6);
+        if(!r || r.r!==rk(st)){ all=false; continue; }
+        const v=await verifyDice(st,p,r);
+        if(v===null) cheat.add(p.id); else dice[p.id]=v;
       }
-      if(all){ if(bad.length) addLog(st,`⚠ ${bad.join(', ')}: dice didn’t match what was rolled.`); resolveRound(st,dice); ch=true; }
+      if(all && !cheat.size){ resolveRound(st,dice); ch=true; }
     }
+    if(cheat.has(S.pid)){ cheat.delete(S.pid); setTimeout(naughtyOut,0); }
+    if(cheat.size){ banCheaters(st,[...cheat],pm); ch=true; }
   }
   if(S.st.v!==startV){again=true;return}
   if(ch){publish(st); render()}
@@ -549,7 +592,7 @@ function resolveRound(st,dice){
   else st.phase='result';
 }
 function startRound(st){
-  st.round++; st.bid=null; st.call=null; st.commits={}; st.result=null; st.fs=false; st.claim=null; st.pasoUsed={}; st.picaoN=1; st.nBids=0; st.dir=1;
+  st.round++; st.seed=null; st.opened={}; st.bid=null; st.call=null; st.commits={}; st.result=null; st.fs=false; st.claim=null; st.pasoUsed={}; st.picaoN=1; st.nBids=0; st.dir=1;
   st.players.forEach(x=>{ if(x.back>0){ x.n=x.back; x.back=0; } });
   st.pal=!!st.next?.pal; st.turn=st.next?.starter ?? st.turn; st.next=null;
   if(st.players[st.turn]?.n<=0) st.turn=nextAlive(st,st.turn);
@@ -563,36 +606,102 @@ function startRound(st){
 function mutate(fn){ if(!S.host) return; const st=clone(S.st); fn(st); publish(st); render(); hostProcess(); }
 
 /* ---------- client side ---------- */
-let committing=false;
+let committing=false, deriving=false, naughtyOn=false;
 async function clientReact(){
   const st=S.st; if(!st||!S.named) return;
   const p=st.players.find(x=>x.id===S.pid); if(!p||p.n<=0) return;
   if(!['rolling','bidding','reveal'].includes(st.phase)) return;
-  if(!S.dice || S.dice.r!==st.round || S.dice.code!==st.code || S.dice.g!==st.gid){
+  if(!S.sec || S.sec.r!==st.round || S.sec.code!==st.code || S.sec.g!==st.gid){
     const k=`dudo-d-${st.code}-${st.gid}-${S.pid}-${st.round}`; const saved=store.get(k);
-    if(saved && saved.d.length===p.n) S.dice=saved;
+    if(saved && typeof saved.s==='string' && saved.r===st.round) S.sec=saved;
     else if(st.phase==='rolling'){
-      S.dice={code:st.code,g:st.gid,r:st.round,d:roll(p.n),s:rid()};
+      S.sec={code:st.code,g:st.gid,r:st.round,s:rid()};
       try{ for(let i=localStorage.length-1;i>=0;i--){ const kk=localStorage.key(i); if(kk && kk.startsWith('dudo-d-') && !kk.startsWith(`dudo-d-${st.code}-${st.gid}-`)) localStorage.removeItem(kk); } }catch(e){}
-      store.set(k,S.dice);
+      store.set(k,S.sec);
     }
     else return;
-    render();
+    S.dice=null; render();
+  }
+  const sec=S.sec;
+  const moved=()=>S.sec!==sec || !S.st || S.st.round!==st.round || S.st.gid!==st.gid;
+  // anti-cheat: the committed secret and the derived dice must never change locally
+  const cm=S.myPres.commit;
+  if(cm?.r===rk(st)){
+    const h=await hashCommit(st.code,st.gid,st.round,sec.s);
+    if(moved()) return;
+    if(h!==cm.h){ naughtyOut(); return; }
+  }
+  if(S.dice && S.dice.r===st.round && S.dice.g===st.gid && st.seed){
+    const dice=S.dice, exp=await deriveDice(st.code,st.gid,st.round,sec.s,st.seed,p.n);
+    if(moved()) return;
+    if(dice.d!==exp || dice.s!==sec.s){ naughtyOut(); return; }
   }
   if(S.myPres.commit?.r!==rk(st) && !committing){
     committing=true;
-    const h=await hashDice(st.code,st.round,S.dice.s,S.dice.d);
+    const h=await hashCommit(st.code,st.gid,st.round,sec.s);
     committing=false;
+    if(moved()) return;
     setPres({commit:{r:rk(st),h}});
     if(S.host) hostProcess();
   }
+  if(st.seed && !deriving && (!S.dice || S.dice.r!==st.round || S.dice.g!==st.gid)){
+    deriving=true;
+    const d=await deriveDice(st.code,st.gid,st.round,sec.s,st.seed,p.n);
+    deriving=false;
+    if(moved()) return;
+    S.dice={code:st.code,g:st.gid,r:st.round,d,s:sec.s}; render();
+    return clientReact();
+  }
+  if(!S.dice || S.dice.r!==st.round || S.dice.g!==st.gid) return;
   if(st.pal && st.oblMode==='abierto' && !cupsClosed(st) && st.phase==='bidding' && S.myPres.open?.r!==rk(st)){
-    setPres({open:{r:rk(st),d:S.dice.d}});
+    setPres({open:{r:rk(st),s:sec.s,d:S.dice.d}});
   }
   if(st.phase==='reveal' && S.myPres.reveal?.r!==rk(st)){
-    setPres({reveal:{r:rk(st),d:S.dice.d,s:S.dice.s}});
+    setPres({reveal:{r:rk(st),s:sec.s,d:S.dice.d}});
     if(S.host) hostProcess();
   }
+}
+/* ---------- anti-cheat screen ---------- */
+// party horn that goes sad: two bright toots, a held toot, then it sags down in pitch and wobbles out; plays even when game sounds are muted
+function partyHorn(){
+  try{
+    Sound.unlock(); const ctx=Sound.ctx; if(!ctx) return;
+    const out=ctx.createGain(); out.gain.value=0.45; out.connect(ctx.destination);
+    const t0=ctx.currentTime+0.05;
+    const ramp=(prm,t,pts)=>pts.forEach(([dt,v],i)=>i?prm.exponentialRampToValueAtTime(v,t+dt):prm.setValueAtTime(v,t+dt));
+    const toot=(t,d,freq,cut,gain,wobble)=>{
+      const o=ctx.createOscillator(),o2=ctx.createOscillator(),lp=ctx.createBiquadFilter(),g=ctx.createGain();
+      o.type='sawtooth'; o2.type='square'; lp.type='lowpass'; lp.Q.value=5;
+      ramp(o.frequency,t,freq); ramp(o2.frequency,t,freq.map(([dt,f])=>[dt,f*1.006]));
+      ramp(lp.frequency,t,cut); ramp(g.gain,t,gain);
+      if(wobble){
+        const l=ctx.createOscillator(), lg=ctx.createGain();
+        l.frequency.setValueAtTime(6.5,t); l.frequency.linearRampToValueAtTime(2.5,t+d);
+        lg.gain.setValueAtTime(1,t); lg.gain.setValueAtTime(1,t+0.6); lg.gain.linearRampToValueAtTime(90,t+d);
+        l.connect(lg); lg.connect(o.detune); lg.connect(o2.detune); l.start(t); l.stop(t+d+0.05);
+      }
+      o.connect(lp); o2.connect(lp); lp.connect(g); g.connect(out);
+      o.start(t); o2.start(t); o.stop(t+d+0.05); o2.stop(t+d+0.05);
+    };
+    const v=0.3;
+    toot(t0,0.14,[[0,523.25],[0.14,523.25]],[[0,1400],[0.14,3000]],[[0,0.0001],[0.02,v],[0.1,v],[0.14,0.0001]]);
+    toot(t0+0.2,0.14,[[0,659.25],[0.14,659.25]],[[0,1400],[0.14,3200]],[[0,0.0001],[0.02,v],[0.1,v],[0.14,0.0001]]);
+    toot(t0+0.4,2.6,[[0,783.99],[0.5,783.99],[2.6,98]],[[0,1500],[0.12,3400],[0.5,3200],[2.6,260]],[[0,0.0001],[0.03,v],[0.5,v],[1.9,v*0.7],[2.6,0.0001]],true);
+  }catch(e){}
+}
+function showNaughty(){
+  if(document.getElementById('naughty')) return;
+  partyHorn();
+  const el=document.createElement('div'); el.id='naughty'; el.setAttribute('role','alert');
+  el.innerHTML='<b>NAUGHTY</b>'; document.body.appendChild(el);
+}
+async function naughtyOut(){
+  if(naughtyOn) return; naughtyOn=true;
+  showNaughty();
+  if(S.named && S.st){ setPres({cheat:{r:rk(S.st)}}); await new Promise(r=>setTimeout(r,800)); }
+  try{ for(let i=localStorage.length-1;i>=0;i--){ const k=localStorage.key(i); if(k && k.startsWith('dudo-d-')) localStorage.removeItem(k); } }catch(e){}
+  await leaveTable('You were removed from the table for cheating.');
+  setTimeout(()=>{ document.getElementById('naughty')?.remove(); naughtyOn=false; },6000);
 }
 function act(t,data={}){
   if(!S.st) return;
@@ -604,6 +713,7 @@ function onRoom(){
   if(S.host){ hostProcess(); }
   else {
     const h=findHost();
+    if(h && S.myPres.j && (h.presence.st.naughty||{})[S.pid]===S.myPres.j){ naughtyOut(); return; }
     if(h && S.myPres.j && (h.presence.st.kicked||{})[S.pid]===S.myPres.j){ leaveTable('The host removed you from the table. You can rejoin with the code.', true); return; }
     if(h){ const st=h.presence.st; if(!S.st || st.v!==S.st.v || st.round!==S.st.round) S.st=st; S.hostGone=false; clearTimeout(hostTimer); hostTimer=null; }
     else if(S.st && !hostTimer){ hostTimer=setTimeout(()=>{ if(!findHost()){S.hostGone=true;render()} hostTimer=null },4000); }
@@ -674,7 +784,7 @@ async function joinTable(codeArg, asHost){
 async function leaveTable(msg,keepSess){
   try{await S.named?.leave()}catch(e){}
   if(!keepSess) store.del('dudo-sess');
-  Object.assign(S,{named:null,code:null,host:false,st:null,peers:[],myPres:{},dice:null,screen:'home',err:typeof msg==='string'?msg:'',hostGone:false});
+  Object.assign(S,{named:null,code:null,host:false,st:null,peers:[],myPres:{},dice:null,sec:null,joining:false,screen:'home',err:typeof msg==='string'?msg:'',hostGone:false});
   render();
 }
 
@@ -792,8 +902,7 @@ function oblLbl(st){ return st.oblMode==='abierto'?' abierto':st.oblMode==='cerr
 function cupsClosed(st){ return !!(st.pal && (st.modePending || st.blindPending)); }
 function openDiceOf(st,id){
   if(!(st.pal && st.oblMode==='abierto' && !cupsClosed(st)) || id===S.pid) return null;
-  const pr=S.peers.find(x=>x.presence?.pid===id)?.presence;
-  return pr?.open?.r===rk(st) ? pr.open.d : null;
+  return st.opened?.[id] ?? null;
 }
 function myDiceRow(st, highlightF){
   const me=st.players.find(p=>p.id===S.pid);
@@ -1174,6 +1283,7 @@ function roundSound(st){
 ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>Sound.unlock(),{passive:true}));
 
 /* ---------- boot ---------- */
+setInterval(()=>{ if(S.st && S.named && !naughtyOn) clientReact(); },1000);   // anti-cheat: re-check own dice every second
 render();
 (async()=>{
   S.room = window.Peer ? PeerRooms : null;
