@@ -11,6 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    /* The category heading already draws a line: no second line above the first recipe */
+    .recipe-list .post-item:first-child { border-top: 0; }
+  </style>
 </head>
 <body>
 
@@ -38,28 +42,9 @@
       I've found some recipes that I like and would like to keep in some place to not lose them.
     </p>
 
-    <h2>Postres</h2>
-    <div class="cv-block">
-      <div class="cv-entry">
-        <div class="when">2026</div>
-        <div class="what">
-          <strong>Tarta de queso vasca</strong> —
-          <a href="assets/papers/example-note.pdf" target="_blank" rel="noopener">PDF</a><br>
-          A sentence describing what the note covers.
-        </div>
-      </div>
+    <div class="recipe-list">
+      <!-- filled by build.js from recipes-src/ -->
     </div>
-
-    <h2>Example: links</h2>
-    <div class="cv-block">
-      <div class="cv-entry">
-        <div class="when">&nbsp;</div>
-        <div class="what">
-          <a href="#" target="_blank" rel="noopener">Course materials, repositories, or other resources</a>
-        </div>
-      </div>
-    </div>
-
   </main>
 
   <footer class="site-footer">

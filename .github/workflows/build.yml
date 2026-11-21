@@ -32,7 +32,7 @@ jobs:
         run: node build.js
  
       - name: Remove files that are not part of the website
-        run: rm -rf posts build.js README.md .gitignore .github "notes copy.html" blog/dummy.txt
+        run: rm -rf posts recipes-src build.js README.md .gitignore .github "notes copy.html" blog/dummy.txt
  
       - name: Setup Pages
         uses: actions/configure-pages@v6

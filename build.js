@@ -33,6 +33,9 @@ const POSTS_DIR = path.join(ROOT, "posts");
 const BLOG_DIR = path.join(ROOT, "blog");
 const TEMPLATE_PATH = path.join(POSTS_DIR, "_template.html");
 const BLOG_INDEX_PATH = path.join(ROOT, "blog.html");
+const RECIPES_SRC_DIR = path.join(ROOT, "recipes-src");
+const RECIPES_DIR = path.join(ROOT, "recipes");
+const RECIPES_INDEX_PATH = path.join(ROOT, "recipes.html");
  
 // ---------------------------------------------------------------
 // Minimal Markdown -> HTML converter (no dependencies)
@@ -350,9 +353,91 @@ function build() {
   console.log(`Built ${posts.length} post(s).`);
  
   buildPublications();
-  buildSitemap(posts);
+  const recipes = buildRecipes();
+  buildSitemap(posts, recipes);
 }
  
+// ---------------------------------------------------------------
+// Recipes: every Markdown file in recipes-src/ (except files that
+// start with "_") becomes recipes/<slug>.html, and recipes.html
+// lists them grouped by category. Frontmatter:
+//
+//   ---
+//   title: Tarta de queso vasca
+//   category: Postres
+//   summary: One sentence shown on the recipes page.
+//   source: https://...   (optional: link or text)
+//   ---
+// ---------------------------------------------------------------
+function buildRecipes() {
+  if (!fs.existsSync(RECIPES_SRC_DIR)) return [];
+  if (!fs.existsSync(RECIPES_DIR)) fs.mkdirSync(RECIPES_DIR, { recursive: true });
+
+  const template = fs.readFileSync(path.join(RECIPES_SRC_DIR, "_template.html"), "utf8");
+  const files = fs
+    .readdirSync(RECIPES_SRC_DIR)
+    .filter((f) => f.endsWith(".md") && !f.startsWith("_"));
+
+  const recipes = [];
+  for (const file of files) {
+    const raw = fs.readFileSync(path.join(RECIPES_SRC_DIR, file), "utf8");
+    const { meta, body } = parseFrontmatter(raw);
+
+    const slug = (meta.slug || path.basename(file, ".md")).trim();
+    const title = meta.title || slug;
+    const category = meta.category || "Other";
+    const summary = meta.summary || "";
+    const source = meta.source || "";
+
+    let metaHtml = escapeHtml(category);
+    if (source) {
+      metaHtml += /^https?:\/\//.test(source)
+        ? `. Source: <a href="${escapeAttr(source)}" target="_blank" rel="noopener">${escapeHtml(source.replace(/^https?:\/\/(www\.)?/, "").split("/")[0])}</a>`
+        : `. Source: ${escapeHtml(source)}`;
+    }
+
+    const page = template
+      .replace(/{{TITLE}}/g, () => escapeHtml(title))
+      .replace(/{{SLUG}}/g, () => slug)
+      .replace(/{{SUMMARY}}/g, () => escapeAttr(summary))
+      .replace(/{{META}}/g, () => metaHtml)
+      .replace(/{{CONTENT}}/g, () => mdToHtml(body));
+
+    fs.writeFileSync(path.join(RECIPES_DIR, `${slug}.html`), page);
+    recipes.push({ slug, title, category, summary, file });
+  }
+
+  // Group by category (alphabetical), recipes alphabetical inside each.
+  const byCategory = {};
+  for (const r of recipes) (byCategory[r.category] = byCategory[r.category] || []).push(r);
+  const categories = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, "es"));
+
+  const listHtml = categories
+    .map((cat) => {
+      const items = byCategory[cat]
+        .sort((a, b) => a.title.localeCompare(b.title, "es"))
+        .map(
+          (r) => `        <a class="post-item" href="recipes/${r.slug}.html">
+          <h3>${escapeHtml(r.title)}</h3>
+          ${r.summary ? `<p>${escapeHtml(r.summary)}</p>` : ""}
+        </a>`
+        )
+        .join("\n");
+      return `      <h2>${escapeHtml(cat)}</h2>\n      <div class="post-list">\n${items}\n      </div>`;
+    })
+    .join("\n");
+
+  let index = fs.readFileSync(RECIPES_INDEX_PATH, "utf8");
+  index = index.replace(
+    /(<div class="recipe-list">)[\s\S]*?(\n {4}<\/div>\s*<\/main>)/,
+    (_, open, close) => `${open}\n${listHtml}${close}`
+  );
+  fs.writeFileSync(RECIPES_INDEX_PATH, index);
+
+  console.log(`Built ${recipes.length} recipe(s).`);
+  return recipes;
+}
+
 // ---------------------------------------------------------------
 // Pre-render the publications list into publications.html, so the
 // list is present in the HTML that search engines download.
@@ -403,9 +488,9 @@ function lastModified(file) {
   return fs.statSync(path.join(ROOT, file)).mtime.toISOString();
 }
  
-function buildSitemap(posts) {
+function buildSitemap(posts, recipes = []) {
   const entries = [{ loc: "/", file: "index.html" }];
-  for (const f of ["aboutme.html","publications.html", "blog.html", "cv.html", "notes.html", "others.html"]) {
+  for (const f of ["aboutme.html","publications.html", "blog.html", "cv.html", "notes.html", "others.html", "recipes.html"]) {
     entries.push({ loc: "/" + f, file: f });
   }
   for (const p of posts) {
@@ -413,6 +498,9 @@ function buildSitemap(posts) {
       (f) => f.endsWith(".md") && path.basename(f, ".md") === p.slug
     );
     entries.push({ loc: `/blog/${p.slug}.html`, file: md ? `posts/${md}` : `blog/${p.slug}.html` });
+  }
+  for (const r of recipes) {
+    entries.push({ loc: `/recipes/${r.slug}.html`, file: `recipes-src/${r.file}` });
   }
   for (const dir of ["games", "tools", "dndtools"]) {
     const abs = path.join(ROOT, dir);
